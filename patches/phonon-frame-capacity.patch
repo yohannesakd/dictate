@@ -1,0 +1,47 @@
+--- a/Transcriber.swift
++++ b/Transcriber.swift
+@@ -149,16 +149,26 @@
+         options.progress?("loaded \(manifest.program_prefix)\(key)s", Date().timeIntervalSince(t0Init))
+         return r
+     }
+-    /// The function for a window of `sec` seconds: the smallest one that holds it; while a background load is still running, the smallest
+-    /// READY function that holds it (texts are the same: every function computes the same masked encoder).
+-    func model(forSeconds sec: Double) throws -> (MLModel, Int) {
+-        let fits = functionSeconds.filter { $0 >= sec }.map { Int($0) }
+-        guard let want = fits.first else { throw NSError(domain: "PhononCoreML", code: 4, userInfo: [NSLocalizedDescriptionKey: "window of \(sec) s exceeds the largest encoder function"]) }
++    /// Select by frame capacity, retaining the ready-function fallback during background loading.
++    func model(forFrames n: Int) throws -> (MLModel, Int) {
++        let fits = functionSeconds.filter { Self.framesFor(seconds: $0) >= n }.map { Int($0) }
++        guard let want = fits.first else {
++            throw NSError(domain: "PhononCoreML", code: 4,
++                          userInfo: [NSLocalizedDescriptionKey: "window of \(n) frames exceeds the encoder capacity"])
++        }
+         modelLock.lock()
+-        if let m = models[want] { modelLock.unlock(); return (m, want) }
+-        if loading.contains(want), let k = fits.first(where: { models[$0] != nil }) { let m = models[k]!; modelLock.unlock(); return (m, k) }
++        let ready: MLModel?
++        if let model = models[want] { ready = model }
++        else if loading.contains(want), let key = fits.first(where: { models[$0] != nil }) { ready = models[key] }
++        else { ready = nil }
+         modelLock.unlock()
+-        return (try loadFunction(want), want)
++        let model = try ready ?? loadFunction(want)
++        guard let shape = model.modelDescription.inputDescriptionsByName["mel"]?.multiArrayConstraint?.shape,
++              shape.count == 3, shape[2].intValue >= n else {
++            throw NSError(domain: "PhononCoreML", code: 4,
++                          userInfo: [NSLocalizedDescriptionKey: "encoder input cannot hold \(n) frames"])
++        }
++        return (model, shape[2].intValue)
+     }
+     /// Preload every available function (for measurement; costs resident memory).
+     public func preloadAllFunctions() throws { for s in functionSeconds { try loadFunction(Int(s)) } }
+@@ -221,8 +231,7 @@
+     }
+     /// Features of one window -> (projector output [n3 * 640], n3) on the Neural Engine. Thread-safe (several requests may be in flight).
+     func encodeFeatures(_ feats: [Float], n: Int) throws -> ([Float], Int) {
+-        let sec = Double(n) * 0.01 + 0.02
+-        let (m, fs) = try model(forSeconds: sec); let T = Transcriber.framesFor(seconds: Double(fs))
++        let (m, T) = try model(forFrames: n)
+         var n3 = n; for _ in 0..<3 { n3 = (n3 - 1) / 2 + 1 }
+         var enc = [Float](repeating: 0, count: n3 * 640)
+         var t1 = Date()
