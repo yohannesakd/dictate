@@ -28,17 +28,16 @@ struct HubView: View {
                     ShortcutRow(title: "Insert last dictation", note: nil, keys: [["⌃", "⌘", "V"]])
                 }
                 .card()
-                SettingRow(title: "Show the flow bar when not dictating", detail: nil, isOn: $model.showIdleBar).card()
-            }
-            section("Cleanup") {
-                VStack(alignment: .leading, spacing: 0) {
-                    SettingRow(title: "Smart cleanup with GPT-6-Luna",
-                               detail: "Removes fillers by context, applies spoken corrections such as “at two, actually three”, and uses the dictionary as hints. Uses your Codex (ChatGPT) login and sends each dictation to OpenAI. Adds about 1.5 seconds.",
-                               isOn: $model.smartCleanup)
-                    if model.smartCleanup { SmartStatusRow(status: model.smartStatus).padding(.bottom, 8) }
+                VStack(spacing: 0) {
+                    SettingRow(title: "Show the flow bar when not dictating", detail: nil, isOn: $model.showIdleBar)
+                    Divider()
+                    SettingRow(title: "Open at login", detail: nil, isOn: $model.openAtLogin)
                 }
                 .card()
-                Text(model.smartCleanup ? "These rules apply when smart cleanup does not reply within 3 seconds." : "Rules")
+            }
+            section("Cleanup") {
+                SmartCleanupCard(model: model, controller: controller)
+                Text(model.smartCleanup ? "These rules apply when a dictation does not need the model, or when the model fails." : "Rules")
                     .font(.caption).foregroundStyle(.secondary)
                 VStack(spacing: 0) {
                     SettingRow(title: "Remove filler words", detail: "um, uh, er, ah, hmm", isOn: $model.removeFillers)
@@ -52,7 +51,15 @@ struct HubView: View {
                 .card()
             }
             section("Dictionary") { DictionaryEditor(entries: $model.dictionary) }
-            section("History") { history }
+            section("History") {
+                history
+                HStack(spacing: 4) {
+                    Text("Every dictation is also saved on this Mac in a transcript log.")
+                    Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([TranscriptLog.url]) }
+                        .buttonStyle(.link)
+                }
+                .font(.caption).foregroundStyle(.secondary)
+            }
         }
         .padding(.horizontal, 28)
         .padding(.top, 40)
@@ -157,17 +164,83 @@ private struct ModelCard: View {
     }
 }
 
-private struct SmartStatusRow: View {
-    let status: SmartCleanup.Status
+private struct SmartCleanupCard: View {
+    @ObservedObject var model: AppModel
+    let controller: DictationController
+    @State private var key = ""
 
     var body: some View {
-        switch status {
-        case .ready:
-            Label("Ready", systemImage: "circle.fill").labelStyle(StatusLabelStyle(color: .green))
-        case .starting, .off:
-            HStack(spacing: 5) { ProgressView().controlSize(.mini); Text("Starting Codex").font(.caption) }
-        case .unavailable(let message):
-            Label(message, systemImage: "circle.fill").labelStyle(StatusLabelStyle(color: .orange))
+        VStack(alignment: .leading, spacing: 0) {
+            SettingRow(title: "Smart cleanup",
+                       detail: "A language model removes fillers by context, applies spoken corrections such as “at two, actually three”, and uses the dictionary as hints. It runs only for dictations that contain such words. Other dictations use the rules and stay on this Mac.",
+                       isOn: $model.smartCleanup)
+            if model.smartCleanup {
+                Divider()
+                HStack {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Model")
+                        Text(providerNote).font(.caption).foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    Picker("Model", selection: $model.cleanupProvider) {
+                        ForEach(CleanupProvider.allCases) { Text($0.title).tag($0) }
+                    }
+                    .pickerStyle(.segmented).labelsHidden().fixedSize()
+                }
+                .padding(.vertical, 8)
+                Divider()
+                account.padding(.vertical, 8)
+                if let issue = model.smartIssue {
+                    Label(issue, systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption).foregroundStyle(.orange)
+                        .padding(.bottom, 8)
+                }
+            }
+        }
+        .card()
+    }
+
+    private var providerNote: String {
+        switch model.cleanupProvider {
+        case .deepseek: return "deepseek-chat, about 1 second. Billed to your DeepSeek API key. The text goes to DeepSeek."
+        case .chatgpt: return "GPT-6-Luna, about 1.5 seconds. Uses your ChatGPT plan. The text goes to OpenAI."
+        }
+    }
+
+    @ViewBuilder private var account: some View {
+        switch model.cleanupProvider {
+        case .deepseek:
+            if model.deepseekKeySaved {
+                HStack {
+                    Label("API key saved in the Keychain", systemImage: "key.fill")
+                    Spacer()
+                    Button("Remove", action: controller.removeDeepSeekKey)
+                }
+            } else {
+                HStack {
+                    SecureField("DeepSeek API key", text: $key).textFieldStyle(.roundedBorder)
+                    Button("Save") {
+                        controller.saveDeepSeekKey(key)
+                        key = ""
+                    }
+                    .disabled(key.isEmpty)
+                }
+            }
+        case .chatgpt:
+            if model.chatgptSignedIn {
+                HStack {
+                    Label("Signed in with ChatGPT", systemImage: "person.crop.circle.badge.checkmark")
+                    Spacer()
+                    Button("Sign Out", action: controller.signOutChatGPT)
+                }
+            } else {
+                HStack {
+                    Text(model.signingIn ? "Finish the sign-in in your browser." : "Use the ChatGPT account of your Codex plan.")
+                        .font(.callout).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Sign In with ChatGPT", action: controller.signInChatGPT).disabled(model.signingIn)
+                }
+            }
         }
     }
 }
@@ -255,6 +328,7 @@ private struct HistoryRow: View {
                     CopyButton(text: raw, help: "Copy the original")
                 }
             }
+            if let note = item.note { Text(note).font(.caption).foregroundStyle(.orange) }
             Text(item.date.formatted(date: .abbreviated, time: .shortened))
                 .font(.caption).foregroundStyle(.secondary)
         }

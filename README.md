@@ -1,6 +1,6 @@
 # Dictate
 
-System-wide dictation for macOS in the style of Wispr Flow. Hold fn, speak, and release: the text is typed into the focused field. Speech recognition runs on this Mac with Phonon-2 on the Neural Engine. Optional smart cleanup uses GPT-6-Luna through your Codex login.
+System-wide dictation for macOS in the style of Wispr Flow. Hold fn, speak, and release: the text is typed into the focused field. Speech recognition runs on this Mac with Phonon-2 on the Neural Engine. Optional smart cleanup uses DeepSeek or GPT-6-Luna.
 
 ## Build
 
@@ -25,13 +25,16 @@ Set "Press 🌐 key to" to "Do Nothing" in Keyboard settings, so fn does not als
 
 ## Smart cleanup
 
-Smart cleanup sends each transcript to GPT-6-Luna through the Codex CLI and your ChatGPT login. It removes fillers by context, applies spoken corrections ("at two, actually three"), and uses the dictionary as hints. Turn it off in the Cleanup section.
+Smart cleanup sends a transcript to a language model when it contains words that need context: ambiguous fillers ("like", "you know"), self-corrections ("actually", "no wait"), or dictionary words. The model removes the fillers, keeps only the corrected version, and uses the dictionary as hints. Other dictations use the rules only.
 
-- Requirements: the Codex CLI in `~/.local/bin`, `/opt/homebrew/bin`, or `/usr/local/bin`, and `codex login` with ChatGPT.
-- Dictate runs one `codex app-server` process (about 30 MB) with its own Codex home in `~/Library/Application Support/Dictate/codex`. Your skills, AGENTS.md, hooks, and MCP servers do not load there. Only `~/.codex/auth.json` is shared, through a symlink.
-- A dictation takes about 1.5 s more. Codex needs about 6 s to start when Dictate opens.
-- When Codex does not reply within 3 s, or the reply is not a cleanup of the transcript, Dictate types the rule-based result instead.
-- Usage counts against your Codex plan limits.
+Choose the model in the Cleanup section:
+
+- DeepSeek (`deepseek-chat`): about 1 s. Save a DeepSeek API key in Dictate. Dictate keeps it in the Keychain.
+- ChatGPT (`gpt-6-luna`): about 1.5 s. Click "Sign In with ChatGPT". Dictate uses the same sign-in flow as the Codex CLI and Pi, and keeps its own tokens in the Keychain. The endpoint (`chatgpt.com/backend-api/codex/responses`) is not a public API, so OpenAI can change it. Usage counts against your plan limits.
+
+Dictate types the rule result when the model does not reply within 3 s, or when the reply contains a word that is not in the transcript or the dictionary. That check stops answers to dictated questions.
+
+Every dictation is saved in `~/Library/Application Support/Dictate/transcripts.jsonl`: the raw transcript, the rule result, the model reply, the inserted text, and the app.
 
 Each dictation appends resource metrics to `~/Library/Logs/Dictate/metrics.jsonl`.
 

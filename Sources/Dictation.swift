@@ -2,7 +2,7 @@
 
 import AppKit
 import AVFoundation
-import Combine
+import ServiceManagement
 import SwiftUI
 
 struct HistoryItem: Codable, Identifiable {
@@ -11,6 +11,8 @@ struct HistoryItem: Codable, Identifiable {
     let date: Date
     /// The transcript before cleanup and the dictionary. Nil when nothing changed.
     var raw: String?
+    /// Why smart cleanup did not change the text, for example a timeout.
+    var note: String?
 }
 
 enum ModelStatus: Equatable { case loading, ready, failed(String) }
@@ -30,7 +32,22 @@ final class AppModel: ObservableObject {
     @Published var removeRepeats = AppModel.stored("removeRepeats", default: true) { didSet { store("removeRepeats", removeRepeats) } }
     @Published var scratchThat = AppModel.stored("scratchThat", default: true) { didSet { store("scratchThat", scratchThat) } }
     @Published var smartCleanup = AppModel.stored("smartCleanup", default: true) { didSet { store("smartCleanup", smartCleanup) } }
-    @Published var smartStatus = SmartCleanup.Status.off
+    @Published var cleanupProvider = CleanupProvider(rawValue: UserDefaults.standard.string(forKey: "cleanupProvider") ?? "") ?? .deepseek {
+        didSet { UserDefaults.standard.set(cleanupProvider.rawValue, forKey: "cleanupProvider") }
+    }
+    @Published var deepseekKeySaved = false
+    @Published var chatgptSignedIn = false
+    @Published var signingIn = false
+    /// The last smart cleanup error. A successful request clears it.
+    @Published var smartIssue: String?
+    @Published var openAtLogin = SMAppService.mainApp.status == .enabled {
+        didSet {
+            guard openAtLogin != (SMAppService.mainApp.status == .enabled) else { return }
+            try? openAtLogin ? SMAppService.mainApp.register() : SMAppService.mainApp.unregister()
+            // Show the real state, also when macOS refused the change.
+            DispatchQueue.main.async { self.openAtLogin = SMAppService.mainApp.status == .enabled }
+        }
+    }
     @Published var showIdleBar = AppModel.stored("showIdleBar", default: true) { didSet { store("showIdleBar", showIdleBar) } }
     @Published var dictionary: [DictionaryEntry] = AppModel.decoded("dictionary") ?? [] { didSet { encode("dictionary", dictionary) } }
     @Published private(set) var history: [HistoryItem] = AppModel.decoded("history") ?? []
@@ -38,8 +55,8 @@ final class AppModel: ObservableObject {
     var needsSetup: Bool { !micAuthorized || !accessibilityTrusted || !keyboardReady || !fnKeyFree }
     var cleanupRules: TextCleanup.Rules { .init(fillers: removeFillers, repeats: removeRepeats, scratchThat: scratchThat) }
 
-    func addHistory(_ text: String, raw: String) {
-        history.insert(HistoryItem(text: text, date: Date(), raw: raw == text ? nil : raw), at: 0)
+    func addHistory(_ text: String, raw: String, note: String?) {
+        history.insert(HistoryItem(text: text, date: Date(), raw: raw == text ? nil : raw, note: note), at: 0)
         history = Array(history.prefix(50))
         Self.encode("history", history)
     }
@@ -63,7 +80,6 @@ final class DictationController {
     private let engine = Engine()
     private let recorder = Recorder()
     private let smart = SmartCleanup()
-    private var smartToggle: AnyCancellable?
     private let startSound = NSSound(named: "Tink")
 
     private enum Mode { case idle, holding(Date), awaitingSecondTap, handsFree, processing }
@@ -99,8 +115,13 @@ final class DictationController {
         engine.load { [weak self] error in
             self?.model.modelStatus = error.map { .failed($0.localizedDescription) } ?? .ready
         }
-        smart.onStatus = { [weak self] status in self?.model.smartStatus = status }
-        smartToggle = model.$smartCleanup.removeDuplicates().sink { [weak self] on in self?.smart.setEnabled(on) }
+        model.deepseekKeySaved = smart.deepseek.hasKey
+        model.chatgptSignedIn = smart.chatgpt.auth.isSignedIn
+        // Open at login by default. The switch in the Hub changes it later.
+        if !UserDefaults.standard.bool(forKey: "openAtLoginSet") {
+            UserDefaults.standard.set(true, forKey: "openAtLoginSet")
+            model.openAtLogin = true
+        }
         NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil,
                                                queue: .main) { [weak self] _ in self?.refreshPermissions() }
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil,
@@ -181,6 +202,7 @@ final class DictationController {
             return
         }
         startSound?.play()  // After the microphone runs, so the sound means "speak now".
+        if model.smartCleanup { smart.client(model.cleanupProvider).warm() }
         recording = Stopwatch()
         mode = handsFree ? .handsFree : .holding(Date())
         model.handsFree = handsFree
@@ -210,6 +232,7 @@ final class DictationController {
         }
         // The field that has focus now is where the text belongs.
         let target = Insertion.focusedElement()
+        let app = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         requestID += 1
         let request = requestID
         mode = .processing
@@ -222,26 +245,30 @@ final class DictationController {
             switch result {
             case .success(let raw):
                 self.model.modelStatus = .ready
-                var metrics: [String: Any] = [
+                var dictation = Dictation(raw: raw, app: app, audioSeconds: audioSeconds, target: target, released: released)
+                dictation.metrics = [
                     "audio_s": (audioSeconds * 10).rounded() / 10,
                     "record_cpu_ms": recordCpuMs, "record_cpu_pct": Int(Double(recordCpuMs) / 10 / max(audioSeconds, 0.1)),
                     "transcribe_ms": released.wallMs, "transcribe_cpu_ms": released.cpuMs,
                 ]
-                if let interruption { metrics["interrupted"] = interruption }
-                // The rules and the dictionary give the fallback text when smart cleanup is off, slow, or rejected.
-                let ruled = PersonalDictionary.apply(TextCleanup.clean(raw, rules: self.model.cleanupRules),
-                                                     entries: self.model.dictionary)
-                guard self.model.smartCleanup, !raw.isEmpty else {
-                    return self.complete(text: ruled, raw: raw, target: target, released: released,
-                                         metrics: metrics, interruption: interruption)
-                }
-                let smartStarted = Stopwatch()
-                self.smart.clean(raw, entries: self.model.dictionary) { [weak self] text, outcome in
+                if let interruption { dictation.metrics["interrupted"] = interruption }
+                // The rules and the dictionary give the text when smart cleanup is off, not needed, slow, or rejected.
+                dictation.ruled = PersonalDictionary.apply(TextCleanup.clean(raw, rules: self.model.cleanupRules),
+                                                           entries: self.model.dictionary)
+                guard self.model.smartCleanup, !raw.isEmpty else { return self.complete(dictation, interruption: interruption) }
+                let provider = self.model.cleanupProvider
+                let started = Stopwatch()
+                self.smart.clean(raw, entries: self.model.dictionary, provider: provider) { [weak self] smart in
                     guard let self, request == self.requestID else { return }
-                    metrics["smart"] = outcome
-                    metrics["smart_ms"] = smartStarted.wallMs
-                    self.complete(text: text ?? ruled, raw: raw, target: target, released: released,
-                                  metrics: metrics, interruption: interruption)
+                    dictation.smart = smart
+                    dictation.provider = provider
+                    dictation.metrics["smart"] = smart.outcome
+                    dictation.metrics["smart_ms"] = started.wallMs
+                    if smart.outcome == "used" { self.model.smartIssue = nil }
+                    if let error = smart.error, !(error is CancellationError) {
+                        self.model.smartIssue = error.localizedDescription
+                    }
+                    self.complete(dictation, interruption: interruption)
                 }
             case .failure(let error):
                 self.mode = .idle
@@ -250,30 +277,104 @@ final class DictationController {
         }
     }
 
-    private func complete(text: String, raw: String, target: AXUIElement?, released: Stopwatch,
-                          metrics: [String: Any], interruption: String?) {
+    /// One dictation on its way from the transcript to the focused field.
+    private struct Dictation {
+        let raw: String
+        let app: String?
+        let audioSeconds: Double
+        let target: AXUIElement?
+        let released: Stopwatch
+        var ruled = ""
+        var smart: SmartCleanup.Result?
+        var provider: CleanupProvider?
+        var metrics: [String: Any] = [:]
+
+        var text: String { smart?.text ?? ruled }
+
+        /// Explains in the history why smart cleanup did not change the text.
+        var note: String? {
+            switch smart?.outcome {
+            case "timeout": return "Rules used: the model did not reply within 3 seconds."
+            case "rejected": return "Rules used: the model reply was not a cleanup of the transcript."
+            case "error": return "Rules used: \(smart?.error?.localizedDescription ?? "the model failed.")"
+            default: return nil
+            }
+        }
+    }
+
+    private func complete(_ dictation: Dictation, interruption: String?) {
         mode = .idle
-        var metrics = metrics
+        let text = dictation.text
+        var metrics = dictation.metrics
         metrics["chars"] = text.count
-        metrics["chars_changed"] = raw.count - text.count
-        guard !text.isEmpty else {
+        metrics["chars_changed"] = dictation.raw.count - text.count
+        var log: [String: Any?] = [
+            "app": dictation.app, "audio_s": (dictation.audioSeconds * 10).rounded() / 10, "raw": dictation.raw,
+            "rules": dictation.ruled, "provider": dictation.provider?.rawValue, "smart": dictation.smart?.outcome,
+            "model_reply": dictation.smart?.reply, "text": text, "inserted": false,
+        ]
+        func record() {
             MetricsLog.write(metrics)
+            TranscriptLog.write(log)
+        }
+        guard !text.isEmpty else {
+            record()
             notice(interruption ?? "No speech detected")
             return
         }
-        model.addHistory(text, raw: raw)
+        model.addHistory(text, raw: dictation.raw, note: dictation.note)
         // Transcription alone takes about 25 ms. A slow first run or smart cleanup leaves time to switch fields.
-        if released.wallMs > 1000, let current = Insertion.focusedElement(), let target, !Insertion.isSame(current, target) {
-            MetricsLog.write(metrics)
+        let released = dictation.released
+        if released.wallMs > 1000, let current = Insertion.focusedElement(), let target = dictation.target,
+           !Insertion.isSame(current, target) {
+            record()
             notice("The focused field changed. Press ⌃⌘V to insert.")
             return
         }
+        log["inserted"] = true
+        TranscriptLog.write(log)
         deliver(text) { typeMs in
             metrics["type_ms"] = typeMs
             metrics["release_to_text_ms"] = released.wallMs
             MetricsLog.write(metrics)
         }
         if let interruption { notice("\(interruption). Recording stopped early.") }
+    }
+
+    // MARK: Smart cleanup accounts
+
+    func saveDeepSeekKey(_ key: String) {
+        let key = key.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !key.isEmpty else { return }
+        smart.deepseek.setKey(key)
+        model.deepseekKeySaved = true
+        model.smartIssue = nil
+    }
+
+    func removeDeepSeekKey() {
+        smart.deepseek.setKey(nil)
+        model.deepseekKeySaved = false
+    }
+
+    func signInChatGPT() {
+        model.signingIn = true
+        Task {
+            let error: Error?
+            do { try await smart.chatgpt.auth.signIn(); error = nil } catch let failure { error = failure }
+            await MainActor.run {
+                model.signingIn = false
+                model.chatgptSignedIn = smart.chatgpt.auth.isSignedIn
+                model.smartIssue = error?.localizedDescription
+                NSApp.activate(ignoringOtherApps: true)
+            }
+        }
+    }
+
+    func signOutChatGPT() {
+        Task {
+            await smart.chatgpt.auth.signOut()
+            await MainActor.run { model.chatgptSignedIn = false }
+        }
     }
 
     /// Esc: drops the recording, or the result that is still being transcribed.

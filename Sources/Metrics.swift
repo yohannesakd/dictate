@@ -45,16 +45,19 @@ enum MetricsLog {
         fields["date"] = ISO8601DateFormatter().string(from: Date())
         fields["footprint_mb"] = Int(memory.current)
         fields["peak_footprint_mb"] = Int(memory.peak)
-        queue.async {
-            guard let data = try? JSONSerialization.data(withJSONObject: fields, options: [.sortedKeys]) else { return }
-            try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
-            if let handle = try? FileHandle(forWritingTo: url) {
-                handle.seekToEndOfFile()
-                handle.write(data + Data("\n".utf8))
-                try? handle.close()
-            } else {
-                try? (data + Data("\n".utf8)).write(to: url)
-            }
-        }
+        queue.async { appendJSONLine(fields, to: url) }
+    }
+}
+
+/// Appends one JSON object as a line. Callers serialize writes to the same file on one queue.
+func appendJSONLine(_ object: [String: Any], to url: URL) {
+    guard let data = try? JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]) else { return }
+    try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+    if let handle = try? FileHandle(forWritingTo: url) {
+        handle.seekToEndOfFile()
+        handle.write(data + Data("\n".utf8))
+        try? handle.close()
+    } else {
+        try? (data + Data("\n".utf8)).write(to: url)
     }
 }
