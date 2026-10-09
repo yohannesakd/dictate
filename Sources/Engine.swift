@@ -31,6 +31,9 @@ final class Engine {
         }
         var options = Transcriber.Options()
         options.backgroundLoad = true  // Prepare the longer encoder windows after the first one is ready.
+        // Phonon 1.1.2 asks for frames * 0.01 + 0.02 s of encoder, so a 34.99–35.0 s recording finds no 35 s encoder.
+        // Below 34.9 s it stays a single pass; longer audio uses the windowed path.
+        options.singleShotMaxSeconds = 34.9
         let loaded = try Transcriber(bundle: model, options: options)
         transcriber = loaded
         return loaded

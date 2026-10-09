@@ -1,4 +1,4 @@
-// The main window: setup, model choice, shortcuts, and dictation history.
+// The main window: setup, model status, shortcuts, cleanup, dictionary, and dictation history.
 
 import AppKit
 import SwiftUI
@@ -28,25 +28,21 @@ struct HubView: View {
                     ShortcutRow(title: "Insert last dictation", note: nil, keys: [["⌃", "⌘", "V"]])
                 }
                 .card()
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Remove filler words")
-                        Text("Drops um and uh, repeated words, and text before “scratch that”.")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Toggle("", isOn: $model.removeFillers).toggleStyle(.switch).controlSize(.small).labelsHidden()
+                SettingRow(title: "Show the flow bar when not dictating", detail: nil, isOn: $model.showIdleBar).card()
+            }
+            section("Cleanup") {
+                VStack(spacing: 0) {
+                    SettingRow(title: "Remove filler words", detail: "um, uh, er, ah, hmm", isOn: $model.removeFillers)
+                    Divider()
+                    SettingRow(title: "Remove repeated words", detail: "“I I think” becomes “I think”. Only short words such as I, the, and to.",
+                               isOn: $model.removeRepeats)
+                    Divider()
+                    SettingRow(title: "“Scratch that” deletes the sentence before it", detail: "“Send it to John, scratch that, send it to Sarah” keeps only “Send it to Sarah”.",
+                               isOn: $model.scratchThat)
                 }
-                .padding(.vertical, 6)
-                .card()
-                HStack {
-                    Text("Show the flow bar when not dictating")
-                    Spacer()
-                    Toggle("", isOn: $model.showIdleBar).toggleStyle(.switch).controlSize(.small).labelsHidden()
-                }
-                .padding(.vertical, 6)
                 .card()
             }
+            section("Dictionary") { DictionaryEditor(entries: $model.dictionary) }
             section("History") { history }
         }
         .padding(.horizontal, 28)
@@ -74,8 +70,12 @@ struct HubView: View {
                 }
                 if !model.accessibilityTrusted {
                     SetupRow(symbol: "accessibility", title: "Accessibility",
-                             detail: "Needed for the fn shortcut and to paste into other apps.",
+                             detail: "Needed for the fn shortcut and to type into other apps.",
                              button: "Open Settings", action: controller.requestAccessibility)
+                } else if !model.keyboardReady {
+                    SetupRow(symbol: "keyboard", title: "Keyboard shortcut",
+                             detail: "macOS did not start the fn key listener.",
+                             button: "Try Again", action: controller.refreshPermissions)
                 }
                 if !model.fnKeyFree {
                     SetupRow(symbol: "globe", title: "fn key",
@@ -212,28 +212,105 @@ private struct SetupRow: View {
 
 private struct HistoryRow: View {
     let item: HistoryItem
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .top, spacing: 10) {
+                Text(item.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                Spacer()
+                CopyButton(text: item.text, help: "Copy")
+            }
+            if let raw = item.raw {
+                HStack(alignment: .top, spacing: 10) {
+                    Text("Original: \(raw)")
+                        .font(.callout).foregroundStyle(.secondary)
+                        .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                    Spacer()
+                    CopyButton(text: raw, help: "Copy the original")
+                }
+            }
+            Text(item.date.formatted(date: .abbreviated, time: .shortened))
+                .font(.caption).foregroundStyle(.secondary)
+        }
+        .padding(.vertical, 9)
+    }
+}
+
+private struct CopyButton: View {
+    let text: String
+    let help: String
     @State private var copied = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(item.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-                Text(item.date.formatted(date: .abbreviated, time: .shortened))
-                    .font(.caption).foregroundStyle(.secondary)
+        Button {
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(text, forType: .string)
+            copied = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copied = false }
+        } label: {
+            Image(systemName: copied ? "checkmark" : "doc.on.doc")
+        }
+        .buttonStyle(.borderless)
+        .help(help)
+    }
+}
+
+private struct SettingRow: View {
+    let title: String
+    let detail: String?
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                if let detail { Text(detail).font(.caption).foregroundStyle(.secondary) }
             }
             Spacer()
-            Button {
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.setString(item.text, forType: .string)
-                copied = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copied = false }
-            } label: {
-                Image(systemName: copied ? "checkmark" : "doc.on.doc")
-            }
-            .buttonStyle(.borderless)
-            .help("Copy")
+            Toggle("", isOn: $isOn).toggleStyle(.switch).controlSize(.small).labelsHidden()
         }
-        .padding(.vertical, 9)
+        .padding(.vertical, 8)
+    }
+}
+
+/// Rows of "heard as" -> "write as". Changes save as you type.
+private struct DictionaryEditor: View {
+    @Binding var entries: [DictionaryEntry]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Fix words the model mishears. Each entry replaces whole words or phrases after cleanup. A single-word entry such as “soul” changes every “soul”, so prefer a phrase when the word is also common.")
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 0) {
+                if !entries.isEmpty {
+                    HStack {
+                        Text("Heard as").frame(maxWidth: .infinity, alignment: .leading)
+                        Text("Write as").frame(maxWidth: .infinity, alignment: .leading)
+                        Color.clear.frame(width: 20)
+                    }
+                    .font(.caption).foregroundStyle(.secondary)
+                    .padding(.vertical, 6)
+                }
+                ForEach($entries) { $entry in
+                    HStack {
+                        TextField("ask soul", text: $entry.heard).textFieldStyle(.roundedBorder)
+                        Image(systemName: "arrow.right").foregroundStyle(.secondary)
+                        TextField("ask Sol", text: $entry.written).textFieldStyle(.roundedBorder)
+                        Button { entries.removeAll { $0.id == entry.id } } label: { Image(systemName: "minus.circle") }
+                            .buttonStyle(.borderless)
+                            .help("Delete")
+                    }
+                    .padding(.vertical, 4)
+                }
+                HStack {
+                    Button { entries.append(DictionaryEntry()) } label: { Label("Add entry", systemImage: "plus") }
+                        .buttonStyle(.borderless)
+                    Spacer()
+                }
+                .padding(.vertical, 8)
+            }
+            .card()
+        }
     }
 }
 

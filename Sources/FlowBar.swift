@@ -16,7 +16,7 @@ enum FlowBarLayout {
         switch model.phase {
         case .idle: return model.showIdleBar ? CGSize(width: 42, height: 9) : .zero
         case .listening: return model.handsFree ? CGSize(width: 148, height: 36) : CGSize(width: 92, height: 32)
-        case .processing: return CGSize(width: 92, height: 32)
+        case .processing: return model.modelStatus == .loading ? nil : CGSize(width: 92, height: 32)
         case .notice: return nil
         }
     }
@@ -123,7 +123,7 @@ struct FlowBarView: View {
                 .frame(width: size.width, height: size.height)
                 .background(capsule)
                 .opacity(size == .zero ? 0 : 1)
-        } else if case .notice(let text) = model.phase {
+        } else if let text = message {
             Text(text)
                 .font(.system(size: 12, weight: .medium))
                 .foregroundColor(.white)
@@ -132,6 +132,15 @@ struct FlowBarView: View {
                 .frame(height: 30)
                 .frame(maxWidth: FlowBarLayout.panelSize.width - 20)
                 .background(capsule)
+        }
+    }
+
+    /// Text shown in the pill instead of graphics: a notice, or the one-time model preparation.
+    private var message: String? {
+        switch model.phase {
+        case .notice(let text): return text
+        case .processing where model.modelStatus == .loading: return "Preparing the speech model (first run only)…"
+        default: return nil
         }
     }
 

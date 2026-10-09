@@ -1,18 +1,28 @@
-// Rule-based cleanup of a transcript: filler words, stutters, and "scratch that".
+// Rule-based cleanup of a transcript: filler words, stutters, and "scratch that". Each rule can be turned off.
 // It changes only what rules can decide safely. Corrections such as "at two, actually three" need a language model.
 
 import Foundation
 
 enum TextCleanup {
-    private static let fillers: Set<String> = ["um", "umm", "uh", "uhh", "uhm", "erm", "er", "ah", "ahh", "hm", "hmm", "mm", "mmm"]
-    // Doubled words that can be correct English ("I know that that is true", "she had had enough").
-    private static let validDoubles: Set<String> = ["that", "had"]
+    struct Rules {
+        var fillers = true
+        var repeats = true
+        var scratchThat = true
+    }
 
-    static func clean(_ text: String) -> String {
-        var words = applyScratchThat(text).split(separator: " ").map(String.init)
-        words = removeFillers(words)
-        words = removeStutters(words)
-        return capitalizeFirst(words.joined(separator: " "))
+    private static let fillers: Set<String> = ["um", "umm", "uh", "uhh", "uhm", "erm", "er", "ah", "ahh", "hm", "hmm", "mm", "mmm"]
+    // Only short function words count as stutters. "very very" or "no no" can be meant, so they stay.
+    private static let stutterWords: Set<String> = [
+        "i", "a", "an", "the", "to", "and", "but", "or", "so", "of", "in", "on", "at", "for", "with", "is", "it", "we",
+        "you", "he", "she", "they", "my", "this", "can", "will", "would", "just", "if", "be", "was", "are", "have",
+    ]
+
+    static func clean(_ text: String, rules: Rules) -> String {
+        var words = (rules.scratchThat ? applyScratchThat(text) : text).split(separator: " ").map(String.init)
+        if rules.fillers { words = removeFillers(words) }
+        if rules.repeats { words = removeStutters(words) }
+        let result = words.joined(separator: " ")
+        return result == text ? text : capitalizeFirst(result)
     }
 
     private static func core(_ word: String) -> String {
@@ -67,7 +77,7 @@ enum TextCleanup {
         var out: [String] = []
         for word in words {
             if let previous = out.last,
-               core(previous) == core(word), !core(word).isEmpty, !validDoubles.contains(core(word)),
+               core(previous) == core(word), stutterWords.contains(core(word)),
                previous.last.map({ $0.isLetter || $0.isNumber }) ?? false {
                 // "I I want" -> "I want". Keep the later copy, which carries any punctuation.
                 out[out.count - 1] = previous.first?.isUppercase == true ? capitalizeFirst(word) : word

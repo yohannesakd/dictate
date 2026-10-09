@@ -8,6 +8,8 @@ struct HistoryItem: Codable, Identifiable {
     var id = UUID()
     let text: String
     let date: Date
+    /// The transcript before cleanup and the dictionary. Nil when nothing changed.
+    var raw: String?
 }
 
 enum ModelStatus: Equatable { case loading, ready, failed(String) }
@@ -21,22 +23,34 @@ final class AppModel: ObservableObject {
     @Published var modelStatus = ModelStatus.loading
     @Published var micAuthorized = false
     @Published var accessibilityTrusted = false
+    @Published var keyboardReady = false
     @Published var fnKeyFree = false
-    @Published var removeFillers = UserDefaults.standard.object(forKey: "removeFillers") as? Bool ?? true {
-        didSet { UserDefaults.standard.set(removeFillers, forKey: "removeFillers") }
-    }
-    @Published var showIdleBar = UserDefaults.standard.object(forKey: "showIdleBar") as? Bool ?? true {
-        didSet { UserDefaults.standard.set(showIdleBar, forKey: "showIdleBar") }
-    }
-    @Published private(set) var history: [HistoryItem] =
-        (UserDefaults.standard.data(forKey: "history").flatMap { try? JSONDecoder().decode([HistoryItem].self, from: $0) }) ?? []
+    @Published var removeFillers = AppModel.stored("removeFillers", default: true) { didSet { store("removeFillers", removeFillers) } }
+    @Published var removeRepeats = AppModel.stored("removeRepeats", default: true) { didSet { store("removeRepeats", removeRepeats) } }
+    @Published var scratchThat = AppModel.stored("scratchThat", default: true) { didSet { store("scratchThat", scratchThat) } }
+    @Published var showIdleBar = AppModel.stored("showIdleBar", default: true) { didSet { store("showIdleBar", showIdleBar) } }
+    @Published var dictionary: [DictionaryEntry] = AppModel.decoded("dictionary") ?? [] { didSet { encode("dictionary", dictionary) } }
+    @Published private(set) var history: [HistoryItem] = AppModel.decoded("history") ?? []
 
-    var needsSetup: Bool { !micAuthorized || !accessibilityTrusted || !fnKeyFree }
+    var needsSetup: Bool { !micAuthorized || !accessibilityTrusted || !keyboardReady || !fnKeyFree }
+    var cleanupRules: TextCleanup.Rules { .init(fillers: removeFillers, repeats: removeRepeats, scratchThat: scratchThat) }
 
-    func addHistory(_ text: String) {
-        history.insert(HistoryItem(text: text, date: Date()), at: 0)
+    func addHistory(_ text: String, raw: String) {
+        history.insert(HistoryItem(text: text, date: Date(), raw: raw == text ? nil : raw), at: 0)
         history = Array(history.prefix(50))
-        UserDefaults.standard.set(try? JSONEncoder().encode(history), forKey: "history")
+        Self.encode("history", history)
+    }
+
+    private static func stored(_ key: String, default value: Bool) -> Bool {
+        UserDefaults.standard.object(forKey: key) as? Bool ?? value
+    }
+    private func store(_ key: String, _ value: Bool) { UserDefaults.standard.set(value, forKey: key) }
+    private static func decoded<T: Decodable>(_ key: String) -> T? {
+        UserDefaults.standard.data(forKey: key).flatMap { try? JSONDecoder().decode(T.self, from: $0) }
+    }
+    private func encode<T: Encodable>(_ key: String, _ value: T) { Self.encode(key, value) }
+    private static func encode<T: Encodable>(_ key: String, _ value: T) {
+        UserDefaults.standard.set(try? JSONEncoder().encode(value), forKey: key)
     }
 }
 
@@ -53,6 +67,8 @@ final class DictationController {
     private var autoStop: DispatchWorkItem?
     private var recording: Stopwatch?
     private var permissionTimer: Timer?
+    /// Identifies the current dictation, so a result that arrives after Esc is dropped.
+    private var requestID = 0
 
     private let maxRecordingSeconds = 300.0  // Ends a hands-free session that was left running.
     private let minSpeechSamples = 8000      // 0.5 s at 16 kHz.
@@ -67,8 +83,10 @@ final class DictationController {
         keyboard.onOtherKeyWithFn = { [weak self] in self?.otherKeyWithFn() }
         keyboard.onEscape = { [weak self] in self?.cancel() }
         keyboard.onPasteLast = { [weak self] in self?.pasteLast() }
-        keyboard.isDictationActive = { [weak self] in self?.isRecording ?? false }
+        keyboard.onTapReset = { [weak self] in self?.tapReset() }
+        keyboard.isDictationActive = { [weak self] in self?.isActive ?? false }
         recorder.onLevel = { [weak self] rms in DispatchQueue.main.async { self?.pushLevel(rms) } }
+        recorder.onInterrupted = { [weak self] reason in self?.finish(interruption: reason) }
     }
 
     func start() {
@@ -78,6 +96,8 @@ final class DictationController {
         }
         NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil,
                                                queue: .main) { [weak self] _ in self?.refreshPermissions() }
+        NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil,
+                                                          queue: .main) { [weak self] _ in self?.refreshPermissions() }
     }
 
     // MARK: Keyboard events
@@ -120,7 +140,28 @@ final class DictationController {
         if case .holding = mode { cancel() }
     }
 
+    /// The fn release may have been missed. A hold-to-talk recording cannot know when to stop, so drop it.
+    private func tapReset() {
+        switch mode {
+        case .holding, .awaitingSecondTap: cancel()
+        case .idle, .handsFree, .processing: break
+        }
+        refreshPermissions()
+    }
+
     // MARK: Flow
+
+    private var isRecording: Bool {
+        switch mode {
+        case .holding, .awaitingSecondTap, .handsFree: return true
+        case .idle, .processing: return false
+        }
+    }
+
+    private var isActive: Bool {
+        if case .idle = mode { return false }
+        return true
+    }
 
     private func begin(handsFree: Bool) {
         refreshPermissions()
@@ -128,11 +169,11 @@ final class DictationController {
             notice("Allow microphone access in Dictate")
             return
         }
-        startSound?.play()
         do { try recorder.start() } catch {
             notice("Microphone error: \(error.localizedDescription)")
             return
         }
+        startSound?.play()  // After the microphone runs, so the sound means "speak now".
         recording = Stopwatch()
         mode = handsFree ? .handsFree : .holding(Date())
         model.handsFree = handsFree
@@ -149,72 +190,92 @@ final class DictationController {
         model.handsFree = true
     }
 
-    private var isRecording: Bool {
-        switch mode {
-        case .holding, .awaitingSecondTap, .handsFree: return true
-        case .idle, .processing: return false
-        }
-    }
-
-    func finish() {
+    /// Ends the recording and inserts the text. `interruption` explains a recording that stopped early.
+    func finish(interruption: String? = nil) {
         guard isRecording else { return }
         let pcm = recorder.stop()
         let recordCpuMs = recording?.cpuMs ?? 0
         clearTimers()
         guard pcm.count >= minSpeechSamples else {
             reset()
+            if let interruption { notice(interruption) }
             return
         }
+        // The field that has focus now is where the text belongs.
+        let target = Insertion.focusedElement()
+        requestID += 1
+        let request = requestID
         mode = .processing
         model.handsFree = false
         model.phase = .processing
         let audioSeconds = Double(pcm.count) / 16000
-        let transcription = Stopwatch()
+        let released = Stopwatch()
         engine.transcribe(pcm) { [weak self] result in
-            guard let self else { return }
+            guard let self, request == self.requestID else { return }  // Cancelled with Esc.
             self.mode = .idle
             switch result {
             case .success(let raw):
                 self.model.modelStatus = .ready
-                let transcribeMs = transcription.wallMs, transcribeCpuMs = transcription.cpuMs
-                let cleanup = Stopwatch()
-                let text = self.model.removeFillers ? TextCleanup.clean(raw) : raw
-                MetricsLog.write([
+                let transcribeMs = released.wallMs, transcribeCpuMs = released.cpuMs
+                let cleaned = TextCleanup.clean(raw, rules: self.model.cleanupRules)
+                let text = PersonalDictionary.apply(cleaned, entries: self.model.dictionary)
+                var metrics: [String: Any] = [
                     "audio_s": (audioSeconds * 10).rounded() / 10,
                     "record_cpu_ms": recordCpuMs, "record_cpu_pct": Int(Double(recordCpuMs) / 10 / max(audioSeconds, 0.1)),
                     "transcribe_ms": transcribeMs, "transcribe_cpu_ms": transcribeCpuMs,
-                    "cleanup_ms": cleanup.wallMs, "chars": text.count, "chars_removed": raw.count - text.count,
-                ])
-                if text.isEmpty {
-                    self.notice("No speech detected")
-                } else {
-                    self.model.addHistory(text)
-                    self.deliver(text)
+                    "chars": text.count, "chars_changed": raw.count - text.count,
+                ]
+                if let interruption { metrics["interrupted"] = interruption }
+                guard !text.isEmpty else {
+                    MetricsLog.write(metrics)
+                    self.notice(interruption ?? "No speech detected")
+                    return
                 }
+                self.model.addHistory(text, raw: raw)
+                // Transcription normally takes about 25 ms. Only a slow first run leaves time to switch fields.
+                if released.wallMs > 1000, let current = Insertion.focusedElement(), let target, !Insertion.isSame(current, target) {
+                    MetricsLog.write(metrics)
+                    self.notice("The focused field changed. Press ⌃⌘V to insert.")
+                    return
+                }
+                self.deliver(text) { typeMs in
+                    metrics["type_ms"] = typeMs
+                    metrics["release_to_text_ms"] = released.wallMs
+                    MetricsLog.write(metrics)
+                }
+                if let interruption { self.notice("\(interruption). Recording stopped early.") }
             case .failure(let error):
                 self.notice(error.localizedDescription)
             }
         }
     }
 
+    /// Esc: drops the recording, or the result that is still being transcribed.
     func cancel() {
-        guard isRecording else { return }
-        _ = recorder.stop()
-        clearTimers()
+        switch mode {
+        case .holding, .awaitingSecondTap, .handsFree:
+            _ = recorder.stop()
+            clearTimers()
+        case .processing:
+            requestID += 1
+        case .idle:
+            return
+        }
         reset()
     }
 
     func pasteLast() {
-        if let last = model.history.first { deliver(last.text) }
+        guard case .idle = mode, let last = model.history.first else { return }
+        deliver(last.text)
     }
 
-    private func deliver(_ text: String) {
-        if AXIsProcessTrusted() {
-            typeText(text)
-            model.phase = .idle
-        } else {
+    private func deliver(_ text: String, completion: @escaping (Int) -> Void = { _ in }) {
+        guard AXIsProcessTrusted() else {
             notice("Allow Accessibility in Dictate to insert text")
+            return
         }
+        Insertion.insert(text, completion: completion)
+        model.phase = .idle
     }
 
     private func reset() {
@@ -231,7 +292,7 @@ final class DictationController {
     private func notice(_ text: String) {
         model.handsFree = false
         model.phase = .notice(text)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.5) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
             if self?.model.phase == .notice(text) { self?.model.phase = .idle }
         }
     }
@@ -254,7 +315,8 @@ final class DictationController {
         if model.micAuthorized != mic { model.micAuthorized = mic }
         if model.accessibilityTrusted != trusted { model.accessibilityTrusted = trusted }
         if model.fnKeyFree != fnFree { model.fnKeyFree = fnFree }
-        if trusted, !keyboard.isRunning { keyboard.start() }
+        let keys = trusted && keyboard.start()
+        if model.keyboardReady != keys { model.keyboardReady = keys }
         // Poll only while setup is incomplete, so the Hub updates as permissions are granted. Idle otherwise.
         if model.needsSetup, permissionTimer == nil {
             permissionTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in self?.refreshPermissions() }
