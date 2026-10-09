@@ -15,12 +15,33 @@ final class Engine {
         }
     }
 
-    func transcribe(_ pcm: [Float], completion: @escaping (Result<String, Error>) -> Void) {
+    struct Timing {
+        let queueMs: Int
+        let inferenceMs: Int
+        let preparationMs: Int
+        let callbackMs: Int
+    }
+
+    func transcribe(_ pcm: [Float], cancellation: OperationCancellation,
+                    completion: @escaping (Result<String, Error>, Timing) -> Void) {
+        let queued = Monotonic.now
         queue.async {
-            let result = Result {
-                try self.loadedTranscriber().transcribe(pcm).text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !cancellation.isCancelled else { return }
+            let queueMs = Monotonic.milliseconds(since: queued)
+            let preparation = Monotonic.now
+            let loaded = Result { try self.loadedTranscriber() }
+            let preparationMs = Monotonic.milliseconds(since: preparation)
+            let inference = Monotonic.now
+            let result = loaded.flatMap { transcriber in
+                Result { try transcriber.transcribe(pcm).text.trimmingCharacters(in: .whitespacesAndNewlines) }
             }
-            DispatchQueue.main.async { completion(result) }
+            let inferenceMs = Monotonic.milliseconds(since: inference)
+            let completed = Monotonic.now
+            DispatchQueue.main.async {
+                guard !cancellation.isCancelled else { return }
+                completion(result, Timing(queueMs: queueMs, inferenceMs: inferenceMs, preparationMs: preparationMs,
+                                          callbackMs: Monotonic.milliseconds(since: completed)))
+            }
         }
     }
 
@@ -31,7 +52,7 @@ final class Engine {
         }
         var options = Transcriber.Options()
         options.backgroundLoad = true  // Prepare the longer encoder windows after the first one is ready.
-        // Phonon 1.1.2 asks for frames * 0.01 + 0.02 s of encoder, so a 34.99–35.0 s recording finds no 35 s encoder.
+        // Keep the audited 34.9 s window boundary while larger-boundary quality tests remain incomplete.
         // Below 34.9 s it stays a single pass; longer audio uses the windowed path.
         options.singleShotMaxSeconds = 34.9
         let loaded = try Transcriber(bundle: model, options: options)

@@ -5,9 +5,9 @@ import AppKit
 import Carbon.HIToolbox
 
 final class KeyboardMonitor {
-    var onFnDown: () -> Void = {}
-    var onFnUp: () -> Void = {}
-    var onFnSpace: () -> Void = {}
+    var onFnDown: (Double) -> Void = { _ in }
+    var onFnUp: (Double) -> Void = { _ in }
+    var onFnSpace: (Double) -> Void = { _ in }
     var onOtherKeyWithFn: () -> Void = {}
     var onEscape: () -> Void = {}
     var onPasteLast: () -> Void = {}
@@ -42,8 +42,10 @@ final class KeyboardMonitor {
         return true
     }
 
-    private func handle(_ type: CGEventType, _ event: CGEvent) -> Unmanaged<CGEvent>? {
+    func handle(_ type: CGEventType, _ event: CGEvent) -> Unmanaged<CGEvent>? {
         let pass = Unmanaged.passUnretained(event)
+        if event.getIntegerValueField(.eventSourceUserData) == dictateEventMarker { return pass }
+        let observed = Monotonic.now
         switch type {
         case .tapDisabledByTimeout, .tapDisabledByUserInput:
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
@@ -59,7 +61,7 @@ final class KeyboardMonitor {
             if (keyCode == kVK_Function || keyCode == 179), isFn != fnDown {
                 fnDown = isFn
                 let action = isFn ? onFnDown : onFnUp
-                DispatchQueue.main.async(execute: action)
+                DispatchQueue.main.async { action(observed) }
             }
             return pass
 
@@ -67,7 +69,7 @@ final class KeyboardMonitor {
             let keyCode = Int(event.getIntegerValueField(.keyboardEventKeycode))
             let isRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) != 0
             if fnDown, keyCode == kVK_Space {
-                if !isRepeat { DispatchQueue.main.async(execute: onFnSpace) }
+                if !isRepeat { DispatchQueue.main.async { self.onFnSpace(observed) } }
                 return nil
             }
             if keyCode == kVK_Escape, isDictationActive() {

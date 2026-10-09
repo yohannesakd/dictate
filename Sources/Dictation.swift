@@ -93,7 +93,7 @@ final class DictationController {
     private let smart = SmartCleanup()
     private let startSound = NSSound(named: "Tink")
 
-    private enum Mode { case idle, holding(Date), awaitingSecondTap, handsFree, processing }
+    private enum Mode { case idle, holding(Double), awaitingSecondTap, handsFree, processing }
     private var mode = Mode.idle
     private var secondTapTimeout: DispatchWorkItem?
     private var autoStop: DispatchWorkItem?
@@ -101,14 +101,27 @@ final class DictationController {
     private var permissionTimer: Timer?
     /// Identifies the current dictation, so a result that arrives after Esc is dropped.
     private var requestID = 0
+    private var operation = OperationCancellation()
+    private var snapshotCancellation: OperationCancellation?
+    private var lastInsertion: Insertion.Snapshot?
+
+    var canCorrectLast: Bool {
+        guard !isActive, let snapshot = lastInsertion else { return false }
+        return Monotonic.now - snapshot.created <= Insertion.correctionLifetime
+    }
+    var canRestoreRaw: Bool {
+        guard canCorrectLast, let snapshot = lastInsertion else { return false }
+        let inserted = (snapshot.state.value as NSString).substring(with: snapshot.range)
+        return !inserted.utf16.elementsEqual(snapshot.rawReplacement.utf16)
+    }
 
     // Transcription during recording. The Neural Engine slows down after about 2 s of idle time: 5.6 s of audio
     // took 22 ms warm and 66-80 ms after 2-30 s idle. Transcribing the audio so far keeps it warm, and a transcript
     // taken in the pause before fn release starts smart cleanup early. The final transcript reuses that request
     // when it is the same.
     private var snapshotRunning = false
-    private var lastSnapshot = Date.distantPast
-    private var lastSpeech = Date.distantPast
+    private var lastSnapshot = -Double.infinity
+    private var lastSpeech = -Double.infinity
     private var spokeSinceSnapshot = false
     private var speculation: SmartCleanup.Pending?
     private var activeCleanup: SmartCleanup.Pending?
@@ -124,9 +137,9 @@ final class DictationController {
 
     init(model: AppModel) {
         self.model = model
-        keyboard.onFnDown = { [weak self] in self?.fnDown() }
-        keyboard.onFnUp = { [weak self] in self?.fnUp() }
-        keyboard.onFnSpace = { [weak self] in self?.fnSpace() }
+        keyboard.onFnDown = { [weak self] observed in self?.fnDown(observed: observed) }
+        keyboard.onFnUp = { [weak self] observed in self?.fnUp(observed: observed) }
+        keyboard.onFnSpace = { [weak self] observed in self?.fnSpace(observed: observed) }
         keyboard.onOtherKeyWithFn = { [weak self] in self?.otherKeyWithFn() }
         keyboard.onEscape = { [weak self] in self?.cancel() }
         keyboard.onPasteLast = { [weak self] in self?.pasteLast() }
@@ -156,19 +169,19 @@ final class DictationController {
 
     // MARK: Keyboard events
 
-    private func fnDown() {
+    private func fnDown(observed: Double) {
         switch mode {
         case .idle: begin(handsFree: false)
         case .awaitingSecondTap: enterHandsFree()
-        case .handsFree: finish()
+        case .handsFree: finish(observed: observed)
         case .holding, .processing: break
         }
     }
 
-    private func fnUp() {
+    private func fnUp(observed: Double) {
         guard case .holding(let started) = mode else { return }
-        if Date().timeIntervalSince(started) >= holdThreshold {
-            finish()
+        if observed - started >= holdThreshold {
+            finish(observed: observed)
             return
         }
         // A short tap: keep recording briefly in case a second tap starts hands-free mode.
@@ -180,11 +193,11 @@ final class DictationController {
         DispatchQueue.main.asyncAfter(deadline: .now() + doubleTapWindow, execute: work)
     }
 
-    private func fnSpace() {
+    private func fnSpace(observed: Double) {
         switch mode {
         case .idle: begin(handsFree: true)
         case .holding, .awaitingSecondTap: enterHandsFree()
-        case .handsFree: finish()
+        case .handsFree: finish(observed: observed)
         case .processing: break
         }
     }
@@ -223,6 +236,14 @@ final class DictationController {
             notice("Allow microphone access in Dictate")
             return
         }
+        requestID += 1
+        operation.cancel()
+        operation = OperationCancellation()
+        snapshotCancellation?.cancel()
+        snapshotRunning = false
+        lastInsertion = nil
+        if let activeCleanup { smart.cancel(activeCleanup) }
+        activeCleanup = nil
         do { try recorder.start() } catch {
             notice("Microphone error: \(error.localizedDescription)")
             return
@@ -230,9 +251,9 @@ final class DictationController {
         startSound?.play()  // After the microphone runs, so the sound means "speak now".
         if model.smartCleanup { smart.client(model.cleanupProvider).warm() }
         recording = Stopwatch()
-        lastSnapshot = Date()
+        lastSnapshot = Monotonic.now
         spokeSinceSnapshot = false
-        mode = handsFree ? .handsFree : .holding(Date())
+        mode = handsFree ? .handsFree : .holding(Monotonic.now)
         model.handsFree = handsFree
         model.levels = model.levels.map { _ in 0 }
         model.phase = .listening
@@ -248,10 +269,16 @@ final class DictationController {
     }
 
     /// Ends the recording and inserts the text. `interruption` explains a recording that stopped early.
-    func finish(interruption: String? = nil) {
+    func finish(interruption: String? = nil, observed: Double? = nil) {
         guard isRecording else { return }
-        let released = Stopwatch()
+        let released = Stopwatch(started: observed ?? Monotonic.now)
+        let queueDelay = released.wallMs
+        let shutdown = Stopwatch()
         let pcm = recorder.stop()
+        let shutdownMs = shutdown.wallMs
+        snapshotCancellation?.cancel()
+        snapshotRunning = false
+        let recordingStarted = recording?.started ?? Monotonic.now
         let recordCpuMs = recording?.cpuMs ?? 0
         clearTimers()
         let speculative = speculation
@@ -262,22 +289,25 @@ final class DictationController {
             if let interruption { notice(interruption) }
             return
         }
-        requestID += 1
         let request = requestID
         mode = .processing
         let audioSeconds = Double(pcm.count) / 16000
         // Transcription runs while the main thread looks up the focus. Its result arrives on the main queue after this.
         let context = ReleaseContext()
-        engine.transcribe(pcm) { [weak self] result in
+        engine.transcribe(pcm, cancellation: operation) { [weak self] result, timing in
             guard let self, request == self.requestID else { return }  // Cancelled with Esc.
             switch result {
             case .success(let raw):
                 self.model.modelStatus = .ready
-                var dictation = Dictation(raw: raw, app: context.app, audioSeconds: audioSeconds, target: context.target, released: released)
+                var dictation = Dictation(raw: raw, app: context.target.app?.bundle, audioSeconds: audioSeconds, target: context.target, released: released)
                 dictation.metrics = [
                     "audio_s": (audioSeconds * 10).rounded() / 10,
                     "record_cpu_ms": recordCpuMs, "record_cpu_pct": Int(Double(recordCpuMs) / 10 / max(audioSeconds, 0.1)),
-                    "transcribe_ms": released.wallMs,
+                    "recognition_pipeline_ms": released.wallMs - queueDelay - shutdownMs,
+                    "engine_queue_ms": timing.queueMs, "inference_ms": timing.inferenceMs,
+                    "model_prepare_ms": timing.preparationMs,
+                    "recognition_callback_ms": timing.callbackMs,
+                    "release_queue_ms": queueDelay, "shutdown_ms": shutdownMs,
                 ]
                 if let interruption { dictation.metrics["interrupted"] = interruption }
                 let provider = self.model.cleanupProvider
@@ -292,9 +322,10 @@ final class DictationController {
                     return self.complete(dictation, interruption: interruption)
                 }
                 self.activeCleanup = pending
-                dictation.metrics["smart_cache_hit"] = pending.result?.text != nil
+                dictation.metrics["smart_cache_hit"] = pending.result?.text != nil && pending.started < recordingStarted
                 // How long the request had already run when the final transcript was ready.
-                dictation.metrics["smart_head_start_ms"] = pending.result == nil ? Int((ProcessInfo.processInfo.systemUptime - pending.started) * 1000) : 0
+                dictation.metrics["smart_head_start_ms"] = pending === speculative && pending.started >= recordingStarted
+                    ? Monotonic.milliseconds(since: pending.started) : 0
                 let waited = Stopwatch()
                 self.smart.wait(for: pending, seconds: 3) { [weak self] smart in
                     guard let self, request == self.requestID else { return }
@@ -313,35 +344,35 @@ final class DictationController {
             }
         }
         // The field that has focus now is where the text belongs.
-        context.target = Insertion.focusedElement()
-        context.app = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        context.target = Insertion.captureTarget()
         model.handsFree = false
         model.phase = .processing
     }
 
     private final class ReleaseContext {
-        var target: AXUIElement?
-        var app: String?
+        var target = Insertion.Target(app: nil, element: nil)
     }
 
     /// Transcribes the audio so far during recording. Called with each level update.
     private func snapshotIfUseful(levelDB: Float) {
         guard isRecording else { return }
-        let now = Date()
+        let now = Monotonic.now
         if levelDB > speechLevelDB {
             lastSpeech = now
             spokeSinceSnapshot = true
         }
-        let paused = spokeSinceSnapshot && now.timeIntervalSince(lastSpeech) >= pauseForSnapshot
-        guard !snapshotRunning, paused || now.timeIntervalSince(lastSnapshot) >= snapshotInterval else { return }
+        let paused = spokeSinceSnapshot && (now - lastSpeech) >= pauseForSnapshot
+        guard !snapshotRunning, paused || (now - lastSnapshot) >= snapshotInterval else { return }
         let pcm = recorder.snapshot()
         guard pcm.count >= minSpeechSamples, pcm.count <= maxSnapshotSamples else { return }
         snapshotRunning = true
         lastSnapshot = now
         spokeSinceSnapshot = false
         let recording = requestID
-        engine.transcribe(pcm) { [weak self] result in
-            guard let self else { return }
+        let cancellation = OperationCancellation()
+        snapshotCancellation = cancellation
+        engine.transcribe(pcm, cancellation: cancellation) { [weak self] result, _ in
+            guard let self, recording == self.requestID else { return }
             self.snapshotRunning = false
             // Only a transcript taken in a pause is likely to be final. Mid-speech snapshots only keep the engine warm.
             guard paused, self.isRecording, recording == self.requestID, self.model.smartCleanup,
@@ -357,7 +388,7 @@ final class DictationController {
         let raw: String
         let app: String?
         let audioSeconds: Double
-        let target: AXUIElement?
+        let target: Insertion.Target
         let released: Stopwatch
         var ruled = ""
         var smart: SmartCleanup.Result?
@@ -387,44 +418,40 @@ final class DictationController {
             "rules": dictation.ruled, "provider": dictation.provider?.rawValue, "smart": dictation.smart?.outcome,
             "model_reply": dictation.smart?.reply, "text": text, "inserted": false,
         ]
-        func end() {
-            mode = .idle
+        guard !text.isEmpty else {
+            reset()
+            activeCleanup = nil
             MetricsLog.write(metrics)
             TranscriptLog.write(log)
-        }
-        guard !text.isEmpty else {
-            end()
             notice(interruption ?? "No speech detected")
             return
         }
-        // Inserting first: history encoding and log writing do not delay the text.
-        // Transcription alone takes about 25 ms. A slow first run or smart cleanup leaves time to switch fields.
+        let request = requestID
         let released = dictation.released
-        if released.wallMs > 1000, let current = Insertion.focusedElement(), let target = dictation.target,
-           !Insertion.isSame(current, target) {
-            model.addHistory(text, raw: dictation.raw, note: dictation.note)
-            model.recordDictation(words: text.split(whereSeparator: \.isWhitespace).count, seconds: dictation.audioSeconds)
-            end()
-            notice("The focused field changed. Press ⌃⌘V to insert.")
-            return
-        }
-        let delivered = deliver(text) { [weak self] typeMs in
-            metrics["type_ms"] = typeMs
-            let releaseToText = released.wallMs
-            metrics["release_to_text_ms"] = releaseToText
-            self?.model.recordLatency(releaseToText)
-            self?.mode = .idle  // Only now: a new recording must not start while characters are still being typed.
+        deliver(text, raw: dictation.raw, target: dictation.target) { [weak self] result in
+            metrics["delivery_outcome"] = result.outcome.rawValue
+            metrics["verification_ms"] = result.verificationMs
+            metrics["posted_utf16_units"] = result.postedUnits
+            if let posted = result.postedMs, let postedAt = result.postedAt {
+                metrics["delivery_to_posted_events_ms"] = posted
+                // The callback can arrive after verification. Use the measured event-posting timestamp.
+                metrics["release_to_posted_events_ms"] = Int(max(0, (postedAt - released.started) * 1000))
+            }
+            if let verifiedAt = result.verifiedAt {
+                let verified = Int(max(0, (verifiedAt - released.started) * 1000))
+                metrics["release_to_verified_text_ms"] = verified
+                if request == self?.requestID { self?.model.recordLatency(verified) }
+            }
+            log["inserted"] = result.outcome == .verified
+            log["delivery_outcome"] = result.outcome.rawValue
             MetricsLog.write(metrics)
+            TranscriptLog.write(log)
+            if request == self?.requestID, result.outcome == .verified, let interruption {
+                self?.notice("\(interruption). Recording stopped early.")
+            }
         }
         model.addHistory(text, raw: dictation.raw, note: dictation.note)
         model.recordDictation(words: text.split(whereSeparator: \.isWhitespace).count, seconds: dictation.audioSeconds)
-        log["inserted"] = delivered
-        TranscriptLog.write(log)
-        if !delivered {
-            mode = .idle
-            MetricsLog.write(metrics)
-        }
-        if let interruption { notice("\(interruption). Recording stopped early.") }
     }
 
     // MARK: Smart cleanup accounts
@@ -482,6 +509,10 @@ final class DictationController {
         case .idle:
             return
         }
+        operation.cancel()
+        snapshotCancellation?.cancel()
+        snapshotRunning = false
+        lastInsertion = nil
         if let activeCleanup { smart.cancel(activeCleanup) }
         activeCleanup = nil
         reset()
@@ -489,19 +520,68 @@ final class DictationController {
 
     func pasteLast() {
         guard case .idle = mode, let last = model.history.first else { return }
-        deliver(last.text)
+        requestID += 1
+        operation = OperationCancellation()
+        deliver(last.text, raw: last.raw ?? last.text, target: Insertion.captureTarget())
     }
 
-    /// Returns false when Accessibility is missing and nothing was typed.
-    @discardableResult
-    private func deliver(_ text: String, completion: @escaping (Int) -> Void = { _ in }) -> Bool {
+    private func deliver(_ text: String, raw: String, target: Insertion.Target,
+                         completion: @escaping (Insertion.Result) -> Void = { _ in }) {
+        let request = requestID
+        mode = .processing
+        model.phase = .processing
+        lastInsertion = nil
         guard AXIsProcessTrusted() else {
+            reset()
             notice("Allow Accessibility in Dictate to insert text")
-            return false
+            completion(.init(outcome: .permissionDenied, postedMs: nil, postedAt: nil, verifiedAt: nil, postedUnits: 0, verifiedMs: nil, verificationMs: 0, snapshot: nil))
+            return
         }
-        Insertion.insert(text, completion: completion)
-        model.phase = .idle
-        return true
+        Insertion.insert(text, raw: raw, target: target, cancellation: operation) { [weak self] result in
+            if let self, request == self.requestID {
+                self.reset()
+                self.activeCleanup = nil
+                self.lastInsertion = result.snapshot
+                switch result.outcome {
+                case .verified: break
+                case .targetChanged: self.notice(result.postedUnits == 0
+                    ? "The target changed. The dictation is in History."
+                    : "The target changed during delivery. Check the field before inserting again.")
+                case .unchanged: self.notice("The field did not change. The dictation is in History.")
+                case .unexpected: self.notice("Text delivery was incomplete or changed. Check the field before inserting again.")
+                case .unavailable: self.notice(result.postedUnits == 0
+                    ? "The target could not be read. The dictation is in History."
+                    : "Text was sent. Dictate cannot verify delivery. Check the field before inserting again.")
+                case .cancelled: break
+                case .eventFailed: self.notice("Text delivery stopped. Check the field before inserting again.")
+                case .permissionDenied: break
+                }
+            }
+            completion(result)
+        }
+    }
+
+    func undoLastDictation() { correctLast(restoreRaw: false) }
+    func restoreRawTranscript() { correctLast(restoreRaw: true) }
+
+    private func correctLast(restoreRaw: Bool) {
+        guard case .idle = mode, let snapshot = lastInsertion else { return }
+        requestID += 1
+        let request = requestID
+        operation = OperationCancellation()
+        mode = .processing
+        model.phase = .processing
+        Insertion.correct(snapshot, restoreRaw: restoreRaw, cancellation: operation) { [weak self] outcome in
+            guard let self, request == self.requestID else { return }
+            self.reset()
+            if outcome != .noWrite { self.lastInsertion = nil }
+            switch outcome {
+            case .verified: break
+            case .noWrite: self.notice("The field changed or does not support correction. No text was replaced.")
+            case .uncertain: self.notice("The correction could not be verified. Check the field before editing.")
+            }
+            MetricsLog.write(["correction_outcome": outcome.rawValue, "restore_raw": restoreRaw])
+        }
     }
 
     private func reset() {
