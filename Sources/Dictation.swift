@@ -17,7 +17,6 @@ final class AppModel: ObservableObject {
 
     @Published var phase = Phase.idle
     @Published var handsFree = false
-    @Published var hovering = false
     @Published var levels = [CGFloat](repeating: 0, count: 11)
     @Published var modelStatus = ModelStatus.loading
     @Published var micAuthorized = false
@@ -122,10 +121,6 @@ final class DictationController {
     }
 
     // MARK: Flow
-
-    func startHandsFree() {
-        if case .idle = mode { begin(handsFree: true) }
-    }
 
     private func begin(handsFree: Bool) {
         refreshPermissions()

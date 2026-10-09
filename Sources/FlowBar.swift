@@ -1,6 +1,6 @@
 // The flow bar: a small pill at the bottom center of the screen.
-// Idle: a thin capsule (hover shows a hint, click starts hands-free).
-// Listening: white level bars; hands-free adds cancel and stop buttons.
+// Idle: a thin capsule that ignores the mouse, so clicks reach the Dock and windows below.
+// Listening: white level bars; hands-free adds cancel and stop buttons, the only clickable parts.
 // Processing: pulsing dots. The panel never takes keyboard focus from the target app.
 
 import AppKit
@@ -14,26 +14,22 @@ enum FlowBarLayout {
     /// Pill size for interactive phases; nil means the pill sizes to its text.
     static func pillSize(_ model: AppModel) -> CGSize? {
         switch model.phase {
-        case .idle:
-            if model.hovering { return CGSize(width: 214, height: 30) }
-            return model.showIdleBar ? CGSize(width: 42, height: 9) : .zero
+        case .idle: return model.showIdleBar ? CGSize(width: 42, height: 9) : .zero
         case .listening: return model.handsFree ? CGSize(width: 148, height: 36) : CGSize(width: 92, height: 32)
         case .processing: return CGSize(width: 92, height: 32)
         case .notice: return nil
         }
     }
 
-    /// Area that receives the mouse, in panel coordinates (origin bottom-left). Slightly larger than the pill.
-    static func hitRect(_ model: AppModel) -> CGRect? {
-        let interactive: Bool
-        switch model.phase {
-        case .idle: interactive = model.showIdleBar
-        case .listening: interactive = model.handsFree
-        case .processing, .notice: interactive = false
-        }
-        guard interactive, let size = pillSize(model) else { return nil }
-        let hit = CGSize(width: max(size.width, 80) + 12, height: max(size.height, 22) + 12)
-        return CGRect(x: (panelSize.width - hit.width) / 2, y: bottomPadding - 6, width: hit.width, height: hit.height)
+    /// Only the hands-free pill has buttons. Every other state lets the mouse pass through.
+    static func isInteractive(_ model: AppModel) -> Bool {
+        model.phase == .listening && model.handsFree
+    }
+
+    /// The hands-free pill, in panel coordinates (origin bottom-left).
+    static func buttonsRect(_ model: AppModel) -> CGRect? {
+        guard isInteractive(model), let size = pillSize(model) else { return nil }
+        return CGRect(x: (panelSize.width - size.width) / 2, y: bottomPadding, width: size.width, height: size.height)
     }
 }
 
@@ -49,7 +45,7 @@ private final class FirstClickHostingView<Content: View>: NSHostingView<Content>
 final class FlowBar {
     private let panel: NSPanel
     private let model: AppModel
-    private var observers: [Any] = []
+    private var mouseMonitors: [Any] = []
     private var stateChange: AnyCancellable?
 
     init(model: AppModel, controller: DictationController) {
@@ -63,7 +59,6 @@ final class FlowBar {
         panel.ignoresMouseEvents = true
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .stationary, .ignoresCycle]
         let view = FlowBarView(model: model,
-                               onStart: { [weak controller] in controller?.startHandsFree() },
                                onStop: { [weak controller] in controller?.finish() },
                                onCancel: { [weak controller] in controller?.cancel() })
         panel.contentView = FirstClickHostingView(rootView: view)
@@ -72,17 +67,10 @@ final class FlowBar {
 
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                object: nil, queue: .main) { [weak self] _ in self?.reposition() }
-        // Pass clicks through everywhere except the pill, and drive the hover state.
-        // Event monitors instead of a polling timer: no work while the mouse is still.
-        observers.append(NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in self?.trackMouse() } as Any)
-        observers.append(NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
-            self?.trackMouse()
-            return event
-        } as Any)
         panel.acceptsMouseMovedEvents = true
         stateChange = model.objectWillChange
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.trackMouse() }
+            .sink { [weak self] _ in self?.updateMouseHandling() }
     }
 
     private func reposition() {
@@ -90,23 +78,32 @@ final class FlowBar {
         panel.setFrameOrigin(CGPoint(x: frame.midX - FlowBarLayout.panelSize.width / 2, y: frame.minY + 2))
     }
 
-    private func trackMouse() {
-        let mouse = NSEvent.mouseLocation
-        let inside: Bool
-        if let rect = FlowBarLayout.hitRect(model) {
-            inside = rect.offsetBy(dx: panel.frame.minX, dy: panel.frame.minY).contains(mouse)
-        } else {
-            inside = false
+    /// Watches the mouse only while the hands-free buttons are on screen.
+    private func updateMouseHandling() {
+        if FlowBarLayout.isInteractive(model), mouseMonitors.isEmpty {
+            let global = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in self?.trackMouse() }
+            let local = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
+                self?.trackMouse()
+                return event
+            }
+            mouseMonitors = [global, local].compactMap { $0 }
+        } else if !FlowBarLayout.isInteractive(model), !mouseMonitors.isEmpty {
+            mouseMonitors.forEach(NSEvent.removeMonitor)
+            mouseMonitors = []
         }
+        trackMouse()
+    }
+
+    /// The panel takes clicks only while the mouse is over the hands-free buttons.
+    private func trackMouse() {
+        let inside = FlowBarLayout.buttonsRect(model)
+            .map { $0.offsetBy(dx: panel.frame.minX, dy: panel.frame.minY).contains(NSEvent.mouseLocation) } ?? false
         if panel.ignoresMouseEvents == inside { panel.ignoresMouseEvents = !inside }
-        let hovering = inside && model.phase == .idle
-        if model.hovering != hovering { model.hovering = hovering }
     }
 }
 
 struct FlowBarView: View {
     @ObservedObject var model: AppModel
-    let onStart: () -> Void
     let onStop: () -> Void
     let onCancel: () -> Void
 
@@ -117,7 +114,6 @@ struct FlowBarView: View {
         }
         .frame(width: FlowBarLayout.panelSize.width, height: FlowBarLayout.panelSize.height)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: model.phase)
-        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: model.hovering)
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: model.handsFree)
     }
 
@@ -127,8 +123,6 @@ struct FlowBarView: View {
                 .frame(width: size.width, height: size.height)
                 .background(capsule)
                 .opacity(size == .zero ? 0 : 1)
-                .contentShape(Capsule())
-                .onTapGesture { if model.phase == .idle { onStart() } }
         } else if case .notice(let text) = model.phase {
             Text(text)
                 .font(.system(size: 12, weight: .medium))
@@ -151,13 +145,7 @@ struct FlowBarView: View {
     @ViewBuilder private var content: some View {
         switch model.phase {
         case .idle:
-            if model.hovering {
-                Text("Click or hold fn to start dictating")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(.white.opacity(0.9))
-                    .fixedSize()
-                    .transition(.opacity)
-            }
+            EmptyView()
         case .listening:
             HStack(spacing: 10) {
                 if model.handsFree { RoundButton(symbol: "xmark", fill: .white.opacity(0.16), action: onCancel) }
