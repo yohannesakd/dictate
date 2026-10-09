@@ -1,12 +1,13 @@
-// The main window. Home shows the status, any missing setup, and the dictation history.
-// Settings holds everything else: cleanup, dictionary, general options, shortcuts, and the model.
+// The main window. Home shows the status, any missing setup, this week's dictation, and recent dictations.
+// History lists every saved dictation. Settings holds cleanup, dictionary, general options, shortcuts, and the model.
 
 import AppKit
 import SwiftUI
 
 /// Which screen the window shows. The Settings menu item also sets it.
 final class HubNavigation: ObservableObject {
-    @Published var showsSettings = false
+    enum Screen { case home, history, settings }
+    @Published var screen = Screen.home
 }
 
 struct HubView: View {
@@ -16,16 +17,42 @@ struct HubView: View {
 
     var body: some View {
         ZStack {
-            if navigation.showsSettings {
-                SettingsScreen(model: model, controller: controller) { navigation.showsSettings = false }
-                    .transition(.move(edge: .trailing))
-            } else {
-                HomeScreen(model: model, controller: controller) { navigation.showsSettings = true }
+            switch navigation.screen {
+            case .home:
+                HomeScreen(model: model, controller: controller, navigation: navigation)
                     .transition(.move(edge: .leading))
+            case .history:
+                HistoryScreen(history: model.history) { navigation.screen = .home }
+                    .transition(.move(edge: .trailing))
+            case .settings:
+                SettingsScreen(model: model, controller: controller) { navigation.screen = .home }
+                    .transition(.move(edge: .trailing))
             }
         }
-        .animation(.easeInOut(duration: 0.2), value: navigation.showsSettings)
+        .animation(.easeInOut(duration: 0.2), value: navigation.screen)
         .frame(minWidth: 460, minHeight: 520)
+    }
+}
+
+/// The title row of History and Settings. Clicking it, or pressing Esc, goes back to Home.
+private struct BackHeader: View {
+    let title: String
+    let back: () -> Void
+
+    var body: some View {
+        Button(action: back) {
+            HStack(spacing: 6) {
+                Image(systemName: "chevron.left").font(.system(size: 13, weight: .semibold))
+                Text(title).font(.title3.weight(.semibold))
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .keyboardShortcut(.cancelAction)
+        .help("Back")
+        .padding(.horizontal, 24)
+        .padding(.top, 6)
+        .padding(.bottom, 4)
     }
 }
 
@@ -34,42 +61,53 @@ struct HubView: View {
 private struct HomeScreen: View {
     @ObservedObject var model: AppModel
     let controller: DictationController
-    let openSettings: () -> Void
+    @ObservedObject var navigation: HubNavigation
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 12) {
-                Image(nsImage: appIcon()).resizable().frame(width: 40, height: 40)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Dictate").font(.title3.weight(.semibold))
-                    status
-                }
-                Spacer()
-                Button(action: openSettings) { Image(systemName: "gearshape").font(.system(size: 15)) }
-                    .buttonStyle(.borderless)
-                    .help("Settings")
-            }
-            .padding(.horizontal, 24)
-            .padding(.top, 6)
-            .padding(.bottom, 16)
-
-            if model.needsSetup {
-                SetupList(model: model, controller: controller)
-                    .padding(.horizontal, 24)
-                    .padding(.bottom, 16)
-            }
-            if let issue = model.smartIssue, model.smartCleanup {
-                Button(action: openSettings) {
-                    Label("Smart cleanup: \(issue)", systemImage: "exclamationmark.triangle.fill")
-                        .font(.callout).foregroundStyle(.orange).multilineTextAlignment(.leading)
-                }
-                .buttonStyle(.plain)
+            header
                 .padding(.horizontal, 24)
-                .padding(.bottom, 16)
+                .padding(.top, 6)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    if model.needsSetup {
+                        SetupList(model: model, controller: controller).padding(.bottom, 20)
+                    }
+                    if let issue = model.smartIssue, model.smartCleanup {
+                        Button { navigation.screen = .settings } label: {
+                            Label("Smart cleanup: \(issue)", systemImage: "exclamationmark.triangle.fill")
+                                .font(.callout).foregroundStyle(.orange).multilineTextAlignment(.leading)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.bottom, 20)
+                    }
+                    if model.history.isEmpty {
+                        GettingStarted()
+                    } else {
+                        WeekView(usage: model.usage)
+                        recent.padding(.top, 28)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 24)
             }
-            Divider()
-            history
         }
+    }
+
+    private var header: some View {
+        HStack(spacing: 12) {
+            Image(nsImage: appIcon()).resizable().frame(width: 40, height: 40)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Dictate").font(.title3.weight(.semibold))
+                status
+            }
+            Spacer()
+            Button { navigation.screen = .settings } label: { Image(systemName: "gearshape").font(.system(size: 15)) }
+                .buttonStyle(.borderless)
+                .help("Settings")
+        }
+        .padding(.bottom, 24)
     }
 
     @ViewBuilder private var status: some View {
@@ -84,19 +122,112 @@ private struct HomeScreen: View {
         }
     }
 
-    @ViewBuilder private var history: some View {
-        if model.history.isEmpty {
-            Text("Your dictations appear here.")
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else {
+    private var recent: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Recent").font(.headline)
+                Spacer()
+                if model.history.count > 3 {
+                    Button("Show All") { navigation.screen = .history }.buttonStyle(.link)
+                }
+            }
+            .padding(.bottom, 4)
+            ForEach(Array(model.history.prefix(3).enumerated()), id: \.element.id) { index, item in
+                if index > 0 { Divider() }
+                HistoryRow(item: item)
+            }
+        }
+    }
+}
+
+/// Shown before the first dictation: how to dictate.
+private struct GettingStarted: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Put the cursor where the text goes. Then:").foregroundStyle(.secondary)
+            step(keys: ["fn"], text: "Hold, speak, and release")
+            step(keys: ["fn", "fn"], text: "Press twice to talk hands-free, then press fn to finish")
+            step(keys: ["esc"], text: "Cancel")
+        }
+        .padding(.top, 8)
+    }
+
+    private func step(keys: [String], text: String) -> some View {
+        HStack(spacing: 12) {
+            HStack(spacing: 3) { ForEach(keys, id: \.self) { KeyCap(label: $0) } }
+                .frame(width: 64, alignment: .leading)
+            Text(text)
+        }
+    }
+}
+
+/// Words per day for the last 7 days, drawn like the flow bar's level bars, with three plain facts below.
+private struct WeekView: View {
+    let usage: Usage
+
+    var body: some View {
+        let week = usage.week()
+        let most = max(week.map(\.day.words).max() ?? 0, 1)
+        VStack(alignment: .leading, spacing: 18) {
+            HStack(alignment: .bottom, spacing: 0) {
+                ForEach(week.indices, id: \.self) { i in
+                    let isToday = i == week.count - 1
+                    VStack(spacing: 8) {
+                        Capsule()
+                            .fill(isToday ? Color.primary : Color.primary.opacity(0.18))
+                            .frame(width: 14, height: 6 + 74 * CGFloat(week[i].day.words) / CGFloat(most))
+                        Text(week[i].date.formatted(.dateTime.weekday(.narrow)))
+                            .font(.caption)
+                            .foregroundStyle(isToday ? .primary : .secondary)
+                    }
+                    .frame(maxWidth: .infinity)
+                    .help("\(week[i].day.words.formatted()) words")
+                }
+            }
+            .frame(height: 104, alignment: .bottom)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(today(week.last?.day ?? Usage.Day())).font(.title3)
+                if let latency = usage.medianLatency {
+                    Text("Text appears \(Self.duration(latency)) after you release fn.")
+                        .foregroundStyle(.secondary)
+                }
+                if let wpm = usage.wordsPerMinute {
+                    Text("You speak \(wpm) words per minute.").foregroundStyle(.secondary)
+                }
+            }
+        }
+    }
+
+    private func today(_ day: Usage.Day) -> String {
+        switch day.dictations {
+        case 0: return "Nothing dictated today."
+        case 1: return "\(day.words.formatted()) words today, in 1 dictation."
+        default: return "\(day.words.formatted()) words today, in \(day.dictations) dictations."
+        }
+    }
+
+    private static func duration(_ ms: Int) -> String {
+        ms < 1000 ? "\(ms) ms" : String(format: "%.1f s", Double(ms) / 1000)
+    }
+}
+
+private struct HistoryScreen: View {
+    let history: [HistoryItem]
+    let back: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            BackHeader(title: "History", back: back)
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
-                    ForEach(Array(model.history.prefix(30).enumerated()), id: \.element.id) { index, item in
-                        if index > 0 { Divider().padding(.leading, 24) }
+                    ForEach(Array(history.enumerated()), id: \.element.id) { index, item in
+                        if index > 0 { Divider() }
                         HistoryRow(item: item)
                     }
                 }
+                .padding(.horizontal, 24)
+                .padding(.bottom, 16)
             }
         }
     }
@@ -169,7 +300,6 @@ private struct HistoryRow: View {
                 if let note = item.note { Text(note).font(.caption).foregroundStyle(.orange) }
             }
         }
-        .padding(.horizontal, 24)
         .padding(.vertical, 12)
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
@@ -219,19 +349,7 @@ private struct SettingsScreen: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Button(action: close) {
-                HStack(spacing: 6) {
-                    Image(systemName: "chevron.left").font(.system(size: 13, weight: .semibold))
-                    Text("Settings").font(.title3.weight(.semibold))
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .keyboardShortcut(.cancelAction)
-            .help("Back")
-            .padding(.horizontal, 24)
-            .padding(.top, 6)
-            .padding(.bottom, 4)
+            BackHeader(title: "Settings", back: close)
 
             Form {
                 SmartCleanupSection(model: model, controller: controller)

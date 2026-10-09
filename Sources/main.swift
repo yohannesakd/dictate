@@ -91,7 +91,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func pasteLast() { controller.pasteLast() }
     @objc private func openHub() { showHub() }
     @objc private func openSettings() {
-        navigation.showsSettings = true
+        navigation.screen = .settings
         showHub()
     }
 

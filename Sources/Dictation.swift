@@ -51,6 +51,7 @@ final class AppModel: ObservableObject {
     @Published var showIdleBar = AppModel.stored("showIdleBar", default: true) { didSet { store("showIdleBar", showIdleBar) } }
     @Published var dictionary: [DictionaryEntry] = AppModel.decoded("dictionary") ?? [] { didSet { encode("dictionary", dictionary) } }
     @Published private(set) var history: [HistoryItem] = AppModel.decoded("history") ?? []
+    @Published private(set) var usage: Usage = AppModel.decoded("usage") ?? Usage()
 
     var needsSetup: Bool { !micAuthorized || !accessibilityTrusted || !keyboardReady || !fnKeyFree }
     var cleanupRules: TextCleanup.Rules { .init(fillers: removeFillers, repeats: removeRepeats, scratchThat: scratchThat) }
@@ -59,6 +60,16 @@ final class AppModel: ObservableObject {
         history.insert(HistoryItem(text: text, date: Date(), raw: raw == text ? nil : raw, note: note), at: 0)
         history = Array(history.prefix(50))
         Self.encode("history", history)
+    }
+
+    func recordDictation(words: Int, seconds: Double) {
+        usage.addDictation(words: words, seconds: seconds)
+        Self.encode("usage", usage)
+    }
+
+    func recordLatency(_ ms: Int) {
+        usage.addLatency(ms)
+        Self.encode("usage", usage)
     }
 
     private static func stored(_ key: String, default value: Bool) -> Bool {
@@ -388,17 +399,21 @@ final class DictationController {
         if released.wallMs > 1000, let current = Insertion.focusedElement(), let target = dictation.target,
            !Insertion.isSame(current, target) {
             model.addHistory(text, raw: dictation.raw, note: dictation.note)
+            model.recordDictation(words: text.split(whereSeparator: \.isWhitespace).count, seconds: dictation.audioSeconds)
             end()
             notice("The focused field changed. Press ⌃⌘V to insert.")
             return
         }
         let delivered = deliver(text) { [weak self] typeMs in
             metrics["type_ms"] = typeMs
-            metrics["release_to_text_ms"] = released.wallMs
+            let releaseToText = released.wallMs
+            metrics["release_to_text_ms"] = releaseToText
+            self?.model.recordLatency(releaseToText)
             self?.mode = .idle  // Only now: a new recording must not start while characters are still being typed.
             MetricsLog.write(metrics)
         }
         model.addHistory(text, raw: dictation.raw, note: dictation.note)
+        model.recordDictation(words: text.split(whereSeparator: \.isWhitespace).count, seconds: dictation.audioSeconds)
         log["inserted"] = delivered
         TranscriptLog.write(log)
         if !delivered {
