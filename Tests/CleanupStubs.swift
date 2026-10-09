@@ -5,7 +5,7 @@ final class DeepSeekClient: CleanupClient {
     static var ignoreCancellation = false
     static var calls = 0
     static var cancellations = 0
-    func complete(instructions: String, message: String) async throws -> String {
+    @MainActor func complete(instructions: String, message: String) async throws -> String {
         let ignoreCancellation = Self.ignoreCancellation
         Self.calls += 1
         do {
@@ -17,6 +17,6 @@ final class DeepSeekClient: CleanupClient {
     func warm() {}
 }
 final class ChatGPTClient: CleanupClient {
-    func complete(instructions: String, message: String) async throws -> String { throw CancellationError() }
+    @MainActor func complete(instructions: String, message: String) async throws -> String { throw CancellationError() }
     func warm() {}
 }
