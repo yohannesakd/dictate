@@ -29,7 +29,9 @@ enum CleanupError: LocalizedError {
     }
 }
 
-final class SmartCleanup {
+// Unchecked: the request table and Pending objects change only on the main queue. Request tasks hand their results
+// back there before touching them.
+final class SmartCleanup: @unchecked Sendable {
     struct Result {
         /// The cleaned text, or nil when the rule result must be used.
         let text: String?
@@ -39,46 +41,92 @@ final class SmartCleanup {
         let error: Error?
     }
 
+    /// One model request. Speculative requests during recording and the request at fn release share it when the
+    /// input is the same, and an accepted result stays available for an exact repeat.
+    final class Pending: @unchecked Sendable {
+        let key: String
+        let started = Date()
+        fileprivate(set) var result: Result?
+        fileprivate var task: Task<Void, Never>?
+        private var waiters: [(Result) -> Void] = []
+
+        fileprivate init(key: String) { self.key = key }
+
+        fileprivate func resolve(_ result: Result) {
+            self.result = result
+            waiters.forEach { $0(result) }
+            waiters = []
+        }
+
+        fileprivate func then(_ waiter: @escaping (Result) -> Void) {
+            if let result { waiter(result) } else { waiters.append(waiter) }
+        }
+    }
+
     let deepseek = DeepSeekClient()
     let chatgpt = ChatGPTClient()
-    private let timeout: UInt64 = 3_000_000_000
+    /// Requests by provider and message, used on the main queue only. Failed requests leave, so the next one retries.
+    private var requests: [String: Pending] = [:]
+    private let requestLimit = 32
 
     func client(_ provider: CleanupProvider) -> CleanupClient {
         provider == .deepseek ? deepseek : chatgpt
     }
 
-    /// Calls `completion` on the main queue.
-    func clean(_ raw: String, entries: [DictionaryEntry], provider: CleanupProvider,
-               completion: @escaping (Result) -> Void) {
-        guard Self.needsModel(raw, entries: entries) else {
-            return completion(Result(text: nil, reply: nil, outcome: "not needed", error: nil))
-        }
-        let client = client(provider)
+    /// Starts a request, or returns the one with the same input. Nil when the transcript does not need the model.
+    func request(_ raw: String, entries: [DictionaryEntry], provider: CleanupProvider) -> Pending? {
+        guard Self.needsModel(raw, entries: entries) else { return nil }
         let message = Self.message(raw, entries: entries)
-        Task {
+        let key = provider.rawValue + "\n" + message
+        if let existing = requests[key] { return existing }
+        if requests.count >= requestLimit, let oldest = requests.values.filter({ $0.result != nil }).min(by: { $0.started < $1.started }) {
+            requests[oldest.key] = nil
+        }
+        let pending = Pending(key: key)
+        requests[key] = pending
+        let client = client(provider)
+        pending.task = Task {
             let result: Result
             do {
-                let answer = try await withThrowingTaskGroup(of: String.self) { group -> String in
-                    group.addTask { try await client.complete(instructions: Self.instructions, message: message) }
-                    group.addTask {
-                        try await Task.sleep(nanoseconds: self.timeout)
-                        throw CleanupError.timeout
-                    }
-                    defer { group.cancelAll() }
-                    return try await group.next()!
-                }
+                let answer = try await client.complete(instructions: Self.instructions, message: message)
                 // The prompt shows the transcript in tags. A reply that repeats them is still a cleanup.
                 let reply = answer.replacingOccurrences(of: "</?transcript>", with: "", options: .regularExpression)
                     .trimmingCharacters(in: .whitespacesAndNewlines)
                 let accepted = Self.isCleanup(reply, of: raw, entries: entries)
                 result = Result(text: accepted ? reply : nil, reply: reply, outcome: accepted ? "used" : "rejected", error: nil)
-            } catch CleanupError.timeout {
-                result = Result(text: nil, reply: nil, outcome: "timeout", error: CleanupError.timeout)
             } catch {
-                result = Result(text: nil, reply: nil, outcome: "error", error: error)
+                let cancelled = error is CancellationError || (error as? URLError)?.code == .cancelled
+                result = Result(text: nil, reply: nil, outcome: cancelled ? "cancelled" : "error", error: error)
             }
-            DispatchQueue.main.async { completion(result) }
+            DispatchQueue.main.async {
+                if result.text == nil, self.requests[key] === pending { self.requests[key] = nil }
+                pending.resolve(result)
+            }
         }
+        return pending
+    }
+
+    /// Calls `completion` once, with the result or a timeout `seconds` from now. A slow request keeps running,
+    /// so a repeat of the same dictation can still use its result.
+    func wait(for pending: Pending, seconds: Double, completion: @escaping (Result) -> Void) {
+        var answered = false
+        pending.then { result in
+            guard !answered else { return }
+            answered = true
+            completion(result)
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
+            guard !answered else { return }
+            answered = true
+            completion(Result(text: nil, reply: nil, outcome: "timeout", error: CleanupError.timeout))
+        }
+    }
+
+    /// Stops a speculative request that the transcript has outgrown.
+    func cancel(_ pending: Pending) {
+        guard pending.result == nil else { return }
+        pending.task?.cancel()
+        if requests[pending.key] === pending { requests[pending.key] = nil }
     }
 
     // MARK: Prompt
@@ -120,21 +168,37 @@ final class SmartCleanup {
     /// The model runs only for words that need context: ambiguous fillers, self-corrections, and dictionary words.
     /// Other dictations keep the rule result, which takes about 25 ms.
     static func needsModel(_ raw: String, entries: [DictionaryEntry]) -> Bool {
-        let heard = entries.map { words($0.heard).joined(separator: " ") }.filter { !$0.isEmpty }
+        let heard = entries.filter { !words($0.written).isEmpty }.map { words($0.heard).joined(separator: " ") }
+            .filter { !$0.isEmpty }
         return contains(raw, any: corrections + ambiguousFillers + heard)
     }
 
     /// Rejects a reply that is not a cleanup of the transcript, such as an answer to a dictated question.
     /// A cleanup only removes words, fixes punctuation, and applies dictionary terms. So every word of the reply must
-    /// come from the transcript or a dictionary term, except digits ("two" becomes "2"). Without a self-correction,
-    /// a cleanup also keeps at least half of the words.
+    /// come from the transcript or a dictionary term. A number in digits must spell out to transcript words
+    /// ("25" for "twenty five"), so "4" cannot answer "what is two plus two". The reply grows only by the extra words
+    /// of dictionary terms. Without a self-correction, it keeps at least half of the words.
     static func isCleanup(_ reply: String, of raw: String, entries: [DictionaryEntry]) -> Bool {
         let output = words(reply), source = words(raw)
-        let known = Set(source + entries.flatMap { words($0.written) })
-        guard !output.isEmpty, output.count <= source.count,
-              output.allSatisfy({ known.contains($0) || $0.allSatisfy(\.isNumber) }) else { return false }
+        let terms = entries.filter { !words($0.heard).isEmpty }
+        let known = Set(source + terms.flatMap { words($0.written) })
+        let growth = terms.reduce(0) { $0 + max(0, words($1.written).count - words($1.heard).count) }
+        func fromTranscript(_ word: String) -> Bool {
+            if known.contains(word) { return true }
+            guard word.allSatisfy(\.isNumber), let value = Int(word),
+                  let spelled = spellOut.string(from: NSNumber(value: value)) else { return false }
+            return words(spelled).allSatisfy { known.contains($0) || $0 == "and" }
+        }
+        guard !output.isEmpty, output.count <= source.count + growth, output.allSatisfy(fromTranscript) else { return false }
         return output.count * 2 >= source.count || contains(raw, any: corrections)
     }
+
+    private static let spellOut: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .spellOut
+        formatter.locale = Locale(identifier: "en_US")
+        return formatter
+    }()
 
     private static func words(_ text: String) -> [String] {
         text.lowercased().split { !$0.isLetter && !$0.isNumber }.map(String.init)

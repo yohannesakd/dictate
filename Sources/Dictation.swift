@@ -91,6 +91,20 @@ final class DictationController {
     /// Identifies the current dictation, so a result that arrives after Esc is dropped.
     private var requestID = 0
 
+    // Transcription during recording. The Neural Engine slows down after about 2 s of idle time: 5.6 s of audio
+    // took 22 ms warm and 66-80 ms after 2-30 s idle. Transcribing the audio so far keeps it warm, and a transcript
+    // taken in the pause before fn release starts smart cleanup early. The final transcript reuses that request
+    // when it is the same.
+    private var snapshotRunning = false
+    private var lastSnapshot = Date.distantPast
+    private var lastSpeech = Date.distantPast
+    private var spokeSinceSnapshot = false
+    private var speculation: SmartCleanup.Pending?
+    private let snapshotInterval = 1.0       // Keeps the Neural Engine warm while the user speaks without pauses.
+    private let pauseForSnapshot = 0.2       // Silence after speech that starts a speculative cleanup.
+    private let speechLevelDB: Float = -45
+    private let maxSnapshotSamples = 30 * 16000  // Longer audio is transcribed in windows; snapshots would be slow.
+
     private let maxRecordingSeconds = 300.0  // Ends a hands-free session that was left running.
     private let minSpeechSamples = 8000      // 0.5 s at 16 kHz.
     private let holdThreshold = 0.3          // A shorter fn press counts as a tap.
@@ -204,6 +218,8 @@ final class DictationController {
         startSound?.play()  // After the microphone runs, so the sound means "speak now".
         if model.smartCleanup { smart.client(model.cleanupProvider).warm() }
         recording = Stopwatch()
+        lastSnapshot = Date()
+        spokeSinceSnapshot = false
         mode = handsFree ? .handsFree : .holding(Date())
         model.handsFree = handsFree
         model.levels = model.levels.map { _ in 0 }
@@ -222,58 +238,102 @@ final class DictationController {
     /// Ends the recording and inserts the text. `interruption` explains a recording that stopped early.
     func finish(interruption: String? = nil) {
         guard isRecording else { return }
+        let released = Stopwatch()
         let pcm = recorder.stop()
         let recordCpuMs = recording?.cpuMs ?? 0
         clearTimers()
+        let speculative = speculation
+        speculation = nil
         guard pcm.count >= minSpeechSamples else {
+            if let speculative { smart.cancel(speculative) }
             reset()
             if let interruption { notice(interruption) }
             return
         }
-        // The field that has focus now is where the text belongs.
-        let target = Insertion.focusedElement()
-        let app = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
         requestID += 1
         let request = requestID
         mode = .processing
-        model.handsFree = false
-        model.phase = .processing
         let audioSeconds = Double(pcm.count) / 16000
-        let released = Stopwatch()
+        // Transcription runs while the main thread looks up the focus. Its result arrives on the main queue after this.
+        let context = ReleaseContext()
         engine.transcribe(pcm) { [weak self] result in
             guard let self, request == self.requestID else { return }  // Cancelled with Esc.
             switch result {
             case .success(let raw):
                 self.model.modelStatus = .ready
-                var dictation = Dictation(raw: raw, app: app, audioSeconds: audioSeconds, target: target, released: released)
+                var dictation = Dictation(raw: raw, app: context.app, audioSeconds: audioSeconds, target: context.target, released: released)
                 dictation.metrics = [
                     "audio_s": (audioSeconds * 10).rounded() / 10,
                     "record_cpu_ms": recordCpuMs, "record_cpu_pct": Int(Double(recordCpuMs) / 10 / max(audioSeconds, 0.1)),
-                    "transcribe_ms": released.wallMs, "transcribe_cpu_ms": released.cpuMs,
+                    "transcribe_ms": released.wallMs,
                 ]
                 if let interruption { dictation.metrics["interrupted"] = interruption }
+                let provider = self.model.cleanupProvider
+                let pending = self.model.smartCleanup && !raw.isEmpty
+                    ? self.smart.request(raw, entries: self.model.dictionary, provider: provider) : nil
+                if let speculative, speculative !== pending { self.smart.cancel(speculative) }
                 // The rules and the dictionary give the text when smart cleanup is off, not needed, slow, or rejected.
                 dictation.ruled = PersonalDictionary.apply(TextCleanup.clean(raw, rules: self.model.cleanupRules),
                                                            entries: self.model.dictionary)
-                guard self.model.smartCleanup, !raw.isEmpty else { return self.complete(dictation, interruption: interruption) }
-                let provider = self.model.cleanupProvider
-                let started = Stopwatch()
-                self.smart.clean(raw, entries: self.model.dictionary, provider: provider) { [weak self] smart in
+                guard let pending else {
+                    if self.model.smartCleanup { dictation.metrics["smart"] = "not needed" }
+                    return self.complete(dictation, interruption: interruption)
+                }
+                // How long the request had already run when the final transcript was ready.
+                dictation.metrics["smart_head_start_ms"] = Int(Date().timeIntervalSince(pending.started) * 1000)
+                let waited = Stopwatch()
+                self.smart.wait(for: pending, seconds: 3) { [weak self] smart in
                     guard let self, request == self.requestID else { return }
                     dictation.smart = smart
                     dictation.provider = provider
                     dictation.metrics["smart"] = smart.outcome
-                    dictation.metrics["smart_ms"] = started.wallMs
+                    dictation.metrics["smart_wait_ms"] = waited.wallMs
                     if smart.outcome == "used" { self.model.smartIssue = nil }
-                    if let error = smart.error, !(error is CancellationError) {
-                        self.model.smartIssue = error.localizedDescription
-                    }
+                    if let error = smart.error { self.model.smartIssue = error.localizedDescription }
                     self.complete(dictation, interruption: interruption)
                 }
             case .failure(let error):
                 self.mode = .idle
                 self.notice(error.localizedDescription)
             }
+        }
+        // The field that has focus now is where the text belongs.
+        context.target = Insertion.focusedElement()
+        context.app = NSWorkspace.shared.frontmostApplication?.bundleIdentifier
+        model.handsFree = false
+        model.phase = .processing
+    }
+
+    private final class ReleaseContext {
+        var target: AXUIElement?
+        var app: String?
+    }
+
+    /// Transcribes the audio so far during recording. Called with each level update.
+    private func snapshotIfUseful(levelDB: Float) {
+        guard isRecording else { return }
+        let now = Date()
+        if levelDB > speechLevelDB {
+            lastSpeech = now
+            spokeSinceSnapshot = true
+        }
+        let paused = spokeSinceSnapshot && now.timeIntervalSince(lastSpeech) >= pauseForSnapshot
+        guard !snapshotRunning, paused || now.timeIntervalSince(lastSnapshot) >= snapshotInterval else { return }
+        let pcm = recorder.snapshot()
+        guard pcm.count >= minSpeechSamples, pcm.count <= maxSnapshotSamples else { return }
+        snapshotRunning = true
+        lastSnapshot = now
+        spokeSinceSnapshot = false
+        let recording = requestID
+        engine.transcribe(pcm) { [weak self] result in
+            guard let self else { return }
+            self.snapshotRunning = false
+            // Only a transcript taken in a pause is likely to be final. Mid-speech snapshots only keep the engine warm.
+            guard paused, self.isRecording, recording == self.requestID, self.model.smartCleanup,
+                  case .success(let raw) = result, !raw.isEmpty else { return }
+            let next = self.smart.request(raw, entries: self.model.dictionary, provider: self.model.cleanupProvider)
+            if let previous = self.speculation, previous !== next { self.smart.cancel(previous) }
+            self.speculation = next
         }
     }
 
@@ -303,7 +363,6 @@ final class DictationController {
     }
 
     private func complete(_ dictation: Dictation, interruption: String?) {
-        mode = .idle
         let text = dictation.text
         var metrics = dictation.metrics
         metrics["chars"] = text.count
@@ -313,29 +372,37 @@ final class DictationController {
             "rules": dictation.ruled, "provider": dictation.provider?.rawValue, "smart": dictation.smart?.outcome,
             "model_reply": dictation.smart?.reply, "text": text, "inserted": false,
         ]
-        func record() {
+        func end() {
+            mode = .idle
             MetricsLog.write(metrics)
             TranscriptLog.write(log)
         }
         guard !text.isEmpty else {
-            record()
+            end()
             notice(interruption ?? "No speech detected")
             return
         }
-        model.addHistory(text, raw: dictation.raw, note: dictation.note)
+        // Inserting first: history encoding and log writing do not delay the text.
         // Transcription alone takes about 25 ms. A slow first run or smart cleanup leaves time to switch fields.
         let released = dictation.released
         if released.wallMs > 1000, let current = Insertion.focusedElement(), let target = dictation.target,
            !Insertion.isSame(current, target) {
-            record()
+            model.addHistory(text, raw: dictation.raw, note: dictation.note)
+            end()
             notice("The focused field changed. Press ⌃⌘V to insert.")
             return
         }
-        log["inserted"] = true
-        TranscriptLog.write(log)
-        deliver(text) { typeMs in
+        let delivered = deliver(text) { [weak self] typeMs in
             metrics["type_ms"] = typeMs
             metrics["release_to_text_ms"] = released.wallMs
+            self?.mode = .idle  // Only now: a new recording must not start while characters are still being typed.
+            MetricsLog.write(metrics)
+        }
+        model.addHistory(text, raw: dictation.raw, note: dictation.note)
+        log["inserted"] = delivered
+        TranscriptLog.write(log)
+        if !delivered {
+            mode = .idle
             MetricsLog.write(metrics)
         }
         if let interruption { notice("\(interruption). Recording stopped early.") }
@@ -383,6 +450,9 @@ final class DictationController {
         case .holding, .awaitingSecondTap, .handsFree:
             _ = recorder.stop()
             clearTimers()
+            requestID += 1  // Drops a transcript of this recording that is still on its way.
+            if let speculation { smart.cancel(speculation) }
+            speculation = nil
         case .processing:
             requestID += 1
         case .idle:
@@ -396,13 +466,16 @@ final class DictationController {
         deliver(last.text)
     }
 
-    private func deliver(_ text: String, completion: @escaping (Int) -> Void = { _ in }) {
+    /// Returns false when Accessibility is missing and nothing was typed.
+    @discardableResult
+    private func deliver(_ text: String, completion: @escaping (Int) -> Void = { _ in }) -> Bool {
         guard AXIsProcessTrusted() else {
             notice("Allow Accessibility in Dictate to insert text")
-            return
+            return false
         }
         Insertion.insert(text, completion: completion)
         model.phase = .idle
+        return true
     }
 
     private func reset() {
@@ -429,6 +502,7 @@ final class DictationController {
         let db = 20 * log10(max(rms, 1e-6))
         let level = CGFloat(min(1, max(0, (db + 55) / 40)))
         model.levels = Array(model.levels.dropFirst()) + [level]
+        snapshotIfUseful(levelDB: db)
     }
 
     // MARK: Permissions

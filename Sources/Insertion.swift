@@ -89,7 +89,7 @@ enum Insertion {
         let source = CGEventSource(stateID: .hidSystemState)
         var start = 0
         while start < units.count {
-            var end = min(start + 16, units.count)
+            var end = min(start + 64, units.count)
             if end < units.count, UTF16.isLeadSurrogate(units[end - 1]) { end -= 1 }  // Keep surrogate pairs together.
             let chunk = Array(units[start..<end])
             for keyDown in [true, false] {
@@ -98,8 +98,8 @@ enum Insertion {
                 chunk.withUnsafeBufferPointer { event.keyboardSetUnicodeString(stringLength: chunk.count, unicodeString: $0.baseAddress) }
                 event.post(tap: .cghidEventTap)
             }
-            usleep(2000)  // Some apps drop characters when events arrive too fast.
             start = end
+            if start < units.count { usleep(2000) }  // Some apps drop characters when events arrive too fast.
         }
     }
 

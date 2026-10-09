@@ -51,6 +51,12 @@ final class Recorder {
         return captured
     }
 
+    /// A copy of the audio so far, for transcription during recording.
+    func snapshot() -> [Float] {
+        lock.lock(); defer { lock.unlock() }
+        return samples
+    }
+
     private func interrupt(_ reason: String) {
         lock.lock()
         let first = !interrupted

@@ -36,8 +36,10 @@ final class DeepSeekClient: CleanupClient {
         }
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let choice = (json?["choices"] as? [[String: Any]])?.first
-        guard let text = (choice?["message"] as? [String: Any])?["content"] as? String else {
-            throw CleanupError.server("DeepSeek sent no text.")
+        // "length" means the reply was cut off. A shortened cleanup could pass the guard and lose words.
+        guard choice?["finish_reason"] as? String == "stop",
+              let text = (choice?["message"] as? [String: Any])?["content"] as? String else {
+            throw CleanupError.server("DeepSeek sent no complete reply.")
         }
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
@@ -77,14 +79,17 @@ final class ChatGPTClient: CleanupClient {
             throw CleanupError.server("ChatGPT error \(status): \(serverMessage(body))")
         }
         var text = ""
+        var completed = false
         for try await line in bytes.lines where line.hasPrefix("data:") {
             guard let event = try? JSONSerialization.jsonObject(with: Data(line.dropFirst(5).utf8)) as? [String: Any] else { continue }
             switch event["type"] as? String {
             case "response.output_text.delta": text += event["delta"] as? String ?? ""
+            case "response.completed": completed = true
             case "response.failed", "error": throw CleanupError.server("ChatGPT could not answer: \(event)")
             default: break
             }
         }
+        guard completed else { throw CleanupError.server("ChatGPT sent no complete reply.") }
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
