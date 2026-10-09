@@ -111,6 +111,7 @@ final class DictationController {
     private var lastSpeech = Date.distantPast
     private var spokeSinceSnapshot = false
     private var speculation: SmartCleanup.Pending?
+    private var activeCleanup: SmartCleanup.Pending?
     private let snapshotInterval = 1.0       // Keeps the Neural Engine warm while the user speaks without pauses.
     private let pauseForSnapshot = 0.2       // Silence after speech that starts a speculative cleanup.
     private let speechLevelDB: Float = -45
@@ -290,8 +291,10 @@ final class DictationController {
                     if self.model.smartCleanup { dictation.metrics["smart"] = "not needed" }
                     return self.complete(dictation, interruption: interruption)
                 }
+                self.activeCleanup = pending
+                dictation.metrics["smart_cache_hit"] = pending.result?.text != nil
                 // How long the request had already run when the final transcript was ready.
-                dictation.metrics["smart_head_start_ms"] = Int(Date().timeIntervalSince(pending.started) * 1000)
+                dictation.metrics["smart_head_start_ms"] = pending.result == nil ? Int((ProcessInfo.processInfo.systemUptime - pending.started) * 1000) : 0
                 let waited = Stopwatch()
                 self.smart.wait(for: pending, seconds: 3) { [weak self] smart in
                     guard let self, request == self.requestID else { return }
@@ -304,6 +307,7 @@ final class DictationController {
                     self.complete(dictation, interruption: interruption)
                 }
             case .failure(let error):
+                if let speculative { self.smart.cancel(speculative) }
                 self.mode = .idle
                 self.notice(error.localizedDescription)
             }
@@ -473,6 +477,8 @@ final class DictationController {
         case .idle:
             return
         }
+        if let activeCleanup { smart.cancel(activeCleanup) }
+        activeCleanup = nil
         reset()
     }
 

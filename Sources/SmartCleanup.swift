@@ -45,7 +45,7 @@ final class SmartCleanup: @unchecked Sendable {
     /// input is the same, and an accepted result stays available for an exact repeat.
     final class Pending: @unchecked Sendable {
         let key: String
-        let started = Date()
+        let started = ProcessInfo.processInfo.systemUptime
         fileprivate(set) var result: Result?
         fileprivate var task: Task<Void, Never>?
         private var waiters: [(Result) -> Void] = []
@@ -53,7 +53,9 @@ final class SmartCleanup: @unchecked Sendable {
         fileprivate init(key: String) { self.key = key }
 
         fileprivate func resolve(_ result: Result) {
+            guard self.result == nil else { return }
             self.result = result
+            task = nil
             waiters.forEach { $0(result) }
             waiters = []
         }
@@ -67,7 +69,9 @@ final class SmartCleanup: @unchecked Sendable {
     let chatgpt = ChatGPTClient()
     /// Requests by provider and message, used on the main queue only. Failed requests leave, so the next one retries.
     private var requests: [String: Pending] = [:]
-    private let requestLimit = 32
+    private let cacheLimit = 32
+    private let activeLimit = 2
+    private let requestLifetime = 10.0
 
     func client(_ provider: CleanupProvider) -> CleanupClient {
         provider == .deepseek ? deepseek : chatgpt
@@ -79,9 +83,10 @@ final class SmartCleanup: @unchecked Sendable {
         let message = Self.message(raw, entries: entries)
         let key = provider.rawValue + "\n" + message
         if let existing = requests[key] { return existing }
-        if requests.count >= requestLimit, let oldest = requests.values.filter({ $0.result != nil }).min(by: { $0.started < $1.started }) {
-            requests[oldest.key] = nil
-        }
+        let active = requests.values.filter { $0.result == nil }
+        if active.count >= activeLimit, let oldest = active.min(by: { $0.started < $1.started }) { cancel(oldest) }
+        let cached = requests.values.filter { $0.result != nil }
+        if cached.count >= cacheLimit, let oldest = cached.min(by: { $0.started < $1.started }) { requests[oldest.key] = nil }
         let pending = Pending(key: key)
         requests[key] = pending
         let client = client(provider)
@@ -99,9 +104,14 @@ final class SmartCleanup: @unchecked Sendable {
                 result = Result(text: nil, reply: nil, outcome: cancelled ? "cancelled" : "error", error: error)
             }
             DispatchQueue.main.async {
-                if result.text == nil, self.requests[key] === pending { self.requests[key] = nil }
+                guard self.requests[key] === pending, pending.result == nil else { return }
+                if result.text == nil { self.requests[key] = nil }
                 pending.resolve(result)
             }
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + requestLifetime) { [weak self, weak pending] in
+            guard let self, let pending, pending.result == nil else { return }
+            self.cancel(pending)
         }
         return pending
     }
@@ -127,6 +137,7 @@ final class SmartCleanup: @unchecked Sendable {
         guard pending.result == nil else { return }
         pending.task?.cancel()
         if requests[pending.key] === pending { requests[pending.key] = nil }
+        pending.resolve(Result(text: nil, reply: nil, outcome: "cancelled", error: nil))
     }
 
     // MARK: Prompt
