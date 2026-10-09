@@ -4,9 +4,9 @@ import AVFoundation
 
 final class Recorder {
     private var engine: AVAudioEngine?
-    private var converter: AVAudioConverter?
     private var configurationObserver: NSObjectProtocol?
     private var interrupted = false
+    private var session: UUID?
     private let target = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: 16000, channels: 1, interleaved: false)!
     private let lock = NSLock()
     private var samples: [Float] = []
@@ -16,7 +16,9 @@ final class Recorder {
     var onInterrupted: ((String) -> Void)?
 
     func start() throws {
-        lock.lock(); samples = []; interrupted = false; lock.unlock()
+        _ = stop()
+        let session = UUID()
+        lock.lock(); self.session = session; interrupted = false; lock.unlock()
         // A new engine each time picks up the current default input device.
         let engine = AVAudioEngine()
         let input = engine.inputNode
@@ -25,26 +27,30 @@ final class Recorder {
             throw NSError(domain: "Dictate", code: 1, userInfo: [NSLocalizedDescriptionKey: "Unsupported input format \(format)"])
         }
         converter.downmix = true
-        self.converter = converter
-        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in self?.append(buffer) }
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
+            self?.append(buffer, converter: converter, session: session)
+        }
         // A device or format change stops the engine. Report it; the controller ends the recording with what was captured.
         configurationObserver = NotificationCenter.default.addObserver(forName: .AVAudioEngineConfigurationChange, object: engine,
                                                                        queue: nil) { [weak self] _ in
-            self?.interrupt("The microphone changed")
+            self?.interrupt("The microphone changed", session: session)
         }
-        engine.prepare()
-        try engine.start()
         self.engine = engine
+        engine.prepare()
+        do { try engine.start() } catch {
+            _ = stop()
+            throw error
+        }
     }
 
     /// Stops capture and hands over the samples. The recorder keeps no copy.
     func stop() -> [Float] {
+        lock.lock(); session = nil; lock.unlock()
         if let configurationObserver { NotificationCenter.default.removeObserver(configurationObserver) }
         configurationObserver = nil
         engine?.inputNode.removeTap(onBus: 0)
         engine?.stop()
         engine = nil
-        converter = nil
         lock.lock(); defer { lock.unlock() }
         let captured = samples
         samples = []
@@ -57,17 +63,24 @@ final class Recorder {
         return samples
     }
 
-    private func interrupt(_ reason: String) {
+    private func interrupt(_ reason: String, session: UUID) {
         lock.lock()
+        guard self.session == session else { lock.unlock(); return }
         let first = !interrupted
         interrupted = true
         lock.unlock()
         // Teardown happens on the main queue, outside the audio and notification callbacks.
-        if first { DispatchQueue.main.async { self.onInterrupted?(reason) } }
+        if first {
+            DispatchQueue.main.async {
+                self.lock.lock()
+                let current = self.session == session
+                self.lock.unlock()
+                if current { self.onInterrupted?(reason) }
+            }
+        }
     }
 
-    private func append(_ buffer: AVAudioPCMBuffer) {
-        guard let converter else { return }
+    private func append(_ buffer: AVAudioPCMBuffer, converter: AVAudioConverter, session: UUID) {
         let capacity = AVAudioFrameCount(Double(buffer.frameLength) * target.sampleRate / buffer.format.sampleRate) + 32
         guard let out = AVAudioPCMBuffer(pcmFormat: target, frameCapacity: capacity) else { return }
         var supplied = false
@@ -79,13 +92,16 @@ final class Recorder {
             return buffer
         }
         if error != nil {
-            interrupt("Microphone audio could not be read")
+            interrupt("Microphone audio could not be read", session: session)
             return
         }
         guard let channel = out.floatChannelData else { return }
         let chunk = Array(UnsafeBufferPointer(start: channel[0], count: Int(out.frameLength)))
         let rms = chunk.isEmpty ? 0 : sqrt(chunk.reduce(0) { $0 + $1 * $1 } / Float(chunk.count))
-        lock.lock(); samples.append(contentsOf: chunk); lock.unlock()
+        lock.lock()
+        guard self.session == session else { lock.unlock(); return }
+        samples.append(contentsOf: chunk)
+        lock.unlock()
         onLevel?(rms)
     }
 }
