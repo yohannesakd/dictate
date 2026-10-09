@@ -25,6 +25,7 @@ The first launch prepares the model for the Neural Engine. This takes about one 
   The same process, field, caret, and complete field text must remain unchanged. Corrections expire after five minutes.
   Fields must support Accessibility range replacement. Unreadable fields and fields larger than one million UTF-16 units have no correction snapshot.
   **Copy Original** in History remains available for manual recovery.
+- To fix a misheard word, select it in any app and press Control + Command + E. Type what you meant and press Return. Dictate adds it to the dictionary.
 
 Set "Press 🌐 key to" to "Do Nothing" in Keyboard settings, so fn does not also open the emoji picker or Apple Dictation.
 

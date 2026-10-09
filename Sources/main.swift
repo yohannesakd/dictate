@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let model = AppModel()
     private let navigation = HubNavigation()
     private lazy var controller = DictationController(model: model)
+    private lazy var wordCapture = WordCapture(model: model)
     private var flowBar: FlowBar?
     private var hub: NSWindow?
     private var statusItem: NSStatusItem?
@@ -14,6 +15,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.applicationIconImage = appIcon()
         setUpMainMenu()
+        controller.keyboard.onCaptureWord = { [weak self] in self?.wordCapture.show() }
         controller.start()
         flowBar = FlowBar(model: model, controller: controller)
         setUpStatusItem()
