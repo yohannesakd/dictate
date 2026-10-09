@@ -12,8 +12,11 @@ final class DeepSeekClient: CleanupClient {
 
     var hasKey: Bool { Keychain.read(keychainAccount) != nil }
 
-    func setKey(_ key: String?) {
-        Keychain.write(keychainAccount, key.map { Data($0.utf8) })
+    func setKey(_ key: String?) throws {
+        let status = Keychain.write(keychainAccount, key.map { Data($0.utf8) })
+        guard status == errSecSuccess else {
+            throw CleanupError.setup("DeepSeek key could not be saved (Keychain status \(status)).")
+        }
     }
 
     func complete(instructions: String, message: String) async throws -> String {
@@ -274,11 +277,16 @@ enum Keychain {
     }
 
     /// Nil deletes the secret.
-    static func write(_ account: String, _ data: Data?) {
+    @discardableResult
+    static func write(_ account: String, _ data: Data?) -> OSStatus {
         let query: [String: Any] = [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: service,
                                     kSecAttrAccount as String: account]
-        SecItemDelete(query as CFDictionary)
-        guard let data else { return }
-        SecItemAdd(query.merging([kSecValueData as String: data]) { $1 } as CFDictionary, nil)
+        guard let data else {
+            let status = SecItemDelete(query as CFDictionary)
+            return status == errSecItemNotFound ? errSecSuccess : status
+        }
+        let status = SecItemUpdate(query as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+        guard status == errSecItemNotFound else { return status }
+        return SecItemAdd(query.merging([kSecValueData as String: data]) { $1 } as CFDictionary, nil)
     }
 }

@@ -432,14 +432,19 @@ final class DictationController {
     func saveDeepSeekKey(_ key: String) {
         let key = key.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !key.isEmpty else { return }
-        smart.deepseek.setKey(key)
-        model.deepseekKeySaved = true
-        model.smartIssue = nil
+        do {
+            try smart.deepseek.setKey(key)
+            model.deepseekKeySaved = true
+            model.smartIssue = nil
+        } catch { model.smartIssue = error.localizedDescription }
     }
 
     func removeDeepSeekKey() {
-        smart.deepseek.setKey(nil)
-        model.deepseekKeySaved = false
+        do {
+            try smart.deepseek.setKey(nil)
+            model.deepseekKeySaved = false
+            model.smartIssue = nil
+        } catch { model.smartIssue = error.localizedDescription }
     }
 
     func signInChatGPT() {
