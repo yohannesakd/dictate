@@ -18,6 +18,8 @@ final class Recorder {
     func start() throws {
         _ = stop()
         let session = UUID()
+        var started = false
+        defer { if !started { _ = stop() } }
         lock.lock(); self.session = session; interrupted = false; lock.unlock()
         // A new engine each time picks up the current default input device.
         let engine = AVAudioEngine()
@@ -37,10 +39,8 @@ final class Recorder {
         }
         self.engine = engine
         engine.prepare()
-        do { try engine.start() } catch {
-            _ = stop()
-            throw error
-        }
+        try engine.start()
+        started = true
     }
 
     /// Stops capture and hands over the samples. The recorder keeps no copy.
