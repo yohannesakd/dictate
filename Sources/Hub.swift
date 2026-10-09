@@ -31,6 +31,15 @@ struct HubView: View {
                 SettingRow(title: "Show the flow bar when not dictating", detail: nil, isOn: $model.showIdleBar).card()
             }
             section("Cleanup") {
+                VStack(alignment: .leading, spacing: 0) {
+                    SettingRow(title: "Smart cleanup with GPT-6-Luna",
+                               detail: "Removes fillers by context, applies spoken corrections such as “at two, actually three”, and uses the dictionary as hints. Uses your Codex (ChatGPT) login and sends each dictation to OpenAI. Adds about 1.5 seconds.",
+                               isOn: $model.smartCleanup)
+                    if model.smartCleanup { SmartStatusRow(status: model.smartStatus).padding(.bottom, 8) }
+                }
+                .card()
+                Text(model.smartCleanup ? "These rules apply when smart cleanup does not reply within 3 seconds." : "Rules")
+                    .font(.caption).foregroundStyle(.secondary)
                 VStack(spacing: 0) {
                     SettingRow(title: "Remove filler words", detail: "um, uh, er, ah, hmm", isOn: $model.removeFillers)
                     Divider()
@@ -55,7 +64,9 @@ struct HubView: View {
             Image(nsImage: appIcon()).resizable().frame(width: 48, height: 48)
             VStack(alignment: .leading, spacing: 3) {
                 Text("Dictate").font(.system(size: 24, weight: .semibold))
-                Text("Hold fn and speak in any app. Release to insert the text. Everything runs on this Mac.")
+                Text(model.smartCleanup
+                     ? "Hold fn and speak in any app. Release to insert the text. Speech recognition runs on this Mac."
+                     : "Hold fn and speak in any app. Release to insert the text. Everything runs on this Mac.")
                     .foregroundStyle(.secondary)
             }
         }
@@ -142,6 +153,21 @@ private struct ModelCard: View {
             HStack(spacing: 5) { ProgressView().controlSize(.mini); Text("Loading").font(.caption) }
         case .failed(let message):
             Label("Error", systemImage: "circle.fill").labelStyle(StatusLabelStyle(color: .red)).help(message)
+        }
+    }
+}
+
+private struct SmartStatusRow: View {
+    let status: SmartCleanup.Status
+
+    var body: some View {
+        switch status {
+        case .ready:
+            Label("Ready", systemImage: "circle.fill").labelStyle(StatusLabelStyle(color: .green))
+        case .starting, .off:
+            HStack(spacing: 5) { ProgressView().controlSize(.mini); Text("Starting Codex").font(.caption) }
+        case .unavailable(let message):
+            Label(message, systemImage: "circle.fill").labelStyle(StatusLabelStyle(color: .orange))
         }
     }
 }
@@ -279,7 +305,7 @@ private struct DictionaryEditor: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Fix words the model mishears. Each entry replaces whole words or phrases after cleanup. A single-word entry such as “soul” changes every “soul”, so prefer a phrase when the word is also common.")
+            Text("Fix words the model mishears. Smart cleanup uses each entry as a hint and replaces the word only when the context fits. Without smart cleanup, each entry replaces whole words or phrases every time.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             VStack(spacing: 0) {
                 if !entries.isEmpty {

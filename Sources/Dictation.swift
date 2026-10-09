@@ -2,6 +2,7 @@
 
 import AppKit
 import AVFoundation
+import Combine
 import SwiftUI
 
 struct HistoryItem: Codable, Identifiable {
@@ -28,6 +29,8 @@ final class AppModel: ObservableObject {
     @Published var removeFillers = AppModel.stored("removeFillers", default: true) { didSet { store("removeFillers", removeFillers) } }
     @Published var removeRepeats = AppModel.stored("removeRepeats", default: true) { didSet { store("removeRepeats", removeRepeats) } }
     @Published var scratchThat = AppModel.stored("scratchThat", default: true) { didSet { store("scratchThat", scratchThat) } }
+    @Published var smartCleanup = AppModel.stored("smartCleanup", default: true) { didSet { store("smartCleanup", smartCleanup) } }
+    @Published var smartStatus = SmartCleanup.Status.off
     @Published var showIdleBar = AppModel.stored("showIdleBar", default: true) { didSet { store("showIdleBar", showIdleBar) } }
     @Published var dictionary: [DictionaryEntry] = AppModel.decoded("dictionary") ?? [] { didSet { encode("dictionary", dictionary) } }
     @Published private(set) var history: [HistoryItem] = AppModel.decoded("history") ?? []
@@ -59,6 +62,8 @@ final class DictationController {
     let keyboard = KeyboardMonitor()
     private let engine = Engine()
     private let recorder = Recorder()
+    private let smart = SmartCleanup()
+    private var smartToggle: AnyCancellable?
     private let startSound = NSSound(named: "Tink")
 
     private enum Mode { case idle, holding(Date), awaitingSecondTap, handsFree, processing }
@@ -94,6 +99,8 @@ final class DictationController {
         engine.load { [weak self] error in
             self?.model.modelStatus = error.map { .failed($0.localizedDescription) } ?? .ready
         }
+        smart.onStatus = { [weak self] status in self?.model.smartStatus = status }
+        smartToggle = model.$smartCleanup.removeDuplicates().sink { [weak self] on in self?.smart.setEnabled(on) }
         NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: nil,
                                                queue: .main) { [weak self] _ in self?.refreshPermissions() }
         NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didWakeNotification, object: nil,
@@ -212,42 +219,61 @@ final class DictationController {
         let released = Stopwatch()
         engine.transcribe(pcm) { [weak self] result in
             guard let self, request == self.requestID else { return }  // Cancelled with Esc.
-            self.mode = .idle
             switch result {
             case .success(let raw):
                 self.model.modelStatus = .ready
-                let transcribeMs = released.wallMs, transcribeCpuMs = released.cpuMs
-                let cleaned = TextCleanup.clean(raw, rules: self.model.cleanupRules)
-                let text = PersonalDictionary.apply(cleaned, entries: self.model.dictionary)
                 var metrics: [String: Any] = [
                     "audio_s": (audioSeconds * 10).rounded() / 10,
                     "record_cpu_ms": recordCpuMs, "record_cpu_pct": Int(Double(recordCpuMs) / 10 / max(audioSeconds, 0.1)),
-                    "transcribe_ms": transcribeMs, "transcribe_cpu_ms": transcribeCpuMs,
-                    "chars": text.count, "chars_changed": raw.count - text.count,
+                    "transcribe_ms": released.wallMs, "transcribe_cpu_ms": released.cpuMs,
                 ]
                 if let interruption { metrics["interrupted"] = interruption }
-                guard !text.isEmpty else {
-                    MetricsLog.write(metrics)
-                    self.notice(interruption ?? "No speech detected")
-                    return
+                // The rules and the dictionary give the fallback text when smart cleanup is off, slow, or rejected.
+                let ruled = PersonalDictionary.apply(TextCleanup.clean(raw, rules: self.model.cleanupRules),
+                                                     entries: self.model.dictionary)
+                guard self.model.smartCleanup, !raw.isEmpty else {
+                    return self.complete(text: ruled, raw: raw, target: target, released: released,
+                                         metrics: metrics, interruption: interruption)
                 }
-                self.model.addHistory(text, raw: raw)
-                // Transcription normally takes about 25 ms. Only a slow first run leaves time to switch fields.
-                if released.wallMs > 1000, let current = Insertion.focusedElement(), let target, !Insertion.isSame(current, target) {
-                    MetricsLog.write(metrics)
-                    self.notice("The focused field changed. Press ⌃⌘V to insert.")
-                    return
+                let smartStarted = Stopwatch()
+                self.smart.clean(raw, entries: self.model.dictionary) { [weak self] text, outcome in
+                    guard let self, request == self.requestID else { return }
+                    metrics["smart"] = outcome
+                    metrics["smart_ms"] = smartStarted.wallMs
+                    self.complete(text: text ?? ruled, raw: raw, target: target, released: released,
+                                  metrics: metrics, interruption: interruption)
                 }
-                self.deliver(text) { typeMs in
-                    metrics["type_ms"] = typeMs
-                    metrics["release_to_text_ms"] = released.wallMs
-                    MetricsLog.write(metrics)
-                }
-                if let interruption { self.notice("\(interruption). Recording stopped early.") }
             case .failure(let error):
+                self.mode = .idle
                 self.notice(error.localizedDescription)
             }
         }
+    }
+
+    private func complete(text: String, raw: String, target: AXUIElement?, released: Stopwatch,
+                          metrics: [String: Any], interruption: String?) {
+        mode = .idle
+        var metrics = metrics
+        metrics["chars"] = text.count
+        metrics["chars_changed"] = raw.count - text.count
+        guard !text.isEmpty else {
+            MetricsLog.write(metrics)
+            notice(interruption ?? "No speech detected")
+            return
+        }
+        model.addHistory(text, raw: raw)
+        // Transcription alone takes about 25 ms. A slow first run or smart cleanup leaves time to switch fields.
+        if released.wallMs > 1000, let current = Insertion.focusedElement(), let target, !Insertion.isSame(current, target) {
+            MetricsLog.write(metrics)
+            notice("The focused field changed. Press ⌃⌘V to insert.")
+            return
+        }
+        deliver(text) { typeMs in
+            metrics["type_ms"] = typeMs
+            metrics["release_to_text_ms"] = released.wallMs
+            MetricsLog.write(metrics)
+        }
+        if let interruption { notice("\(interruption). Recording stopped early.") }
     }
 
     /// Esc: drops the recording, or the result that is still being transcribed.
