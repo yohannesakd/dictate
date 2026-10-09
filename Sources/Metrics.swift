@@ -27,10 +27,11 @@ enum ProcessStats {
 
 /// Measures one stretch of work: wall time and process CPU time.
 struct Stopwatch {
-    private let wall = Date()
+    let started: Double
+    init(started: Double = Monotonic.now) { self.started = started }
     private let cpu = ProcessStats.cpuSeconds()
 
-    var wallMs: Int { Int(Date().timeIntervalSince(wall) * 1000) }
+    var wallMs: Int { Monotonic.milliseconds(since: started) }
     var cpuMs: Int { Int((ProcessStats.cpuSeconds() - cpu) * 1000) }
 }
 

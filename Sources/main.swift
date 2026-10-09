@@ -67,6 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         item.button?.image = NSImage(systemSymbolName: "waveform", accessibilityDescription: "Dictate")
         let menu = NSMenu()
         menu.delegate = self
+        menu.autoenablesItems = false
         item.menu = menu
         statusItem = item
     }
@@ -76,8 +77,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let paste = NSMenuItem(title: "Insert Last Dictation", action: #selector(pasteLast), keyEquivalent: "v")
         paste.keyEquivalentModifierMask = [.control, .command]
         paste.target = self
-        paste.isEnabled = !model.history.isEmpty
+        paste.isEnabled = !model.history.isEmpty && model.phase != .processing
         menu.addItem(paste)
+        for (title, action) in [("Undo Last Dictation", #selector(undoLast)), ("Restore Raw Transcript", #selector(restoreRaw))] {
+            let correction = NSMenuItem(title: title, action: action, keyEquivalent: "")
+            correction.target = self
+            correction.isEnabled = action == #selector(restoreRaw) ? controller.canRestoreRaw : controller.canCorrectLast
+            menu.addItem(correction)
+        }
         let open = NSMenuItem(title: "Open Dictate", action: #selector(openHub), keyEquivalent: "")
         open.target = self
         menu.addItem(open)
@@ -88,6 +95,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.addItem(NSMenuItem(title: "Quit Dictate", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 
+    @objc private func undoLast() { controller.undoLastDictation() }
+    @objc private func restoreRaw() { controller.restoreRawTranscript() }
     @objc private func pasteLast() { controller.pasteLast() }
     @objc private func openHub() { showHub() }
     @objc private func openSettings() {

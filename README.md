@@ -19,13 +19,18 @@ The first launch prepares the model for the Neural Engine. This takes about one 
 
 - Hold fn to talk; release to insert the text.
 - Double-tap fn, or press fn + Space, for hands-free mode. Press fn again to finish.
-- Esc cancels. Control + Command + V inserts the last dictation again.
+- Esc cancels pending work and stops further typing. Characters already sent can remain in the field.
+- Control + Command + V inserts the last dictation again. Check uncertain delivery before using this shortcut.
+- The status menu has **Undo Last Dictation** and **Restore Raw Transcript**. These actions require a verified insertion at a collapsed caret.
+  The same process, field, caret, and complete field text must remain unchanged. Corrections expire after five minutes.
+  Fields must support Accessibility range replacement. Unreadable fields and fields larger than one million UTF-16 units have no correction snapshot.
+  **Copy Original** in History remains available for manual recovery.
 
 Set "Press 🌐 key to" to "Do Nothing" in Keyboard settings, so fn does not also open the emoji picker or Apple Dictation.
 
 ## Smart cleanup
 
-Smart cleanup sends a transcript to a language model when it contains words that need context: ambiguous fillers ("like", "you know"), self-corrections ("actually", "no wait"), or dictionary words. The model removes the fillers, keeps only the corrected version, and uses the dictionary as hints. Other dictations use the rules only.
+Smart cleanup sends a transcript to a language model when it contains words that need context: ambiguous fillers ("like", "you know"), self-corrections ("actually", "no wait"), or dictionary words. The model proposes filler removal, spoken corrections, and dictionary replacements. Dictate checks each proposal before insertion. Other dictations use the rules only.
 
 Choose the model in Settings (the gear button, or ⌘,), under Cleanup:
 
@@ -34,9 +39,12 @@ Choose the model in Settings (the gear button, or ⌘,), under Cleanup:
 
 Dictate uses the rule result when the model exceeds 3 seconds or fails the ordered-edit guard. The guard permits matching dictionary replacements and limited removals. It rejects substantive omissions, reordered words, and changed numeric notation. Unrecognized spoken corrections can remain in the result. These checks reduce mistakes; they do not prove meaning preservation.
 
-Every dictation is saved in `~/Library/Application Support/Dictate/transcripts.jsonl`: the raw transcript, the rule result, the model reply, the inserted text, and the app.
+Every dictation is saved in `~/Library/Application Support/Dictate/transcripts.jsonl`: the raw transcript, the rule result, the model reply, the final text, delivery outcome, and app.
 
 Each dictation appends resource metrics to `~/Library/Logs/Dictate/metrics.jsonl`.
+Durations use a monotonic clock. Metrics separate event posting, verified text, request cache hits, and delivery outcomes.
+Dictate checks readable fields against the expected text and caret. Verification has a 150-millisecond polling budget, plus Accessibility call time.
+An unavailable check does not mean delivery failed. Dictate never repeats uncertain delivery automatically.
 
 ## Credits
 

@@ -1,20 +1,70 @@
-// Types text into the focused field with synthetic key events (the clipboard is not used).
-// Before typing, it reads the text before the cursor through Accessibility, where the app exposes it,
-// to add a separating space and to avoid a capital letter in the middle of a sentence.
+// Delivery uses marked Unicode events. Read-back supplies evidence; uncertain delivery is never retried automatically.
 
 import AppKit
 import ApplicationServices
 
+// The marker is shared with KeyboardMonitor, which must ignore Dictate's own events.
+let dictateEventMarker: Int64 = 0x44494354415445
+
 enum Insertion {
-    /// Serial, so two insertions never interleave their characters.
     private static let queue = DispatchQueue(label: "dictate.typing", qos: .userInitiated)
-    private static var lastTarget: AXUIElement?
+    static let verificationSeconds = 0.15
+    static let correctionLifetime = 300.0
+    static let maximumSnapshotUnits = 1_000_000
+
+    struct AppIdentity: Equatable {
+        let pid: pid_t
+        let launched: Date?
+        let bundle: String?
+    }
+    struct Target {
+        let app: AppIdentity?
+        let element: AXUIElement?
+    }
+    struct FieldState: Equatable {
+        let value: String
+        let selection: NSRange
+        static func == (lhs: Self, rhs: Self) -> Bool {
+            lhs.selection == rhs.selection && lhs.value.utf16.elementsEqual(rhs.value.utf16)
+        }
+    }
+    enum Outcome: String {
+        case verified, unchanged, unexpected, unavailable, targetChanged, cancelled, eventFailed, permissionDenied
+    }
+    struct Result {
+        let outcome: Outcome
+        let postedMs: Int?
+        let postedAt: Double?
+        let verifiedAt: Double?
+        let postedUnits: Int
+        let verifiedMs: Int?
+        let verificationMs: Int
+        let snapshot: Snapshot?
+    }
+    struct Snapshot {
+        let target: Target
+        let state: FieldState
+        let range: NSRange
+        let rawReplacement: String
+        let created: Double
+    }
 
     static func focusedElement() -> AXUIElement? {
         var value: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(AXUIElementCreateSystemWide(), kAXFocusedUIElementAttribute as CFString, &value) == .success,
+        let system = AXUIElementCreateSystemWide()
+        AXUIElementSetMessagingTimeout(system, 0.05)
+        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &value) == .success,
               let value, CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
-        return (value as! AXUIElement)
+        let element = value as! AXUIElement
+        AXUIElementSetMessagingTimeout(element, 0.05)
+        return element
+    }
+
+    static func captureTarget() -> Target {
+        let app = NSWorkspace.shared.frontmostApplication.map {
+            AppIdentity(pid: $0.processIdentifier, launched: $0.launchDate, bundle: $0.bundleIdentifier)
+        }
+        return Target(app: app, element: focusedElement())
     }
 
     static func isSame(_ a: AXUIElement?, _ b: AXUIElement?) -> Bool {
@@ -22,96 +72,228 @@ enum Insertion {
         return CFEqual(a, b)
     }
 
-    /// Adapts the text to its surroundings, then types it. `completion` runs on the main queue with the typing time.
-    static func insert(_ text: String, completion: @escaping (Int) -> Void) {
-        let target = focusedElement()
-        let before = target.flatMap { textBeforeCursor(in: $0) }
-        let adapted = adapt(text, before: before, typedHereLast: isSame(target, lastTarget))
-        lastTarget = target
+    static func matches(_ target: Target, _ current: Target) -> Bool {
+        guard let app = target.app, app == current.app else { return false }
+        // An unknown field is not a mismatch. Known fields must match, even during fast delivery.
+        if let original = target.element, let focused = current.element { return isSame(original, focused) }
+        return true
+    }
+
+    static func insert(_ text: String, raw: String, target: Target, cancellation: OperationCancellation,
+                       completion: @escaping (Result) -> Void) {
         queue.async {
-            let start = Date()
-            type(adapted)
-            let ms = Int(Date().timeIntervalSince(start) * 1000)
-            DispatchQueue.main.async { completion(ms) }
+            let result = perform(text, raw: raw, target: target, cancellation: cancellation,
+                                 currentTarget: captureTarget, readState: { target.element.flatMap(readState) },
+                                 context: { target.element.flatMap(cursorContext) }, post: post)
+            DispatchQueue.main.async { completion(result) }
         }
     }
 
-    /// Up to 24 characters before the insertion point. "" at the start of the field; nil when the app does not expose them.
-    private static func textBeforeCursor(in element: AXUIElement) -> String? {
-        var rangeValue: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeValue) == .success,
-              let rangeValue, CFGetTypeID(rangeValue) == AXValueGetTypeID() else { return nil }
-        var selection = CFRange()
-        guard AXValueGetValue(rangeValue as! AXValue, .cfRange, &selection) else { return nil }
-        if selection.location <= 0 { return "" }
-        var before = CFRange(location: max(0, selection.location - 24), length: min(24, selection.location))
-        if let rangeArgument = AXValueCreate(.cfRange, &before) {
-            var text: CFTypeRef?
-            if AXUIElementCopyParameterizedAttributeValue(element, kAXStringForRangeParameterizedAttribute as CFString,
-                                                         rangeArgument, &text) == .success, let string = text as? String {
-                return string
-            }
+    /// The delivery boundary also accepts controlled readers and an event sink for isolated harness checks.
+    static func perform(_ text: String, raw: String, target: Target, cancellation: OperationCancellation,
+                        currentTarget: () -> Target, readState: () -> FieldState?,
+                        context: () -> (before: String?, after: String?)?, post: ([UniChar], Bool) -> Bool) -> Result {
+        let start = Monotonic.now
+        var postedMs: Int?
+        var postedAt: Double?
+        var postedUnits = 0
+        var verificationStart = Monotonic.now
+        func result(_ outcome: Outcome, _ snapshot: Snapshot? = nil) -> Result {
+            Result(outcome: outcome, postedMs: postedMs, postedAt: postedAt,
+                   verifiedAt: outcome == .verified ? Monotonic.now : nil, postedUnits: postedUnits,
+                   verifiedMs: outcome == .verified ? Monotonic.milliseconds(since: start) : nil,
+                   verificationMs: postedMs == nil ? 0 : Monotonic.milliseconds(since: verificationStart), snapshot: snapshot)
         }
-        // Fallback: slice the whole value. Accessibility ranges count UTF-16 code units.
+        func validationFailure() -> Outcome? {
+            let current = currentTarget()
+            guard target.app != nil, current.app != nil else { return .unavailable }
+            return matches(target, current) ? nil : .targetChanged
+        }
+        guard !cancellation.isCancelled else { return result(.cancelled) }
+        if let failure = validationFailure() { return result(failure) }
+        let before = readState()
+        let surroundings = before.map { Self.context(in: $0) } ?? context()
+        let payload = adapt(text, before: surroundings?.before, after: surroundings?.after)
+        let expected = before.flatMap { replacing($0, with: payload) }
+        let units = Array(payload.utf16)
+        var offset = 0
+        while offset < units.count {
+            guard !cancellation.isCancelled else { return result(.cancelled) }
+            if let failure = validationFailure() { return result(failure) }
+            var end = min(offset + 64, units.count)
+            if end < units.count, UTF16.isLeadSurrogate(units[end - 1]) { end -= 1 }
+            let chunk = Array(units[offset..<end])
+            guard post(chunk, true) else { return result(.eventFailed) }
+            postedUnits += chunk.count
+            // Always release a posted key-down, even if cancellation arrives between the pair.
+            guard post(chunk, false) else { return result(.eventFailed) }
+            offset = end
+            if offset < units.count { usleep(2000) }
+        }
+        postedAt = Monotonic.now
+        postedMs = Monotonic.milliseconds(since: start)
+        verificationStart = Monotonic.now
+        guard let before, let expected else { return result(.unavailable) }
+        var observed: FieldState?
+        repeat {
+            guard !cancellation.isCancelled else { return result(.cancelled) }
+            if let failure = validationFailure() { return result(failure) }
+            observed = readState()
+            if observed == expected {
+                let snapshot: Snapshot?
+                if before.selection.length == 0, target.element != nil, target.app?.launched != nil {
+                    snapshot = Snapshot(target: target, state: expected,
+                                        range: NSRange(location: before.selection.location, length: payload.utf16.count),
+                                        rawReplacement: adapt(raw, before: surroundings?.before, after: surroundings?.after),
+                                        created: Monotonic.now)
+                } else { snapshot = nil }
+                return result(.verified, snapshot)
+            }
+            if observed == nil { return result(.unavailable) }
+            if Monotonic.now - verificationStart >= verificationSeconds { break }
+            usleep(20_000)
+        } while true
+        return result(observed == before ? .unchanged : .unexpected)
+    }
+
+    static func replacing(_ state: FieldState, with text: String) -> FieldState? {
+        let value = state.value as NSString
+        guard valid(state.selection, length: value.length) else { return nil }
+        return FieldState(value: value.replacingCharacters(in: state.selection, with: text),
+                          selection: NSRange(location: state.selection.location + text.utf16.count, length: 0))
+    }
+
+    private static func valid(_ range: NSRange, length: Int) -> Bool {
+        range.location >= 0 && range.length >= 0 && range.location <= length && range.length <= length - range.location
+    }
+
+    static func readState(in element: AXUIElement) -> FieldState? {
+        guard let selection = selection(in: element) else { return nil }
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &value) == .success,
-              let string = value as? String else { return nil }
-        let units = Array(string.utf16)
-        guard before.location + before.length <= units.count else { return nil }
-        return String(utf16CodeUnits: Array(units[before.location..<(before.location + before.length)]), count: before.length)
+              let string = value as? String, (string as NSString).length <= maximumSnapshotUnits,
+              valid(selection, length: (string as NSString).length) else { return nil }
+        return FieldState(value: string, selection: selection)
     }
 
-    static func adapt(_ text: String, before: String?, typedHereLast: Bool) -> String {
-        guard let first = text.first else { return text }
-        guard let before else {
-            // The app hides its text. After our own dictation in the same field, the cursor is right after its last character.
-            return typedHereLast ? " " + text : text
+    private static func selection(in element: AXUIElement) -> NSRange? {
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &value) == .success,
+              let value, CFGetTypeID(value) == AXValueGetTypeID() else { return nil }
+        var range = CFRange()
+        guard AXValueGetValue(value as! AXValue, .cfRange, &range), range.location >= 0, range.length >= 0 else { return nil }
+        return NSRange(location: range.location, length: range.length)
+    }
+
+    private static func context(in state: FieldState) -> (before: String?, after: String?) {
+        let value = state.value as NSString
+        return (value.substring(with: NSRange(location: max(0, state.selection.location - 24), length: min(24, state.selection.location))),
+                value.substring(with: NSRange(location: NSMaxRange(state.selection), length: min(2, value.length - NSMaxRange(state.selection)))))
+    }
+
+    private static func cursorContext(in element: AXUIElement) -> (before: String?, after: String?)? {
+        guard let range = selection(in: element), range.location <= Int.max - range.length else { return nil }
+        let before = NSRange(location: max(0, range.location - 24), length: min(24, range.location))
+        let after = NSRange(location: NSMaxRange(range), length: 2)
+        return (slice(before, in: element), slice(after, in: element))
+    }
+
+    private static func slice(_ range: NSRange, in element: AXUIElement) -> String? {
+        if range.length == 0 { return "" }
+        var cfRange = CFRange(location: range.location, length: range.length)
+        if let argument = AXValueCreate(.cfRange, &cfRange) {
+            var text: CFTypeRef?
+            if AXUIElementCopyParameterizedAttributeValue(element, kAXStringForRangeParameterizedAttribute as CFString,
+                                                         argument, &text) == .success, let string = text as? String { return string }
         }
-        guard let last = before.last else { return text }  // Start of the field.
-        let needsSpace = !last.isWhitespace && !"([{\"'“‘/-".contains(last) && !first.isPunctuation
-        let trimmed = before.trimmingCharacters(in: .whitespaces)
-        let sentenceStart = trimmed.isEmpty || trimmed.last.map { ".!?:\n".contains($0) } == true
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &value) == .success,
+              let string = value as? NSString, range.location <= string.length else { return nil }
+        // NSString slices UTF-16 directly, without allocating a whole-document code-unit array.
+        return string.substring(with: NSRange(location: range.location, length: min(range.length, string.length - range.location)))
+    }
+
+    static func adapt(_ text: String, before: String?, after: String?) -> String {
+        guard let first = text.first, let last = text.last else { return text }
         var result = text
-        if !sentenceStart { result = lowercasingFirstWord(result) }
-        return needsSpace ? " " + result : result
+        if let previous = before?.last, !previous.isWhitespace, !"([{\"'“‘/-".contains(previous), !first.isPunctuation {
+            result = " " + result
+        }
+        if let next = after?.first, !next.isWhitespace, !next.isPunctuation, !last.isWhitespace,
+           !"([{\"'“‘/-".contains(last) { result += " " }
+        return result
     }
 
-    /// "And then" -> "and then" in the middle of a sentence. Only common words change, so names keep their capital.
-    private static func lowercasingFirstWord(_ text: String) -> String {
-        let word = text.prefix { $0.isLetter || $0 == "'" || $0 == "’" }
-        guard word.count > 0, word != "I", !word.hasPrefix("I'"), !word.hasPrefix("I’"),
-              word.dropFirst().allSatisfy({ !$0.isUppercase }), commonWords.contains(word.lowercased()) else { return text }
-        return text.prefix(1).lowercased() + text.dropFirst()
+    private static func post(_ units: [UniChar], keyDown: Bool) -> Bool {
+        guard let event = CGEvent(keyboardEventSource: CGEventSource(stateID: .hidSystemState), virtualKey: 0, keyDown: keyDown) else { return false }
+        event.flags = []
+        event.setIntegerValueField(.eventSourceUserData, value: dictateEventMarker)
+        units.withUnsafeBufferPointer { event.keyboardSetUnicodeString(stringLength: units.count, unicodeString: $0.baseAddress) }
+        event.post(tap: .cghidEventTap)
+        return true
     }
 
-    private static func type(_ text: String) {
-        let units = Array(text.utf16)
-        let source = CGEventSource(stateID: .hidSystemState)
-        var start = 0
-        while start < units.count {
-            var end = min(start + 64, units.count)
-            if end < units.count, UTF16.isLeadSurrogate(units[end - 1]) { end -= 1 }  // Keep surrogate pairs together.
-            let chunk = Array(units[start..<end])
-            for keyDown in [true, false] {
-                guard let event = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: keyDown) else { continue }
-                event.flags = []  // Ignore modifiers the user may still hold, such as fn.
-                chunk.withUnsafeBufferPointer { event.keyboardSetUnicodeString(stringLength: chunk.count, unicodeString: $0.baseAddress) }
-                event.post(tap: .cghidEventTap)
-            }
-            start = end
-            if start < units.count { usleep(2000) }  // Some apps drop characters when events arrive too fast.
+    enum MutationOutcome: String { case noWrite, uncertain, verified }
+
+    static func canCorrect(_ snapshot: Snapshot, current: Target, state: FieldState?) -> Bool {
+        Monotonic.now - snapshot.created <= correctionLifetime && matches(snapshot.target, current)
+            && isSame(snapshot.target.element, current.element) && state == snapshot.state
+    }
+
+    static func correct(_ snapshot: Snapshot, restoreRaw: Bool, cancellation: OperationCancellation,
+                        completion: @escaping (MutationOutcome) -> Void) {
+        queue.async {
+            let outcome = mutate(snapshot, restoreRaw: restoreRaw, cancellation: cancellation)
+            DispatchQueue.main.async { completion(outcome) }
         }
     }
 
-    private static let commonWords: Set<String> = [
-        "a", "about", "actually", "after", "again", "all", "also", "although", "an", "and", "another", "any", "are", "as", "at",
-        "be", "because", "been", "before", "both", "but", "by", "can", "could", "did", "do", "does", "each", "even", "every",
-        "for", "from", "get", "go", "going", "got", "had", "has", "have", "he", "her", "here", "his", "how", "if", "in", "into",
-        "is", "it", "it's", "its", "just", "know", "let", "let's", "like", "make", "maybe", "might", "more", "most", "must", "my",
-        "need", "no", "not", "now", "of", "okay", "on", "one", "only", "or", "other", "our", "please", "really", "see", "she",
-        "should", "since", "so", "some", "still", "such", "than", "thanks", "that", "the", "their", "them", "then", "there",
-        "these", "they", "think", "this", "those", "though", "to", "too", "two", "until", "us", "use", "very", "want", "was",
-        "we", "well", "were", "what", "when", "where", "which", "while", "who", "why", "will", "with", "would", "yes", "you",
-        "your",
-    ]
+    private static func mutate(_ snapshot: Snapshot, restoreRaw: Bool, cancellation: OperationCancellation) -> MutationOutcome {
+        guard let element = snapshot.target.element else { return .noWrite }
+        return performCorrection(snapshot, restoreRaw: restoreRaw, cancellation: cancellation,
+                                 currentTarget: captureTarget, readState: { readState(in: element) },
+                                 writable: {
+            for attribute in [kAXSelectedTextRangeAttribute, kAXSelectedTextAttribute] {
+                var settable: DarwinBoolean = false
+                guard AXUIElementIsAttributeSettable(element, attribute as CFString, &settable) == .success, settable.boolValue else { return false }
+            }
+            return true
+        }, select: { setSelection($0, in: element) }, write: {
+            AXUIElementSetAttributeValue(element, kAXSelectedTextAttribute as CFString, $0 as CFString) == .success
+        })
+    }
+
+    static func performCorrection(_ snapshot: Snapshot, restoreRaw: Bool, cancellation: OperationCancellation,
+                                  currentTarget: () -> Target, readState: () -> FieldState?, writable: () -> Bool,
+                                  select: (NSRange) -> Bool, write: (String) -> Bool) -> MutationOutcome {
+        guard !cancellation.isCancelled, canCorrect(snapshot, current: currentTarget(), state: readState()),
+              writable() else { return .noWrite }
+        func ownsField() -> Bool {
+            let current = currentTarget()
+            return matches(snapshot.target, current) && isSame(snapshot.target.element, current.element)
+        }
+        let replacement = restoreRaw ? snapshot.rawReplacement : ""
+        let selected = FieldState(value: snapshot.state.value, selection: snapshot.range)
+        guard let expected = replacing(selected, with: replacement), select(snapshot.range) else { return .noWrite }
+        guard !cancellation.isCancelled, ownsField(), readState() == selected else {
+            // Restore only our selection, when the field still has exactly the state we selected.
+            if ownsField(), readState() == selected { _ = select(snapshot.state.selection) }
+            return .noWrite
+        }
+        // Any value-write attempt consumes the snapshot, including an unacknowledged write.
+        guard write(replacement) else { return .uncertain }
+        let deadline = Monotonic.now + verificationSeconds
+        repeat {
+            guard !cancellation.isCancelled, ownsField() else { return .uncertain }
+            if readState() == expected { return .verified }
+            if Monotonic.now >= deadline { return .uncertain }
+            usleep(20_000)
+        } while true
+    }
+
+    private static func setSelection(_ range: NSRange, in element: AXUIElement) -> Bool {
+        var value = CFRange(location: range.location, length: range.length)
+        guard let argument = AXValueCreate(.cfRange, &value) else { return false }
+        return AXUIElementSetAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, argument) == .success
+    }
 }
