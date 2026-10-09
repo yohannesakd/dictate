@@ -32,7 +32,7 @@ Choose the model in Settings (the gear button, or ⌘,), under Cleanup:
 - DeepSeek (`deepseek-chat`): about 1 s. Save a DeepSeek API key in Dictate. Dictate keeps it in the Keychain.
 - ChatGPT (`gpt-6-luna`): about 1.5 s. Click "Sign In with ChatGPT". Dictate uses the same sign-in flow as the Codex CLI and Pi, and keeps its own tokens in the Keychain. The endpoint (`chatgpt.com/backend-api/codex/responses`) is not a public API, so OpenAI can change it. Usage counts against your plan limits.
 
-Dictate types the rule result when the model does not reply within 3 s, or when the reply contains a word that is not in the transcript or the dictionary. That check stops answers to dictated questions.
+Dictate uses the rule result when the model exceeds 3 seconds or fails the ordered-edit guard. The guard permits matching dictionary replacements and limited removals. It rejects substantive omissions, reordered words, and changed numeric notation. Unrecognized spoken corrections can remain in the result. These checks reduce mistakes; they do not prove meaning preservation.
 
 Every dictation is saved in `~/Library/Application Support/Dictate/transcripts.jsonl`: the raw transcript, the rule result, the model reply, the inserted text, and the app.
 

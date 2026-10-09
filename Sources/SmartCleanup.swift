@@ -173,32 +173,49 @@ final class SmartCleanup: @unchecked Sendable {
         return contains(raw, any: corrections + ambiguousFillers + heard)
     }
 
-    /// Rejects a reply that is not a cleanup of the transcript, such as an answer to a dictated question.
-    /// A cleanup only removes words, fixes punctuation, and applies dictionary terms. So every word of the reply must
-    /// come from the transcript or a dictionary term. A number in digits must spell out to transcript words
-    /// ("25" for "twenty five"), so "4" cannot answer "what is two plus two". The reply grows only by the extra words
-    /// of dictionary terms. Without a self-correction, it keeps at least half of the words.
+    /// Accepts ordered edits, with dictionary replacements at their matching source positions.
+    /// Substantive omissions and unrecognized corrections keep the deterministic result.
     static func isCleanup(_ reply: String, of raw: String, entries: [DictionaryEntry]) -> Bool {
-        let output = words(reply), source = words(raw)
-        let terms = entries.filter { !words($0.heard).isEmpty }
-        let known = Set(source + terms.flatMap { words($0.written) })
-        let growth = terms.reduce(0) { $0 + max(0, words($1.written).count - words($1.heard).count) }
-        func fromTranscript(_ word: String) -> Bool {
-            if known.contains(word) { return true }
-            guard word.allSatisfy(\.isNumber), let value = Int(word),
-                  let spelled = spellOut.string(from: NSNumber(value: value)) else { return false }
-            return words(spelled).allSatisfy { known.contains($0) || $0 == "and" }
+        let baseline = TextCleanup.clean(raw, rules: .init())
+        let source = tokens(baseline), output = tokens(reply)
+        guard !output.isEmpty else { return false }
+        let terms = entries.map { (heard: tokens($0.heard), written: tokens($0.written)) }
+            .filter { !$0.heard.isEmpty && !$0.written.isEmpty }
+        // Each occurrence grants its own expansion. Unmatched entries grant nothing.
+        let growth = source.indices.reduce(0) { total, i in
+            total + (terms.filter { matches($0.heard, in: source, at: i) }
+                .map { max(0, $0.written.count - $0.heard.count) }.max() ?? 0)
         }
-        guard !output.isEmpty, output.count <= source.count + growth, output.allSatisfy(fromTranscript) else { return false }
-        return output.count * 2 >= source.count || contains(raw, any: corrections)
+        guard output.count <= source.count + growth else { return false }
+        var positions = [Set<Int>](repeating: [], count: source.count + 1)
+        positions[0].insert(0)
+        for i in source.indices {
+            for j in positions[i] {
+                if j < output.count, source[i] == output[j] { positions[i + 1].insert(j + 1) }
+                // Removing a correction marker grants no permission to remove its subject or value.
+                if source[i] == "actually" { positions[i + 1].insert(j) }
+                for term in terms where matches(term.heard, in: source, at: i)
+                    && matches(term.written, in: output, at: j) {
+                    positions[i + term.heard.count].insert(j + term.written.count)
+                }
+            }
+        }
+        return positions[source.count].contains(output.count)
     }
 
-    private static let spellOut: NumberFormatter = {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .spellOut
-        formatter.locale = Locale(identifier: "en_US")
-        return formatter
-    }()
+    private static func matches(_ phrase: [String], in words: [String], at index: Int) -> Bool {
+        index + phrase.count <= words.count && words[index..<(index + phrase.count)].elementsEqual(phrase)
+    }
+
+    /// Preserve numeric signs, decimal notation, contractions, and mathematical operators.
+    private static func tokens(_ text: String) -> [String] {
+        let value = text.lowercased().replacingOccurrences(of: "’", with: "'") as NSString
+        return tokenPattern.matches(in: value as String, range: NSRange(location: 0, length: value.length))
+            .map { value.substring(with: $0.range) }
+    }
+
+    private static let tokenPattern = try! NSRegularExpression(
+        pattern: #"[+−-]?\d+(?:[.,]\d+)*%?|[\p{L}\p{N}]+(?:'[\p{L}]+)*|[+−=<>/$€£%\-]"#)
 
     private static func words(_ text: String) -> [String] {
         text.lowercased().split { !$0.isLetter && !$0.isNumber }.map(String.init)

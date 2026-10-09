@@ -1,5 +1,5 @@
 // Rule-based cleanup of a transcript: filler words, stutters, and "scratch that". Each rule can be turned off.
-// It changes only what rules can decide safely. Corrections such as "at two, actually three" need a language model.
+// Ambiguous corrections remain in the transcript unless smart cleanup accepts them.
 
 import Foundation
 
@@ -33,7 +33,7 @@ enum TextCleanup {
     /// The clause before "scratch that" is removed back to the previous sentence end.
     private static func applyScratchThat(_ text: String) -> String {
         var result = text
-        while let marker = result.range(of: #"[,;.]?\s*\bscratch that\b[,;.]?\s*"#, options: [.regularExpression, .caseInsensitive]) {
+        while let marker = result.range(of: #"(?:^|[,;.!?]\s+)scratch that(?:[,;.!?](?:\s+|$)|$)"#, options: [.regularExpression, .caseInsensitive]) {
             let before = result[..<marker.lowerBound]
             let keepEnd = before.lastIndex(where: { ".!?".contains($0) }).map { before.index(after: $0) } ?? before.startIndex
             result = String(result[..<keepEnd]) + " " + capitalizeFirst(String(result[marker.upperBound...]))
@@ -46,7 +46,7 @@ enum TextCleanup {
         var out: [String] = []
         var capitalizeNext = false
         for word in words {
-            guard fillers.contains(core(word)) else {
+            guard fillers.contains(core(word)), word.trimmingCharacters(in: .punctuationCharacters) != "ER" else {
                 out.append(capitalizeNext ? capitalizeFirst(word) : word)
                 capitalizeNext = false
                 continue
