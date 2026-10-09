@@ -67,12 +67,12 @@ enum TranscriptLog { static func write(_ fields: [String: Any?]) {} }
 final class DeepSeekClient: CleanupClient {
     var hasKey: Bool { false }
     func setKey(_ key: String?) throws {}
-    func complete(instructions: String, message: String) async throws -> String { throw CancellationError() }
+    func complete(instructions: String, message: String, timing: RequestTiming) async throws -> String { throw CancellationError() }
     func warm() {}
 }
 final class ChatGPTClient: CleanupClient {
     let auth = Auth()
-    func complete(instructions: String, message: String) async throws -> String { throw CancellationError() }
+    func complete(instructions: String, message: String, timing: RequestTiming) async throws -> String { throw CancellationError() }
     func warm() {}
     final class Auth {
         var isSignedIn: Bool { false }

@@ -35,6 +35,31 @@ struct Stopwatch {
     var cpuMs: Int { Int((ProcessStats.cpuSeconds() - cpu) * 1000) }
 }
 
+/// The timeline of one dictation. Each mark is a time in seconds on the monotonic clock; the log shows it as
+/// milliseconds since the fn press (or the press that started hands-free mode).
+struct Trace {
+    let pressed: Double
+    private var marks: [String: Double] = [:]
+    var snapshots = 0
+    var speculativeRequests = 0
+
+    init(pressed: Double = Monotonic.now) { self.pressed = pressed }
+
+    /// Keeps the first time of each mark.
+    mutating func mark(_ name: String, at time: Double = Monotonic.now) {
+        if marks[name] == nil { marks[name] = time }
+    }
+
+    /// Moves a mark forward, for example the end of speech.
+    mutating func update(_ name: String, at time: Double = Monotonic.now) { marks[name] = time }
+
+    var fields: [String: Any] {
+        var fields: [String: Any] = ["snapshots": snapshots, "speculative_requests": speculativeRequests]
+        for (name, time) in marks { fields["at_\(name)_ms"] = Int(((time - pressed) * 1000).rounded()) }
+        return fields
+    }
+}
+
 enum MetricsLog {
     static let url = FileManager.default.homeDirectoryForCurrentUser
         .appendingPathComponent("Library/Logs/Dictate/metrics.jsonl")
