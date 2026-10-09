@@ -61,7 +61,7 @@ enum PersonalDictionary {
         return (replacements, regex)
     }
 
-    private static func normalize(_ phrase: String) -> String {
+    static func normalize(_ phrase: String) -> String {
         phrase.lowercased()
             .replacingOccurrences(of: ",", with: " ")
             .split(whereSeparator: \.isWhitespace)

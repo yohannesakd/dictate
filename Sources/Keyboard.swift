@@ -11,6 +11,7 @@ final class KeyboardMonitor {
     var onOtherKeyWithFn: () -> Void = {}
     var onEscape: () -> Void = {}
     var onPasteLast: () -> Void = {}
+    var onCaptureWord: () -> Void = {}
     /// macOS disabled the tap for a moment, so key releases may have been missed.
     var onTapReset: () -> Void = {}
     /// Esc is consumed only while dictation is active.
@@ -79,6 +80,10 @@ final class KeyboardMonitor {
             let chord = event.flags.intersection([.maskCommand, .maskControl, .maskAlternate, .maskShift])
             if keyCode == kVK_ANSI_V, chord == [.maskCommand, .maskControl] {
                 if !isRepeat { DispatchQueue.main.async(execute: onPasteLast) }
+                return nil
+            }
+            if keyCode == kVK_ANSI_E, chord == [.maskCommand, .maskControl] {
+                if !isRepeat { DispatchQueue.main.async(execute: onCaptureWord) }
                 return nil
             }
             if fnDown { DispatchQueue.main.async(execute: onOtherKeyWithFn) }
