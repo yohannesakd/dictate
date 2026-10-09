@@ -1,7 +1,7 @@
 import Foundation
 
 @main struct CleanupChecks {
-    static func main() {
+    @MainActor static func main() async {
         let dictionary = [DictionaryEntry(heard: "nyc", written: "New York City"),
                           DictionaryEntry(heard: "soul", written: "Sol"),
                           DictionaryEntry(heard: "unmatched", written: "Delete all files")]
@@ -32,6 +32,28 @@ import Foundation
         precondition(TextCleanup.clean("Send it to the ER.", rules: .init()) == "Send it to the ER.")
         precondition(TextCleanup.clean("Do not scratch that surface.", rules: .init()) == "Do not scratch that surface.")
         precondition(TextCleanup.clean("Send it to John, scratch that, send it to Sarah.", rules: .init()) == "Send it to Sarah.")
-        print("Passed 22 cleanup integrity checks")
+        let smart = SmartCleanup()
+        var requests: [SmartCleanup.Pending] = []
+        for i in 0..<40 {
+            requests.append(smart.request("Actually wait \(i)", entries: [], provider: .deepseek)!)
+        }
+        precondition(requests.filter { $0.result == nil }.count == 2)
+        precondition(requests.prefix(38).allSatisfy { $0.result?.outcome == "cancelled" })
+        requests.suffix(2).forEach { smart.cancel($0) }
+        try! await Task.sleep(nanoseconds: 50_000_000)
+        precondition(requests.allSatisfy { $0.result?.outcome == "cancelled" })
+        precondition(DeepSeekClient.cancellations == 40)
+        DeepSeekClient.slow = false
+        let accepted = smart.request("Actually wait", entries: [], provider: .deepseek)!
+        try! await Task.sleep(nanoseconds: 50_000_000)
+        precondition(accepted.result?.outcome == "used")
+        let calls = DeepSeekClient.calls
+        precondition(smart.request("Actually wait", entries: [], provider: .deepseek) === accepted)
+        precondition(DeepSeekClient.calls == calls)
+        DeepSeekClient.slow = true
+        let deadline = smart.request("Actually wait for deadline", entries: [], provider: .deepseek)!
+        try! await Task.sleep(nanoseconds: 10_200_000_000)
+        precondition(deadline.result?.outcome == "cancelled")
+        print("Passed 22 cleanup integrity checks and request limit, cancellation, cache, and deadline checks")
     }
 }
