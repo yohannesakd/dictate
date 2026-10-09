@@ -11,14 +11,10 @@ struct DictionaryEntry: Codable, Identifiable, Equatable {
 
 enum PersonalDictionary {
     static func apply(_ text: String, entries: [DictionaryEntry]) -> String {
-        let (replacements, regex) = prepare(entries)
-        guard let regex else { return text }
-
         var result = text
-        let matches = regex.matches(in: text, range: NSRange(text.startIndex..., in: text))
-        for match in matches.reversed() {
-            guard let range = Range(match.range, in: result),
-                  var replacement = replacements[normalize(String(result[range]))] else { continue }
+        for match in replacements(in: text, entries: entries).reversed() {
+            guard let range = Range(match.range, in: result) else { continue }
+            var replacement = match.written
             // "Ask soul" at a sentence start keeps its capital: "Ask Sol". A written form with its own capitals ("iPhone") wins.
             let firstWord = replacement.prefix { !$0.isWhitespace }
             if result[range].first?.isUppercase == true, firstWord.allSatisfy({ !$0.isUppercase }) {
@@ -27,6 +23,17 @@ enum PersonalDictionary {
             result.replaceSubrange(range, with: replacement)
         }
         return result
+    }
+
+    /// Supplies the same literal, longest-match locations to deterministic cleanup and the model guard.
+    static func replacements(in text: String, entries: [DictionaryEntry]) -> [(range: NSRange, written: String)] {
+        let (replacements, regex) = prepare(entries)
+        guard let regex else { return [] }
+        let value = text as NSString
+        return regex.matches(in: text, range: NSRange(location: 0, length: value.length)).compactMap { match in
+            guard let written = replacements[normalize(value.substring(with: match.range))] else { return nil }
+            return (match.range, written)
+        }
     }
 
     /// Normalizing, sorting, and compiling take up to about 2 ms, so they run again only when the entries change.

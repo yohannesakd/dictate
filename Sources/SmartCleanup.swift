@@ -85,12 +85,10 @@ final class SmartCleanup: @unchecked Sendable {
         if let existing = requests[key] { return existing }
         let active = requests.values.filter { $0.result == nil }
         if active.count >= activeLimit, let oldest = active.min(by: { $0.started < $1.started }) { cancel(oldest) }
-        let cached = requests.values.filter { $0.result != nil }
-        if cached.count >= cacheLimit, let oldest = cached.min(by: { $0.started < $1.started }) { requests[oldest.key] = nil }
         let pending = Pending(key: key)
         requests[key] = pending
         let client = client(provider)
-        pending.task = Task {
+        pending.task = Task { @MainActor in
             let result: Result
             do {
                 let answer = try await client.complete(instructions: Self.instructions, message: message)
@@ -107,6 +105,8 @@ final class SmartCleanup: @unchecked Sendable {
                 guard self.requests[key] === pending, pending.result == nil else { return }
                 if result.text == nil { self.requests[key] = nil }
                 pending.resolve(result)
+                let cached = self.requests.values.filter { $0.result?.text != nil }.sorted { $0.started < $1.started }
+                for old in cached.dropLast(self.cacheLimit) { self.requests[old.key] = nil }
             }
         }
         DispatchQueue.main.asyncAfter(deadline: .now() + requestLifetime) { [weak self, weak pending] in
@@ -190,24 +190,30 @@ final class SmartCleanup: @unchecked Sendable {
         let baseline = TextCleanup.clean(raw, rules: .init())
         let source = tokens(baseline), output = tokens(reply)
         guard !output.isEmpty else { return false }
-        let terms = entries.map { (heard: tokens($0.heard), written: tokens($0.written)) }
-            .filter { !$0.heard.isEmpty && !$0.written.isEmpty }
-        // Each occurrence grants its own expansion. Unmatched entries grant nothing.
-        let growth = source.indices.reduce(0) { total, i in
-            total + (terms.filter { matches($0.heard, in: source, at: i) }
-                .map { max(0, $0.written.count - $0.heard.count) }.max() ?? 0)
+        let value = baseline as NSString
+        let ranges = tokenPattern.matches(in: baseline, range: NSRange(location: 0, length: value.length)).map(\.range)
+        var terms: [Int: (count: Int, written: [String])] = [:]
+        var cursor = 0
+        for replacement in PersonalDictionary.replacements(in: baseline, entries: entries) {
+            let end = NSMaxRange(replacement.range)
+            while cursor < ranges.count, NSMaxRange(ranges[cursor]) <= replacement.range.location { cursor += 1 }
+            let start = cursor
+            while cursor < ranges.count, ranges[cursor].location < end { cursor += 1 }
+            let written = tokens(replacement.written)
+            if cursor > start, !written.isEmpty { terms[start] = (cursor - start, written) }
         }
+        // Each literal occurrence grants its own expansion. Unmatched entries grant nothing.
+        let growth = terms.values.reduce(0) { $0 + max(0, $1.written.count - $1.count) }
         guard output.count <= source.count + growth else { return false }
         var positions = [Set<Int>](repeating: [], count: source.count + 1)
         positions[0].insert(0)
         for i in source.indices {
             for j in positions[i] {
                 if j < output.count, source[i] == output[j] { positions[i + 1].insert(j + 1) }
-                // Removing a correction marker grants no permission to remove its subject or value.
-                if source[i] == "actually" { positions[i + 1].insert(j) }
-                for term in terms where matches(term.heard, in: source, at: i)
-                    && matches(term.written, in: output, at: j) {
-                    positions[i + term.heard.count].insert(j + term.written.count)
+                // A leading discourse marker can be omitted. Keep correction markers between values.
+                if i == 0, source[i] == "actually" { positions[i + 1].insert(j) }
+                if let term = terms[i], matches(term.written, in: output, at: j) {
+                    positions[i + term.count].insert(j + term.written.count)
                 }
             }
         }
@@ -220,13 +226,13 @@ final class SmartCleanup: @unchecked Sendable {
 
     /// Preserve numeric signs, decimal notation, contractions, and mathematical operators.
     private static func tokens(_ text: String) -> [String] {
-        let value = text.lowercased().replacingOccurrences(of: "’", with: "'") as NSString
+        let value = text as NSString
         return tokenPattern.matches(in: value as String, range: NSRange(location: 0, length: value.length))
-            .map { value.substring(with: $0.range) }
+            .map { value.substring(with: $0.range).lowercased().replacingOccurrences(of: "’", with: "'") }
     }
 
     private static let tokenPattern = try! NSRegularExpression(
-        pattern: #"[+−-]?\d+(?:[.,]\d+)*%?|[\p{L}\p{N}]+(?:'[\p{L}]+)*|[+−=<>/$€£%\-]"#)
+        pattern: #"[+−-]?(?:\d+(?:[.,]\d+)*|[.,]\d+)%?|[\p{L}\p{N}]+(?:['’][\p{L}]+)*|[+−=<>/$€£%\-*^&|×÷]"#)
 
     private static func words(_ text: String) -> [String] {
         text.lowercased().split { !$0.isLetter && !$0.isNumber }.map(String.init)
