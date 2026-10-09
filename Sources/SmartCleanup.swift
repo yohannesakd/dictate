@@ -199,8 +199,14 @@ final class SmartCleanup: @unchecked Sendable {
             while cursor < ranges.count, NSMaxRange(ranges[cursor]) <= replacement.range.location { cursor += 1 }
             let start = cursor
             while cursor < ranges.count, ranges[cursor].location < end { cursor += 1 }
-            let written = tokens(replacement.written)
-            if cursor > start, !written.isEmpty { terms[start] = (cursor - start, written) }
+            guard cursor > start else { continue }
+            // A literal match can cover only part of a signed number or percentage token.
+            let lower = min(ranges[start].location, replacement.range.location)
+            let upper = max(NSMaxRange(ranges[cursor - 1]), end)
+            let fragment = value.substring(with: NSRange(location: lower, length: upper - lower)) as NSString
+            let localRange = NSRange(location: replacement.range.location - lower, length: replacement.range.length)
+            let written = tokens(fragment.replacingCharacters(in: localRange, with: replacement.written))
+            if !written.isEmpty { terms[start] = (cursor - start, written) }
         }
         // Each literal occurrence grants its own expansion. Unmatched entries grant nothing.
         let growth = terms.values.reduce(0) { $0 + max(0, $1.written.count - $1.count) }

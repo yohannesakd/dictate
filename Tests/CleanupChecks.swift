@@ -45,6 +45,13 @@ import Foundation
         let duplicate = [DictionaryEntry(heard: "nyc", written: "old"), DictionaryEntry(heard: "nyc", written: "new")]
         precondition(!SmartCleanup.isCleanup("old", of: "nyc", entries: duplicate))
         precondition(SmartCleanup.isCleanup("new", of: "nyc", entries: duplicate))
+        let digits = [DictionaryEntry(heard: "5", written: "6")]
+        precondition(!SmartCleanup.isCleanup("6", of: "-5", entries: digits))
+        precondition(SmartCleanup.isCleanup("-6", of: "-5", entries: digits))
+        precondition(!SmartCleanup.isCleanup("6", of: "5%", entries: digits))
+        precondition(SmartCleanup.isCleanup("6%", of: "5%", entries: digits))
+        precondition(!SmartCleanup.isCleanup("6", of: "5.25", entries: digits))
+        precondition(SmartCleanup.isCleanup("6.25", of: "5.25", entries: digits))
         let smart = SmartCleanup()
         var requests: [SmartCleanup.Pending] = []
         for i in 0..<40 {
@@ -84,6 +91,6 @@ import Foundation
         let deadline = smart.request("Actually wait for deadline", entries: [], provider: .deepseek)!
         try! await Task.sleep(nanoseconds: 10_200_000_000)
         precondition(deadline.result?.outcome == "cancelled")
-        print("Passed 32 cleanup integrity checks and request limit, cancellation, cache, and deadline checks")
+        print("Passed 38 cleanup integrity checks and request limit, cancellation, cache, and deadline checks")
     }
 }
