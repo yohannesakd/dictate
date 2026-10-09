@@ -1,107 +1,86 @@
-// The main window: setup, model status, shortcuts, cleanup, dictionary, and dictation history.
+// The main window. Home shows the status, any missing setup, and the dictation history.
+// Settings holds everything else: cleanup, dictionary, general options, shortcuts, and the model.
 
 import AppKit
 import SwiftUI
 
+/// Which screen the window shows. The Settings menu item also sets it.
+final class HubNavigation: ObservableObject {
+    @Published var showsSettings = false
+}
+
 struct HubView: View {
     @ObservedObject var model: AppModel
+    @ObservedObject var navigation: HubNavigation
     let controller: DictationController
 
     var body: some View {
-        ScrollView { content }
-            .frame(minWidth: 580, minHeight: 640)
-    }
-
-    var content: some View {
-        VStack(alignment: .leading, spacing: 26) {
-            header
-            if model.needsSetup { setup }
-            section("Model") { ModelCard(status: model.modelStatus) }
-            section("Shortcuts") {
-                VStack(spacing: 0) {
-                    ShortcutRow(title: "Push to talk", note: "Hold, speak, release", keys: [["fn"]])
-                    Divider()
-                    ShortcutRow(title: "Hands-free", note: "Press again to finish", keys: [["fn", "fn"], ["fn", "Space"]])
-                    Divider()
-                    ShortcutRow(title: "Cancel", note: nil, keys: [["esc"]])
-                    Divider()
-                    ShortcutRow(title: "Insert last dictation", note: nil, keys: [["⌃", "⌘", "V"]])
-                }
-                .card()
-                VStack(spacing: 0) {
-                    SettingRow(title: "Show the flow bar when not dictating", detail: nil, isOn: $model.showIdleBar)
-                    Divider()
-                    SettingRow(title: "Open at login", detail: nil, isOn: $model.openAtLogin)
-                }
-                .card()
-            }
-            section("Cleanup") {
-                SmartCleanupCard(model: model, controller: controller)
-                Text(model.smartCleanup ? "These rules apply when a dictation does not need the model, or when the model fails." : "Rules")
-                    .font(.caption).foregroundStyle(.secondary)
-                VStack(spacing: 0) {
-                    SettingRow(title: "Remove filler words", detail: "um, uh, er, ah, hmm", isOn: $model.removeFillers)
-                    Divider()
-                    SettingRow(title: "Remove repeated words", detail: "“I I think” becomes “I think”. Only short words such as I, the, and to.",
-                               isOn: $model.removeRepeats)
-                    Divider()
-                    SettingRow(title: "“Scratch that” deletes the sentence before it", detail: "“Send it to John, scratch that, send it to Sarah” keeps only “Send it to Sarah”.",
-                               isOn: $model.scratchThat)
-                }
-                .card()
-            }
-            section("Dictionary") { DictionaryEditor(entries: $model.dictionary) }
-            section("History") {
-                history
-                HStack(spacing: 4) {
-                    Text("Every dictation is also saved on this Mac in a transcript log.")
-                    Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([TranscriptLog.url]) }
-                        .buttonStyle(.link)
-                }
-                .font(.caption).foregroundStyle(.secondary)
+        ZStack {
+            if navigation.showsSettings {
+                SettingsScreen(model: model, controller: controller) { navigation.showsSettings = false }
+                    .transition(.move(edge: .trailing))
+            } else {
+                HomeScreen(model: model, controller: controller) { navigation.showsSettings = true }
+                    .transition(.move(edge: .leading))
             }
         }
-        .padding(.horizontal, 28)
-        .padding(.top, 40)
-        .padding(.bottom, 28)
+        .animation(.easeInOut(duration: 0.2), value: navigation.showsSettings)
+        .frame(minWidth: 460, minHeight: 520)
     }
+}
 
-    private var header: some View {
-        HStack(spacing: 14) {
-            Image(nsImage: appIcon()).resizable().frame(width: 48, height: 48)
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Dictate").font(.system(size: 24, weight: .semibold))
-                Text(model.smartCleanup
-                     ? "Hold fn and speak in any app. Release to insert the text. Speech recognition runs on this Mac."
-                     : "Hold fn and speak in any app. Release to insert the text. Everything runs on this Mac.")
-                    .foregroundStyle(.secondary)
+// MARK: Home
+
+private struct HomeScreen: View {
+    @ObservedObject var model: AppModel
+    let controller: DictationController
+    let openSettings: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 12) {
+                Image(nsImage: appIcon()).resizable().frame(width: 40, height: 40)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Dictate").font(.title3.weight(.semibold))
+                    status
+                }
+                Spacer()
+                Button(action: openSettings) { Image(systemName: "gearshape").font(.system(size: 15)) }
+                    .buttonStyle(.borderless)
+                    .help("Settings")
             }
+            .padding(.horizontal, 24)
+            .padding(.top, 6)
+            .padding(.bottom, 16)
+
+            if model.needsSetup {
+                SetupList(model: model, controller: controller)
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 16)
+            }
+            if let issue = model.smartIssue, model.smartCleanup {
+                Button(action: openSettings) {
+                    Label("Smart cleanup: \(issue)", systemImage: "exclamationmark.triangle.fill")
+                        .font(.callout).foregroundStyle(.orange).multilineTextAlignment(.leading)
+                }
+                .buttonStyle(.plain)
+                .padding(.horizontal, 24)
+                .padding(.bottom, 16)
+            }
+            Divider()
+            history
         }
     }
 
-    private var setup: some View {
-        section("Finish setup") {
-            VStack(spacing: 0) {
-                if !model.micAuthorized {
-                    SetupRow(symbol: "mic.fill", title: "Microphone", detail: "Dictate listens only while you dictate.",
-                             button: "Allow", action: controller.requestMicrophone)
-                }
-                if !model.accessibilityTrusted {
-                    SetupRow(symbol: "accessibility", title: "Accessibility",
-                             detail: "Needed for the fn shortcut and to type into other apps.",
-                             button: "Open Settings", action: controller.requestAccessibility)
-                } else if !model.keyboardReady {
-                    SetupRow(symbol: "keyboard", title: "Keyboard shortcut",
-                             detail: "macOS did not start the fn key listener.",
-                             button: "Try Again", action: controller.refreshPermissions)
-                }
-                if !model.fnKeyFree {
-                    SetupRow(symbol: "globe", title: "fn key",
-                             detail: "In Keyboard settings, set “Press 🌐 key to” to “Do Nothing”.",
-                             button: "Open Keyboard", action: controller.openKeyboardSettings)
-                }
-            }
-            .card()
+    @ViewBuilder private var status: some View {
+        switch model.modelStatus {
+        case .loading:
+            Text("Loading the speech model…").foregroundStyle(.secondary)
+        case .failed(let message):
+            Text("The speech model did not load").foregroundStyle(.red).help(message)
+        case .ready:
+            Text(model.needsSetup ? "Finish the setup below to start" : "Hold fn and speak in any app")
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -109,101 +88,226 @@ struct HubView: View {
         if model.history.isEmpty {
             Text("Your dictations appear here.")
                 .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, minHeight: 60)
-                .card()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
-            VStack(spacing: 0) {
-                ForEach(Array(model.history.prefix(30).enumerated()), id: \.element.id) { index, item in
-                    if index > 0 { Divider() }
-                    HistoryRow(item: item)
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 0) {
+                    ForEach(Array(model.history.prefix(30).enumerated()), id: \.element.id) { index, item in
+                        if index > 0 { Divider().padding(.leading, 24) }
+                        HistoryRow(item: item)
+                    }
                 }
             }
-            .card()
-        }
-    }
-
-    private func section<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(title.uppercased())
-                .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(.secondary)
-            content()
         }
     }
 }
 
-private struct ModelCard: View {
-    let status: ModelStatus
+private struct SetupList: View {
+    @ObservedObject var model: AppModel
+    let controller: DictationController
+
+    var body: some View {
+        VStack(spacing: 10) {
+            if !model.micAuthorized {
+                SetupRow(symbol: "mic.fill", title: "Allow the microphone", button: "Allow",
+                         action: controller.requestMicrophone)
+            }
+            if !model.accessibilityTrusted {
+                SetupRow(symbol: "accessibility", title: "Allow Accessibility to use fn and type text",
+                         button: "Open Settings", action: controller.requestAccessibility)
+            } else if !model.keyboardReady {
+                SetupRow(symbol: "keyboard", title: "The fn key listener did not start",
+                         button: "Try Again", action: controller.refreshPermissions)
+            }
+            if !model.fnKeyFree {
+                SetupRow(symbol: "globe", title: "Set “Press 🌐 key to” to “Do Nothing”",
+                         button: "Open Keyboard", action: controller.openKeyboardSettings)
+            }
+        }
+    }
+}
+
+private struct SetupRow: View {
+    let symbol: String
+    let title: String
+    let button: String
+    let action: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: symbol).foregroundStyle(.orange).frame(width: 18)
+            Text(title)
+            Spacer()
+            Button(button, action: action)
+        }
+    }
+}
+
+private struct HistoryRow: View {
+    let item: HistoryItem
+    @State private var hovering = false
+    @State private var expanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack {
-                Text("Phonon-2").font(.system(size: 14, weight: .semibold))
+            Text(item.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 10) {
+                Text(time).foregroundStyle(.tertiary)
+                if hasDetails {
+                    Button(expanded ? "Hide original" : "Original") { expanded.toggle() }
+                        .buttonStyle(.link)
+                }
                 Spacer()
-                statusLabel
+                CopyButton(text: item.text).opacity(hovering ? 1 : 0)
             }
-            Text("English · runs on the Neural Engine on this Mac")
-                .font(.callout).foregroundStyle(.secondary)
-            Text("By Fermion Research, based on NVIDIA Parakeet TDT 0.6B v3. Model licence: CC-BY-4.0.")
-                .font(.caption).foregroundStyle(.tertiary)
+            .font(.caption)
+            if expanded {
+                if let raw = item.raw {
+                    Text(raw).font(.callout).foregroundStyle(.secondary)
+                        .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
+                }
+                if let note = item.note { Text(note).font(.caption).foregroundStyle(.orange) }
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 10)
-        .card()
+        .padding(.horizontal, 24)
+        .padding(.vertical, 12)
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+        .contextMenu {
+            Button("Copy") { copy(item.text) }
+            if let raw = item.raw { Button("Copy Original") { copy(raw) } }
+        }
     }
 
-    @ViewBuilder private var statusLabel: some View {
-        switch status {
-        case .ready:
-            Label("Ready", systemImage: "circle.fill").labelStyle(StatusLabelStyle(color: .green))
-        case .loading:
-            HStack(spacing: 5) { ProgressView().controlSize(.mini); Text("Loading").font(.caption) }
-        case .failed(let message):
-            Label("Error", systemImage: "circle.fill").labelStyle(StatusLabelStyle(color: .red)).help(message)
+    private var hasDetails: Bool { item.raw != nil || item.note != nil }
+
+    private var time: String {
+        Calendar.current.isDateInToday(item.date)
+            ? item.date.formatted(date: .omitted, time: .shortened)
+            : item.date.formatted(date: .abbreviated, time: .shortened)
+    }
+}
+
+private struct CopyButton: View {
+    let text: String
+    @State private var copied = false
+
+    var body: some View {
+        Button {
+            copy(text)
+            copied = true
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copied = false }
+        } label: {
+            Image(systemName: copied ? "checkmark" : "doc.on.doc")
+        }
+        .buttonStyle(.borderless)
+        .help("Copy")
+    }
+}
+
+private func copy(_ text: String) {
+    NSPasteboard.general.clearContents()
+    NSPasteboard.general.setString(text, forType: .string)
+}
+
+// MARK: Settings
+
+private struct SettingsScreen: View {
+    @ObservedObject var model: AppModel
+    let controller: DictationController
+    let close: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button(action: close) {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.left").font(.system(size: 13, weight: .semibold))
+                    Text("Settings").font(.title3.weight(.semibold))
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .keyboardShortcut(.cancelAction)
+            .help("Back")
+            .padding(.horizontal, 24)
+            .padding(.top, 6)
+            .padding(.bottom, 4)
+
+            Form {
+                SmartCleanupSection(model: model, controller: controller)
+                Section {
+                    Toggle("Remove filler words", isOn: $model.removeFillers)
+                    Toggle("Remove repeated words", isOn: $model.removeRepeats)
+                    Toggle("“Scratch that” deletes the sentence before it", isOn: $model.scratchThat)
+                } header: {
+                    Text("Rules")
+                } footer: {
+                    if model.smartCleanup {
+                        Text("Used when a dictation does not need the model, or when the model fails.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+                DictionarySection(entries: $model.dictionary)
+                Section("General") {
+                    Toggle("Show the bar when not dictating", isOn: $model.showIdleBar)
+                    Toggle("Open at login", isOn: $model.openAtLogin)
+                }
+                Section("Shortcuts") {
+                    ShortcutRow(title: "Push to talk", keys: [["fn"]])
+                    ShortcutRow(title: "Hands-free", keys: [["fn", "fn"], ["fn", "Space"]])
+                    ShortcutRow(title: "Cancel", keys: [["esc"]])
+                    ShortcutRow(title: "Insert last dictation", keys: [["⌃", "⌘", "V"]])
+                }
+                Section {
+                    LabeledContent("Speech model") { ModelStatusLabel(status: model.modelStatus) }
+                    LabeledContent("Transcript log") {
+                        Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([TranscriptLog.url]) }
+                    }
+                } header: {
+                    Text("About")
+                } footer: {
+                    Text("Phonon-2 by Fermion Research, based on NVIDIA Parakeet TDT 0.6B v3. Model licence: CC-BY-4.0. Speech recognition runs on this Mac.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            .formStyle(.grouped)
         }
     }
 }
 
-private struct SmartCleanupCard: View {
+private struct SmartCleanupSection: View {
     @ObservedObject var model: AppModel
     let controller: DictationController
     @State private var key = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            SettingRow(title: "Smart cleanup",
-                       detail: "A language model removes fillers by context, applies spoken corrections such as “at two, actually three”, and uses the dictionary as hints. It runs only for dictations that contain such words. Other dictations use the rules and stay on this Mac.",
-                       isOn: $model.smartCleanup)
+        Section {
+            Toggle("Smart cleanup", isOn: $model.smartCleanup)
             if model.smartCleanup {
-                Divider()
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Model")
-                        Text(providerNote).font(.caption).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Picker("Model", selection: $model.cleanupProvider) {
-                        ForEach(CleanupProvider.allCases) { Text($0.title).tag($0) }
-                    }
-                    .pickerStyle(.segmented).labelsHidden().fixedSize()
+                Picker("Model", selection: $model.cleanupProvider) {
+                    ForEach(CleanupProvider.allCases) { Text($0.title).tag($0) }
                 }
-                .padding(.vertical, 8)
-                Divider()
-                account.padding(.vertical, 8)
+                account
                 if let issue = model.smartIssue {
-                    Label(issue, systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption).foregroundStyle(.orange)
-                        .padding(.bottom, 8)
+                    Label(issue, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.orange)
                 }
             }
+        } header: {
+            Text("Cleanup")
+        } footer: {
+            Text(footer).font(.caption).foregroundStyle(.secondary)
         }
-        .card()
     }
 
-    private var providerNote: String {
+    private var footer: String {
+        guard model.smartCleanup else {
+            return "A language model can remove fillers by context and apply spoken corrections such as “at two, actually three”."
+        }
         switch model.cleanupProvider {
-        case .deepseek: return "deepseek-chat, about 1 second. Billed to your DeepSeek API key. The text goes to DeepSeek."
-        case .chatgpt: return "GPT-6-Luna, about 1.5 seconds. Uses your ChatGPT plan. The text goes to OpenAI."
+        case .deepseek:
+            return "Runs only for dictations with fillers, corrections, or dictionary words. That text goes to DeepSeek and uses your API key."
+        case .chatgpt:
+            return "Runs only for dictations with fillers, corrections, or dictionary words. That text goes to OpenAI and uses your ChatGPT plan."
         }
     }
 
@@ -211,14 +315,15 @@ private struct SmartCleanupCard: View {
         switch model.cleanupProvider {
         case .deepseek:
             if model.deepseekKeySaved {
-                HStack {
-                    Label("API key saved in the Keychain", systemImage: "key.fill")
-                    Spacer()
-                    Button("Remove", action: controller.removeDeepSeekKey)
+                LabeledContent("API key") {
+                    HStack {
+                        Text("Saved in the Keychain").foregroundStyle(.secondary)
+                        Button("Remove", action: controller.removeDeepSeekKey)
+                    }
                 }
             } else {
                 HStack {
-                    SecureField("DeepSeek API key", text: $key).textFieldStyle(.roundedBorder)
+                    SecureField("API key", text: $key, prompt: Text("Paste your DeepSeek API key"))
                     Button("Save") {
                         controller.saveDeepSeekKey(key)
                         key = ""
@@ -227,52 +332,78 @@ private struct SmartCleanupCard: View {
                 }
             }
         case .chatgpt:
-            if model.chatgptSignedIn {
-                HStack {
-                    Label("Signed in with ChatGPT", systemImage: "person.crop.circle.badge.checkmark")
-                    Spacer()
-                    Button("Sign Out", action: controller.signOutChatGPT)
-                }
-            } else {
-                HStack {
-                    Text(model.signingIn ? "Finish the sign-in in your browser." : "Use the ChatGPT account of your Codex plan.")
-                        .font(.callout).foregroundStyle(.secondary)
-                    Spacer()
-                    Button("Sign In with ChatGPT", action: controller.signInChatGPT).disabled(model.signingIn)
+            LabeledContent("Account") {
+                if model.chatgptSignedIn {
+                    HStack {
+                        Text("Signed in").foregroundStyle(.secondary)
+                        Button("Sign Out", action: controller.signOutChatGPT)
+                    }
+                } else if model.signingIn {
+                    Text("Finish the sign-in in your browser").foregroundStyle(.secondary)
+                } else {
+                    Button("Sign In with ChatGPT", action: controller.signInChatGPT)
                 }
             }
         }
     }
 }
 
-private struct StatusLabelStyle: LabelStyle {
-    let color: Color
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 4) {
-            configuration.icon.font(.system(size: 6)).foregroundColor(color)
-            configuration.title.font(.caption).foregroundStyle(.secondary)
+/// Rows of "heard as" -> "write as". Changes save as you type.
+private struct DictionarySection: View {
+    @Binding var entries: [DictionaryEntry]
+
+    var body: some View {
+        Section {
+            ForEach($entries) { $entry in
+                HStack {
+                    TextField("Heard as", text: $entry.heard, prompt: Text("Heard as"))
+                    Image(systemName: "arrow.right").foregroundStyle(.secondary)
+                    TextField("Write as", text: $entry.written, prompt: Text("Write as"))
+                    Button { entries.removeAll { $0.id == entry.id } } label: { Image(systemName: "minus.circle") }
+                        .buttonStyle(.borderless)
+                        .help("Delete")
+                }
+                .labelsHidden()
+            }
+            Button { entries.append(DictionaryEntry()) } label: { Label("Add Word", systemImage: "plus") }
+                .buttonStyle(.borderless)
+        } header: {
+            Text("Dictionary")
+        } footer: {
+            Text("Words the speech model mishears, such as “ask soul” for “ask Sol”.")
+                .font(.caption).foregroundStyle(.secondary)
+        }
+    }
+}
+
+private struct ModelStatusLabel: View {
+    let status: ModelStatus
+
+    var body: some View {
+        switch status {
+        case .ready:
+            Text("Phonon-2, ready").foregroundStyle(.secondary)
+        case .loading:
+            HStack(spacing: 5) { ProgressView().controlSize(.mini); Text("Loading").foregroundStyle(.secondary) }
+        case .failed(let message):
+            Text("Phonon-2, error").foregroundStyle(.red).help(message)
         }
     }
 }
 
 private struct ShortcutRow: View {
     let title: String
-    let note: String?
     let keys: [[String]]
 
     var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                if let note { Text(note).font(.caption).foregroundStyle(.secondary) }
-            }
-            Spacer()
-            ForEach(keys.indices, id: \.self) { i in
-                if i > 0 { Text("or").font(.caption).foregroundStyle(.secondary) }
-                HStack(spacing: 3) { ForEach(keys[i], id: \.self) { KeyCap(label: $0) } }
+        LabeledContent(title) {
+            HStack(spacing: 6) {
+                ForEach(keys.indices, id: \.self) { i in
+                    if i > 0 { Text("or").font(.caption).foregroundStyle(.secondary) }
+                    HStack(spacing: 3) { ForEach(keys[i], id: \.self) { KeyCap(label: $0) } }
+                }
             }
         }
-        .padding(.vertical, 9)
     }
 }
 
@@ -285,141 +416,6 @@ private struct KeyCap: View {
             .padding(.vertical, 3)
             .background(RoundedRectangle(cornerRadius: 5).fill(Color.primary.opacity(0.08)))
             .overlay(RoundedRectangle(cornerRadius: 5).strokeBorder(Color.primary.opacity(0.12)))
-    }
-}
-
-private struct SetupRow: View {
-    let symbol: String
-    let title: String
-    let detail: String
-    let button: String
-    let action: () -> Void
-
-    var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: symbol).font(.system(size: 15)).foregroundColor(.orange).frame(width: 22)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                Text(detail).font(.caption).foregroundStyle(.secondary)
-            }
-            Spacer()
-            Button(button, action: action)
-        }
-        .padding(.vertical, 9)
-    }
-}
-
-private struct HistoryRow: View {
-    let item: HistoryItem
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .top, spacing: 10) {
-                Text(item.text).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-                Spacer()
-                CopyButton(text: item.text, help: "Copy")
-            }
-            if let raw = item.raw {
-                HStack(alignment: .top, spacing: 10) {
-                    Text("Original: \(raw)")
-                        .font(.callout).foregroundStyle(.secondary)
-                        .textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
-                    Spacer()
-                    CopyButton(text: raw, help: "Copy the original")
-                }
-            }
-            if let note = item.note { Text(note).font(.caption).foregroundStyle(.orange) }
-            Text(item.date.formatted(date: .abbreviated, time: .shortened))
-                .font(.caption).foregroundStyle(.secondary)
-        }
-        .padding(.vertical, 9)
-    }
-}
-
-private struct CopyButton: View {
-    let text: String
-    let help: String
-    @State private var copied = false
-
-    var body: some View {
-        Button {
-            NSPasteboard.general.clearContents()
-            NSPasteboard.general.setString(text, forType: .string)
-            copied = true
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1.2) { copied = false }
-        } label: {
-            Image(systemName: copied ? "checkmark" : "doc.on.doc")
-        }
-        .buttonStyle(.borderless)
-        .help(help)
-    }
-}
-
-private struct SettingRow: View {
-    let title: String
-    let detail: String?
-    @Binding var isOn: Bool
-
-    var body: some View {
-        HStack {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                if let detail { Text(detail).font(.caption).foregroundStyle(.secondary) }
-            }
-            Spacer()
-            Toggle("", isOn: $isOn).toggleStyle(.switch).controlSize(.small).labelsHidden()
-        }
-        .padding(.vertical, 8)
-    }
-}
-
-/// Rows of "heard as" -> "write as". Changes save as you type.
-private struct DictionaryEditor: View {
-    @Binding var entries: [DictionaryEntry]
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Fix words the model mishears. Smart cleanup uses each entry as a hint and replaces the word only when the context fits. Without smart cleanup, each entry replaces whole words or phrases every time.")
-                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
-            VStack(spacing: 0) {
-                if !entries.isEmpty {
-                    HStack {
-                        Text("Heard as").frame(maxWidth: .infinity, alignment: .leading)
-                        Text("Write as").frame(maxWidth: .infinity, alignment: .leading)
-                        Color.clear.frame(width: 20)
-                    }
-                    .font(.caption).foregroundStyle(.secondary)
-                    .padding(.vertical, 6)
-                }
-                ForEach($entries) { $entry in
-                    HStack {
-                        TextField("ask soul", text: $entry.heard).textFieldStyle(.roundedBorder)
-                        Image(systemName: "arrow.right").foregroundStyle(.secondary)
-                        TextField("ask Sol", text: $entry.written).textFieldStyle(.roundedBorder)
-                        Button { entries.removeAll { $0.id == entry.id } } label: { Image(systemName: "minus.circle") }
-                            .buttonStyle(.borderless)
-                            .help("Delete")
-                    }
-                    .padding(.vertical, 4)
-                }
-                HStack {
-                    Button { entries.append(DictionaryEntry()) } label: { Label("Add entry", systemImage: "plus") }
-                        .buttonStyle(.borderless)
-                    Spacer()
-                }
-                .padding(.vertical, 8)
-            }
-            .card()
-        }
-    }
-}
-
-private extension View {
-    func card() -> some View {
-        padding(.horizontal, 14)
-            .padding(.vertical, 4)
-            .background(RoundedRectangle(cornerRadius: 12).fill(Color(nsColor: .controlBackgroundColor)))
-            .overlay(RoundedRectangle(cornerRadius: 12).strokeBorder(Color.primary.opacity(0.1)))
     }
 }
 

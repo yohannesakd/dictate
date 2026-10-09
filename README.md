@@ -27,7 +27,7 @@ Set "Press 🌐 key to" to "Do Nothing" in Keyboard settings, so fn does not als
 
 Smart cleanup sends a transcript to a language model when it contains words that need context: ambiguous fillers ("like", "you know"), self-corrections ("actually", "no wait"), or dictionary words. The model removes the fillers, keeps only the corrected version, and uses the dictionary as hints. Other dictations use the rules only.
 
-Choose the model in the Cleanup section:
+Choose the model in Settings (the gear button, or ⌘,), under Cleanup:
 
 - DeepSeek (`deepseek-chat`): about 1 s. Save a DeepSeek API key in Dictate. Dictate keeps it in the Keychain.
 - ChatGPT (`gpt-6-luna`): about 1.5 s. Click "Sign In with ChatGPT". Dictate uses the same sign-in flow as the Codex CLI and Pi, and keeps its own tokens in the Keychain. The endpoint (`chatgpt.com/backend-api/codex/responses`) is not a public API, so OpenAI can change it. Usage counts against your plan limits.
