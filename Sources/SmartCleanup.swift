@@ -11,9 +11,61 @@ enum CleanupProvider: String, CaseIterable, Identifiable {
 }
 
 protocol CleanupClient {
-    func complete(instructions: String, message: String) async throws -> String
+    func complete(instructions: String, message: String, timing: RequestTiming) async throws -> String
     /// Opens the connection while the user speaks, so the request does not wait for the TLS handshake.
     func warm()
+}
+
+/// Where the time of one model request goes, from URLSession's own measurements and the token counts in the reply.
+/// Set as the task delegate. URLSession and the client write it on their queues; the main queue reads it after the reply.
+final class RequestTiming: NSObject, URLSessionTaskDelegate, @unchecked Sendable {
+    private let lock = NSLock()
+    private var transaction: URLSessionTaskTransactionMetrics?
+    private var tokens: (input: Int?, output: Int?, cached: Int?) = (nil, nil, nil)
+
+    /// The latest TCP connection time by host: about one network round trip. Server time is the time to the first
+    /// response byte minus this value.
+    private static let lock = NSLock()
+    private static var roundTrips: [String: Int] = [:]
+
+    func setTokens(input: Int?, output: Int?, cached: Int?) {
+        lock.lock(); tokens = (input, output, cached); lock.unlock()
+    }
+
+    func urlSession(_ session: URLSession, task: URLSessionTask, didFinishCollecting metrics: URLSessionTaskMetrics) {
+        guard let last = metrics.transactionMetrics.last else { return }
+        lock.lock(); transaction = last; lock.unlock()
+        // Connection setup appears only in the transaction that opened the connection. Warming usually opens it.
+        for opened in metrics.transactionMetrics where !opened.isReusedConnection {
+            guard let host = opened.request.url?.host,
+                  let tcp = Self.milliseconds(opened.connectStartDate, opened.secureConnectionStartDate ?? opened.connectEndDate) else { continue }
+            Self.lock.lock(); Self.roundTrips[host] = tcp; Self.lock.unlock()
+        }
+    }
+
+    /// Flat fields for the metrics log. Empty until the request finishes.
+    var fields: [String: Any] {
+        lock.lock(); defer { lock.unlock() }
+        var fields: [String: Any] = [:]
+        if let input = tokens.input { fields["llm_input_tokens"] = input }
+        if let output = tokens.output { fields["llm_output_tokens"] = output }
+        if let cached = tokens.cached { fields["llm_cached_tokens"] = cached }
+        guard let transaction else { return fields }
+        fields["llm_reused_connection"] = transaction.isReusedConnection
+        fields["llm_connect_ms"] = Self.milliseconds(transaction.connectStartDate, transaction.connectEndDate) ?? 0
+        // Sending the request to the first response byte: server work plus one round trip.
+        fields["llm_first_byte_ms"] = Self.milliseconds(transaction.requestEndDate, transaction.responseStartDate)
+        fields["llm_download_ms"] = Self.milliseconds(transaction.responseStartDate, transaction.responseEndDate)
+        if let host = transaction.request.url?.host {
+            Self.lock.lock(); fields["llm_round_trip_ms"] = Self.roundTrips[host]; Self.lock.unlock()
+        }
+        return fields
+    }
+
+    private static func milliseconds(_ start: Date?, _ end: Date?) -> Int? {
+        guard let start, let end else { return nil }
+        return Int((end.timeIntervalSince(start) * 1000).rounded())
+    }
 }
 
 enum CleanupError: LocalizedError {
@@ -46,6 +98,9 @@ final class SmartCleanup: @unchecked Sendable {
     final class Pending: @unchecked Sendable {
         let key: String
         let started = ProcessInfo.processInfo.systemUptime
+        /// When the reply arrived or the request ended.
+        fileprivate(set) var finished: Double?
+        let timing = RequestTiming()
         fileprivate(set) var result: Result?
         fileprivate var task: Task<Void, Never>?
         private var waiters: [(Result) -> Void] = []
@@ -55,6 +110,7 @@ final class SmartCleanup: @unchecked Sendable {
         fileprivate func resolve(_ result: Result) {
             guard self.result == nil else { return }
             self.result = result
+            finished = ProcessInfo.processInfo.systemUptime
             task = nil
             waiters.forEach { $0(result) }
             waiters = []
@@ -91,7 +147,7 @@ final class SmartCleanup: @unchecked Sendable {
         pending.task = Task { @MainActor in
             let result: Result
             do {
-                let answer = try await client.complete(instructions: Self.instructions, message: message)
+                let answer = try await client.complete(instructions: Self.instructions, message: message, timing: pending.timing)
                 // The prompt shows the transcript in tags. A reply that repeats them is still a cleanup.
                 let reply = answer.replacingOccurrences(of: "</?transcript>", with: "", options: .regularExpression)
                     .trimmingCharacters(in: .whitespacesAndNewlines)

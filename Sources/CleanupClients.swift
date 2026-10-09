@@ -19,7 +19,7 @@ final class DeepSeekClient: CleanupClient {
         }
     }
 
-    func complete(instructions: String, message: String) async throws -> String {
+    func complete(instructions: String, message: String, timing: RequestTiming) async throws -> String {
         guard let key = Keychain.read(keychainAccount).flatMap({ String(data: $0, encoding: .utf8) }) else {
             throw CleanupError.setup("Add a DeepSeek API key in Dictate.")
         }
@@ -31,13 +31,16 @@ final class DeepSeekClient: CleanupClient {
             "model": "deepseek-chat", "temperature": 0, "max_tokens": 4096,
             "messages": [["role": "system", "content": instructions], ["role": "user", "content": message]],
         ] as [String: Any])
-        let (data, response) = try await URLSession.shared.data(for: request)
+        let (data, response) = try await URLSession.shared.data(for: request, delegate: timing)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard status == 200 else {
             throw status == 401 ? CleanupError.setup("DeepSeek rejected the API key.")
                                 : CleanupError.server("DeepSeek error \(status): \(serverMessage(data))")
         }
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        let usage = json?["usage"] as? [String: Any]
+        timing.setTokens(input: usage?["prompt_tokens"] as? Int, output: usage?["completion_tokens"] as? Int,
+                         cached: usage?["prompt_cache_hit_tokens"] as? Int)
         let choice = (json?["choices"] as? [[String: Any]])?.first
         // "length" means the reply was cut off. A shortened cleanup could pass the guard and lose words.
         guard choice?["finish_reason"] as? String == "stop",
@@ -57,7 +60,7 @@ final class ChatGPTClient: CleanupClient {
     let auth = ChatGPTAuth()
     private let endpoint = URL(string: "https://chatgpt.com/backend-api/codex/responses")!
 
-    func complete(instructions: String, message: String) async throws -> String {
+    func complete(instructions: String, message: String, timing: RequestTiming) async throws -> String {
         let token = try await auth.token()
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
@@ -73,7 +76,7 @@ final class ChatGPTClient: CleanupClient {
             "input": [["role": "user", "content": [["type": "input_text", "text": message]]]],
             "reasoning": ["effort": "none"], "text": ["verbosity": "low"], "prompt_cache_key": "dictate",
         ] as [String: Any])
-        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+        let (bytes, response) = try await URLSession.shared.bytes(for: request, delegate: timing)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard status == 200 else {
             var body = Data()
@@ -87,7 +90,11 @@ final class ChatGPTClient: CleanupClient {
             guard let event = try? JSONSerialization.jsonObject(with: Data(line.dropFirst(5).utf8)) as? [String: Any] else { continue }
             switch event["type"] as? String {
             case "response.output_text.delta": text += event["delta"] as? String ?? ""
-            case "response.completed": completed = true
+            case "response.completed":
+                completed = true
+                let usage = (event["response"] as? [String: Any])?["usage"] as? [String: Any]
+                timing.setTokens(input: usage?["input_tokens"] as? Int, output: usage?["output_tokens"] as? Int,
+                                 cached: (usage?["input_tokens_details"] as? [String: Any])?["cached_tokens"] as? Int)
             case "response.failed", "error": throw CleanupError.server("ChatGPT could not answer: \(event)")
             default: break
             }
@@ -248,7 +255,9 @@ actor ChatGPTAuth {
 private func warmConnection(to url: URL) {
     var request = URLRequest(url: url)
     request.httpMethod = "HEAD"
-    URLSession.shared.dataTask(with: request).resume()
+    let task = URLSession.shared.dataTask(with: request)
+    task.delegate = RequestTiming()  // Records the round trip of the connection it opens.
+    task.resume()
 }
 
 private func serverMessage(_ data: Data) -> String {

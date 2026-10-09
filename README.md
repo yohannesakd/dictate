@@ -42,7 +42,11 @@ Dictate uses the rule result when the model exceeds 3 seconds or fails the order
 
 Every dictation is saved in `~/Library/Application Support/Dictate/transcripts.jsonl`: the raw transcript, the rule result, the model reply, the final text, delivery outcome, and app.
 
-Each dictation appends resource metrics to `~/Library/Logs/Dictate/metrics.jsonl`.
+Each dictation appends one JSON line of timing and resource metrics to `~/Library/Logs/Dictate/metrics.jsonl`.
+The `at_*_ms` fields are a timeline in milliseconds since the fn press: microphone ready, first audio, first and last speech, fn release, transcript, rules, model request start and end, text ready, events posted, and text verified.
+The `llm_*` fields split each model request into connection, network round trip, time to the first byte, download, and tokens.
+
+To graph them, run `scripts/latency-report.py`. It writes `latency.html` (charts by stage) and `latency.csv` next to the log.
 Durations use a monotonic clock. Metrics separate event posting, verified text, request cache hits, and delivery outcomes.
 Dictate checks readable fields against the expected text and caret. Verification has a 150-millisecond polling budget, plus Accessibility call time.
 An unavailable check does not mean delivery failed. Dictate never repeats uncertain delivery automatically.
