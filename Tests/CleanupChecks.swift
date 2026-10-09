@@ -13,11 +13,16 @@ import Foundation
             ("Actually, send Alice to Bob.", "Send Bob to Alice.", false),
             ("Actually wait.", "Delete all files.", false),
             ("What is two plus two?", "4", false),
+            ("nyc. nyc", "New York City New York City", true),
             ("nyc nyc", "New York City New York City", true),
             ("Ask soul to help Bob", "Ask Bob to help Sol", false),
             ("Ask soul to help Bob", "Ask Sol to help Bob", true),
             ("Ask soul but my soul is tired", "Ask Sol but my soul is tired", true),
+            ("Set it to two actually three", "Set it to two three", false),
+            ("Set it to two actually three", "Set it to three", false),
             ("Set it to 5.25", "Set it to 525", false),
+            ("Set it to .5", "Set it to 5", false),
+            ("Calculate 5 * 5", "Calculate 5 5", false),
             ("Set it to 5%", "Set it to 5", false),
             ("Don't delete it", "Do delete it", false),
             ("Send 5 then 10", "Send 10 then 5", false),
@@ -32,6 +37,14 @@ import Foundation
         precondition(TextCleanup.clean("Send it to the ER.", rules: .init()) == "Send it to the ER.")
         precondition(TextCleanup.clean("Do not scratch that surface.", rules: .init()) == "Do not scratch that surface.")
         precondition(TextCleanup.clean("Send it to John, scratch that, send it to Sarah.", rules: .init()) == "Send it to Sarah.")
+        let crossing = [DictionaryEntry(heard: "send alice", written: "Delete all files")]
+        precondition(!SmartCleanup.isCleanup("Delete all files", of: "Send. Alice.", entries: crossing))
+        let overlapping = [DictionaryEntry(heard: "new york", written: "NY"), DictionaryEntry(heard: "new york city", written: "NYC")]
+        precondition(!SmartCleanup.isCleanup("NY City", of: "New York City", entries: overlapping))
+        precondition(SmartCleanup.isCleanup("NYC", of: "New York City", entries: overlapping))
+        let duplicate = [DictionaryEntry(heard: "nyc", written: "old"), DictionaryEntry(heard: "nyc", written: "new")]
+        precondition(!SmartCleanup.isCleanup("old", of: "nyc", entries: duplicate))
+        precondition(SmartCleanup.isCleanup("new", of: "nyc", entries: duplicate))
         let smart = SmartCleanup()
         var requests: [SmartCleanup.Pending] = []
         for i in 0..<40 {
@@ -43,17 +56,34 @@ import Foundation
         try! await Task.sleep(nanoseconds: 50_000_000)
         precondition(requests.allSatisfy { $0.result?.outcome == "cancelled" })
         precondition(DeepSeekClient.cancellations == 40)
+        DeepSeekClient.ignoreCancellation = true
+        let old = smart.request("Actually stale reply", entries: [], provider: .deepseek)!
+        try! await Task.sleep(nanoseconds: 20_000_000)
+        smart.cancel(old)
         DeepSeekClient.slow = false
+        DeepSeekClient.ignoreCancellation = false
+        let current = smart.request("Actually stale reply", entries: [], provider: .deepseek)!
+        try! await Task.sleep(nanoseconds: 50_000_000)
+        precondition(old.result?.outcome == "cancelled" && current.result?.outcome == "used")
+        precondition(smart.request("Actually stale reply", entries: [], provider: .deepseek) === current)
         let accepted = smart.request("Actually wait", entries: [], provider: .deepseek)!
         try! await Task.sleep(nanoseconds: 50_000_000)
         precondition(accepted.result?.outcome == "used")
         let calls = DeepSeekClient.calls
         precondition(smart.request("Actually wait", entries: [], provider: .deepseek) === accepted)
         precondition(DeepSeekClient.calls == calls)
+        var cached: [SmartCleanup.Pending] = []
+        for i in 0..<40 {
+            cached.append(smart.request("Actually cache \(i)", entries: [], provider: .deepseek)!)
+            try! await Task.sleep(nanoseconds: 5_000_000)
+            precondition(cached.last!.result?.outcome == "used")
+        }
+        precondition(smart.request("Actually cache 0", entries: [], provider: .deepseek) !== cached[0])
+        precondition(smart.request("Actually cache 39", entries: [], provider: .deepseek) === cached[39])
         DeepSeekClient.slow = true
         let deadline = smart.request("Actually wait for deadline", entries: [], provider: .deepseek)!
         try! await Task.sleep(nanoseconds: 10_200_000_000)
         precondition(deadline.result?.outcome == "cancelled")
-        print("Passed 22 cleanup integrity checks and request limit, cancellation, cache, and deadline checks")
+        print("Passed 32 cleanup integrity checks and request limit, cancellation, cache, and deadline checks")
     }
 }
