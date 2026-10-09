@@ -5,6 +5,7 @@ import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let model = AppModel()
+    private let navigation = HubNavigation()
     private lazy var controller = DictationController(model: model)
     private var flowBar: FlowBar?
     private var hub: NSWindow?
@@ -12,6 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.applicationIconImage = appIcon()
+        setUpMainMenu()
         controller.start()
         flowBar = FlowBar(model: model, controller: controller)
         setUpStatusItem()
@@ -29,6 +31,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
 
     // MARK: Menus
+
+    /// The app menu and the Edit menu. Text fields need the Edit menu for copy and paste shortcuts.
+    private func setUpMainMenu() {
+        let appMenu = NSMenu()
+        let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: ",")
+        settings.target = self
+        appMenu.addItem(settings)
+        appMenu.addItem(.separator())
+        appMenu.addItem(NSMenuItem(title: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w"))
+        appMenu.addItem(NSMenuItem(title: "Quit Dictate", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+
+        let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(NSMenuItem(title: "Undo", action: Selector(("undo:")), keyEquivalent: "z"))
+        let redo = NSMenuItem(title: "Redo", action: Selector(("redo:")), keyEquivalent: "z")
+        redo.keyEquivalentModifierMask = [.command, .shift]
+        editMenu.addItem(redo)
+        editMenu.addItem(.separator())
+        editMenu.addItem(NSMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x"))
+        editMenu.addItem(NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
+        editMenu.addItem(NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
+        editMenu.addItem(NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+
+        let mainMenu = NSMenu()
+        for menu in [appMenu, editMenu] {
+            let item = NSMenuItem()
+            item.submenu = menu
+            mainMenu.addItem(item)
+        }
+        NSApp.mainMenu = mainMenu
+    }
 
     private func setUpStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
@@ -49,22 +81,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let open = NSMenuItem(title: "Open Dictate", action: #selector(openHub), keyEquivalent: "")
         open.target = self
         menu.addItem(open)
+        let settings = NSMenuItem(title: "Settings…", action: #selector(openSettings), keyEquivalent: "")
+        settings.target = self
+        menu.addItem(settings)
         menu.addItem(.separator())
         menu.addItem(NSMenuItem(title: "Quit Dictate", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 
     @objc private func pasteLast() { controller.pasteLast() }
     @objc private func openHub() { showHub() }
+    @objc private func openSettings() {
+        navigation.showsSettings = true
+        showHub()
+    }
 
     private func showHub() {
         if hub == nil {
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 600, height: 700),
+            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 480, height: 600),
                                   styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                                   backing: .buffered, defer: false)
             window.titlebarAppearsTransparent = true
             window.titleVisibility = .hidden
             window.isReleasedWhenClosed = false
-            window.contentView = NSHostingView(rootView: HubView(model: model, controller: controller))
+            window.contentView = NSHostingView(rootView: HubView(model: model, navigation: navigation, controller: controller))
             window.center()
             hub = window
         }
