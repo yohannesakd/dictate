@@ -13,6 +13,8 @@ Requirements: Apple silicon, macOS 15 or later, Xcode.
 3. Run `./make-signing-identity.sh` once. It creates a separate keychain in `signing/` with a local signing certificate. A stable signature keeps the Microphone and Accessibility grants across rebuilds.
 4. Run `./build.sh`, then open `build/Dictate.app`.
 
+To build from another machine, such as a server, keep the repository there. On the Mac, put `models/`, `vendor/`, and `signing/` from the steps above in `~/Library/Application Support/Dictate Build`. Then run `scripts/install-mac.sh <ssh-host>` from the checkout. It builds in a temporary folder on the Mac, installs `/Applications/Dictate.app`, and restarts it.
+
 The first launch prepares the model for the Neural Engine. This takes about one minute, once per Mac.
 
 ## Use
