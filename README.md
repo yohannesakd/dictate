@@ -2,6 +2,10 @@
 
 System-wide dictation for macOS in the style of Wispr Flow. Hold fn, speak, and release: the text is typed into the focused field. Speech recognition runs on this Mac with Phonon-2 on the Neural Engine. Optional smart cleanup uses Groq, DeepSeek, or GPT-6-Luna.
 
+The Windows, Linux, and Android implementation is under [portable](portable/README.md).
+It uses a shared core and CPU speech recognition.
+See its verification status before using it for daily work.
+
 ## Build
 
 Requirements: Apple silicon, macOS 15 or later, Xcode.
