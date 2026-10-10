@@ -420,13 +420,13 @@ private struct SmartCleanupSection: View {
 
     private var footer: String {
         guard model.smartCleanup else {
-            return "A language model can remove fillers by context and apply spoken corrections such as “at two, actually three”."
+            return "A language model can remove repeated words and restarts, such as “I want to, I want to go”."
         }
         switch model.cleanupProvider {
         case .groq, .deepseek:
-            return "Runs only for dictations with fillers, corrections, or dictionary words. That text goes to \(model.cleanupProvider.title) and uses your API key."
+            return "Runs only for dictations with repeats or dictionary words. That text goes to \(model.cleanupProvider.title) and uses your API key."
         case .chatgpt:
-            return "Runs only for dictations with fillers, corrections, or dictionary words. That text goes to OpenAI and uses your ChatGPT plan."
+            return "Runs only for dictations with repeats or dictionary words. That text goes to OpenAI and uses your ChatGPT plan."
         }
     }
 

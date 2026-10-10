@@ -94,7 +94,7 @@ enum Insertion {
     struct Target { var app: Identity?, element: AXUIElement? }
     struct FieldState { let value: String }
     struct Snapshot { let state: FieldState; let range: NSRange; let rawReplacement: String; let created: Double }
-    enum Outcome: String { case verified, unchanged, unexpected, unavailable, targetChanged, cancelled, eventFailed, permissionDenied }
+    enum Outcome: String { case verified, sent, unchanged, unexpected, unavailable, targetChanged, cancelled, eventFailed, permissionDenied }
     struct Result {
         var outcome: Outcome; var postedMs: Int?; var postedAt: Double?; var verifiedAt: Double?
         var postedUnits: Int; var verifiedMs: Int?; var verificationMs: Int; var snapshot: Snapshot?

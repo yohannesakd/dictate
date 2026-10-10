@@ -474,11 +474,11 @@ final class DictationController {
                 if request == self?.requestID { self?.model.recordLatency(verified) }
             }
             metrics.merge(trace.fields) { $1 }
-            log["inserted"] = result.outcome == .verified
+            log["inserted"] = result.outcome == .verified || result.outcome == .sent
             log["delivery_outcome"] = result.outcome.rawValue
             MetricsLog.write(metrics)
             TranscriptLog.write(log)
-            if request == self?.requestID, result.outcome == .verified, let interruption {
+            if request == self?.requestID, result.outcome == .verified || result.outcome == .sent, let interruption {
                 self?.notice("\(interruption). Recording stopped early.")
             }
         }
@@ -576,7 +576,7 @@ final class DictationController {
                 self.activeCleanup = nil
                 self.lastInsertion = result.snapshot
                 switch result.outcome {
-                case .verified: break
+                case .verified, .sent: break
                 case .targetChanged: self.notice(result.postedUnits == 0
                     ? "The target changed. The dictation is in History."
                     : "The target changed during delivery. Check the field before inserting again.")
@@ -584,7 +584,7 @@ final class DictationController {
                 case .unexpected: self.notice("Text delivery was incomplete or changed. Check the field before inserting again.")
                 case .unavailable: self.notice(result.postedUnits == 0
                     ? "The target could not be read. The dictation is in History."
-                    : "Text was sent. Dictate cannot verify delivery. Check the field before inserting again.")
+                    : "Text delivery stopped. Check the field before inserting again.")
                 case .cancelled: break
                 case .eventFailed: self.notice("Text delivery stopped. Check the field before inserting again.")
                 case .permissionDenied: break

@@ -41,7 +41,7 @@ import ApplicationServices
         precondition(elapsed >= 0.15 && elapsed < 0.3)
         field = initial
         precondition(run(sink: { _, _ in field = .init(value: "partial", selection: .init(location: 7, length: 0)); return true }).outcome == .unexpected)
-        precondition(run(reads: { nil }, sink: { _, _ in true }).outcome == .unavailable)
+        precondition(run(reads: { nil }, sink: { _, _ in true }).outcome == .sent)
         precondition(run(focus: { .init(app: nil, element: nil) }, sink: { _, _ in preconditionFailure("unexpected posting") }).outcome == .unavailable)
         field = initial
         pairs = 0

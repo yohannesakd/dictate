@@ -29,7 +29,8 @@ enum Insertion {
         }
     }
     enum Outcome: String {
-        case verified, unchanged, unexpected, unavailable, targetChanged, cancelled, eventFailed, permissionDenied
+        /// `sent`: every event was posted, but the field cannot be read back, as in most Electron apps.
+        case verified, sent, unchanged, unexpected, unavailable, targetChanged, cancelled, eventFailed, permissionDenied
     }
     struct Result {
         let outcome: Outcome
@@ -133,7 +134,7 @@ enum Insertion {
         postedAt = Monotonic.now
         postedMs = Monotonic.milliseconds(since: start)
         verificationStart = Monotonic.now
-        guard let before, let expected else { return result(.unavailable) }
+        guard let before, let expected else { return result(.sent) }
         var observed: FieldState?
         repeat {
             guard !cancellation.isCancelled else { return result(.cancelled) }
@@ -149,7 +150,7 @@ enum Insertion {
                 } else { snapshot = nil }
                 return result(.verified, snapshot)
             }
-            if observed == nil { return result(.unavailable) }
+            if observed == nil { return result(.sent) }
             if Monotonic.now - verificationStart >= verificationSeconds { break }
             usleep(20_000)
         } while true
