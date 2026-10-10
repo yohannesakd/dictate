@@ -399,7 +399,8 @@ final class DictationController {
             // Only a transcript taken in a pause is likely to be final. Mid-speech snapshots only keep the engine warm.
             guard paused, self.isRecording, recording == self.requestID, self.model.smartCleanup,
                   case .success(let raw) = result, !raw.isEmpty else { return }
-            let next = self.smart.request(raw, entries: self.model.dictionary, provider: self.model.cleanupProvider)
+            let next = self.smart.request(raw, entries: self.model.dictionary, provider: self.model.cleanupProvider,
+                                          speculative: true)
             if let previous = self.speculation, previous !== next { self.smart.cancel(previous) }
             if let next, next !== self.speculation { self.trace.speculativeRequests += 1 }
             self.speculation = next
@@ -427,6 +428,7 @@ final class DictationController {
             case "timeout": return "Rules used: the model did not reply within 3 seconds."
             case "rejected": return "Rules used: the model reply was not a cleanup of the transcript."
             case "error": return "Rules used: \(smart?.error?.localizedDescription ?? "the model failed.")"
+            case "limited": return "Rules used: smart cleanup is limited to 12 requests a minute."
             default: return nil
             }
         }
@@ -472,11 +474,11 @@ final class DictationController {
                 if request == self?.requestID { self?.model.recordLatency(verified) }
             }
             metrics.merge(trace.fields) { $1 }
-            log["inserted"] = result.outcome == .verified
+            log["inserted"] = result.outcome == .verified || result.outcome == .sent
             log["delivery_outcome"] = result.outcome.rawValue
             MetricsLog.write(metrics)
             TranscriptLog.write(log)
-            if request == self?.requestID, result.outcome == .verified, let interruption {
+            if request == self?.requestID, result.outcome == .verified || result.outcome == .sent, let interruption {
                 self?.notice("\(interruption). Recording stopped early.")
             }
         }
@@ -574,7 +576,7 @@ final class DictationController {
                 self.activeCleanup = nil
                 self.lastInsertion = result.snapshot
                 switch result.outcome {
-                case .verified: break
+                case .verified, .sent: break
                 case .targetChanged: self.notice(result.postedUnits == 0
                     ? "The target changed. The dictation is in History."
                     : "The target changed during delivery. Check the field before inserting again.")
@@ -582,7 +584,7 @@ final class DictationController {
                 case .unexpected: self.notice("Text delivery was incomplete or changed. Check the field before inserting again.")
                 case .unavailable: self.notice(result.postedUnits == 0
                     ? "The target could not be read. The dictation is in History."
-                    : "Text was sent. Dictate cannot verify delivery. Check the field before inserting again.")
+                    : "Text delivery stopped. Check the field before inserting again.")
                 case .cancelled: break
                 case .eventFailed: self.notice("Text delivery stopped. Check the field before inserting again.")
                 case .permissionDenied: break

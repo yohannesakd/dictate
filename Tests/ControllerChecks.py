@@ -63,6 +63,13 @@ struct Stopwatch {
     var cpuMs: Int { 0 }
 }
 enum MetricsLog { static func write(_ fields: [String: Any]) {} }
+struct Trace {
+    var snapshots = 0, speculativeRequests = 0
+    init(pressed: Double = 0) {}
+    mutating func mark(_ name: String, at time: Double = 0) {}
+    mutating func update(_ name: String, at time: Double = 0) {}
+    var fields: [String: Any] { [:] }
+}
 enum TranscriptLog { static func write(_ fields: [String: Any?]) {} }
 final class APIKeyClient: CleanupClient {
     init(_ provider: CleanupProvider) {}
@@ -87,7 +94,7 @@ enum Insertion {
     struct Target { var app: Identity?, element: AXUIElement? }
     struct FieldState { let value: String }
     struct Snapshot { let state: FieldState; let range: NSRange; let rawReplacement: String; let created: Double }
-    enum Outcome: String { case verified, unchanged, unexpected, unavailable, targetChanged, cancelled, eventFailed, permissionDenied }
+    enum Outcome: String { case verified, sent, unchanged, unexpected, unavailable, targetChanged, cancelled, eventFailed, permissionDenied }
     struct Result {
         var outcome: Outcome; var postedMs: Int?; var postedAt: Double?; var verifiedAt: Double?
         var postedUnits: Int; var verifiedMs: Int?; var verificationMs: Int; var snapshot: Snapshot?

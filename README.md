@@ -31,15 +31,19 @@ Set "Press 🌐 key to" to "Do Nothing" in Keyboard settings, so fn does not als
 
 ## Smart cleanup
 
-Smart cleanup sends a transcript to a language model when it contains words that need context: ambiguous fillers ("like", "you know"), self-corrections ("actually", "no wait"), or dictionary words. The model proposes filler removal, spoken corrections, and dictionary replacements. Dictate checks each proposal before insertion. Other dictations use the rules only.
+Cleanup is minimal. The rules remove filler sounds (um, uh, er, hmm), stutters ("I I"), and the clause before "scratch that". Dictate keeps words such as "like", "you know", and "actually", and does not apply spoken corrections.
+
+Smart cleanup sends a transcript to a language model when it contains a repeat or a restart ("I want to, I want to go") or a dictionary word. The model proposes removed repeats and dictionary replacements. Dictate checks each proposal before insertion. Other dictations use the rules only.
 
 Choose the model in Settings (the gear button, or ⌘,), under Cleanup:
 
-- Groq (`qwen/qwen3.8-27b`, thinking off): about 0.2 s. This is the default. Save a Groq API key in Dictate. Groq lists this model as a preview, so it can remove it at short notice. The free tier allows about 30 requests per minute; when Groq refuses a request, Dictate uses the rule result.
+- Groq (`qwen/qwen3.8-27b`, thinking off): about 0.2 s. This is the default. Save a Groq API key in Dictate. Groq lists this model as a preview, so it can remove it at short notice.
 - DeepSeek (`deepseek-chat`): about 1 s. Save a DeepSeek API key in Dictate. Dictate keeps each API key in the Keychain.
 - ChatGPT (`gpt-6-luna`): about 1.5 s. Click "Sign In with ChatGPT". Dictate uses the same sign-in flow as the Codex CLI and Pi, and keeps its own tokens in the Keychain. The endpoint (`chatgpt.com/backend-api/codex/responses`) is not a public API, so OpenAI can change it. Usage counts against your plan limits.
 
-Dictate uses the rule result when the model exceeds 3 seconds or fails the ordered-edit guard. The guard permits matching dictionary replacements and limited removals. It rejects substantive omissions, reordered words, and changed numeric notation. Unrecognized spoken corrections can remain in the result. These checks reduce mistakes; they do not prove meaning preservation.
+Dictate uses the rule result when the model exceeds 3 seconds or fails the ordered-edit guard. The guard keeps the rule result's words in order. It permits dictionary replacements, exact repeats ("the new, the new design"), and restarts that begin with the same two or more words after punctuation ("is it like, is it possible"). A repeat that ends at punctuation, such as "no, no, no," or "I know, I know.", stays. The guard rejects other omissions, reordered words, and changed numeric notation.
+
+Smart cleanup sends at most 12 requests a minute, below the Groq free tier's 8000 tokens a minute. Requests during recording stop at 8 a minute, so the request at fn release still runs. Above the limit, Dictate uses the rule result. These checks reduce mistakes; they do not prove meaning preservation.
 
 Every dictation is saved in `~/Library/Application Support/Dictate/transcripts.jsonl`: the raw transcript, the rule result, the model reply, the final text, delivery outcome, and app.
 
@@ -50,7 +54,7 @@ The `llm_*` fields split each model request into connection, network round trip,
 To graph them, run `scripts/latency-report.py`. It writes `latency.html` (charts by stage) and `latency.csv` next to the log.
 Durations use a monotonic clock. Metrics separate event posting, verified text, request cache hits, and delivery outcomes.
 Dictate checks readable fields against the expected text and caret. Verification has a 150-millisecond polling budget, plus Accessibility call time.
-An unavailable check does not mean delivery failed. Dictate never repeats uncertain delivery automatically.
+Many apps, such as Electron apps, do not expose the field text. Dictate then logs `sent`: every event was posted, but the text was not read back. Dictate never repeats uncertain delivery automatically.
 
 ## Credits
 

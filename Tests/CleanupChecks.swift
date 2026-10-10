@@ -27,9 +27,29 @@ import Foundation
             ("Don't delete it", "Do delete it", false),
             ("Send 5 then 10", "Send 10 then 5", false),
             ("Um, I I need help.", "I need help.", true),
-            ("Actually, would you like tea or coffee?", "Would you like tea or coffee?", true),
+            ("Actually, would you like tea or coffee?", "Would you like tea or coffee?", false),
             ("Send it to John, scratch that, send it to Sarah.", "Send it to Sarah.", true),
             ("Do not scratch that surface.", "Surface.", false),
+            ("It looks like it'll rain, you know?", "It looks like it'll rain.", false),
+            ("Is it like, is it possible to get it by Monday?", "Is it possible to get it by Monday?", true),
+            ("Let's meet at noon, sorry, at one.", "Let's meet at one.", false),
+            ("It went from twenty to thirty, sorry, thirty five dollars.", "It went from twenty to thirty-five dollars.", false),
+            ("I'm sorry I missed the call.", "I missed the call.", false),
+            ("Send it to Maria, no wait, send it to James.", "Send it to Maria.", false),
+            ("Set it to two, actually, three.", "Set it to two three.", false),
+            ("I do not think we should ship it, you know.", "I think we should ship it.", false),
+            ("I want to, I want to go home, you know?", "I want to go home, you know?", true),
+            ("We need the new, the new design.", "We need the new design.", true),
+            ("The man saw the man.", "The man.", false),
+            ("Is it like, is it possible?", "Is it possible?", true),
+            ("Is it, like, possible?", "Is it possible?", false),
+            ("I do not, I do want it.", "I do want it.", true),
+            ("Had had a long day, I had had a long day.", "I had a long day.", false),
+            ("Yeah, yeah, I know, I know.", "Yeah, I know.", false),
+            ("No, no, no, that's not it.", "No, that's not it.", false),
+            ("Hello, hello, can you hear me?", "Hello, can you hear me?", false),
+            ("We should, we should, we should probably wait.", "We should probably wait.", true),
+            ("So move it to Thursday, actually Friday.", "So move it to Friday, actually.", false),
         ]
         for (raw, reply, expected) in cases {
             precondition(SmartCleanup.isCleanup(reply, of: raw, entries: dictionary) == expected, raw)
@@ -53,9 +73,10 @@ import Foundation
         precondition(!SmartCleanup.isCleanup("6", of: "5.25", entries: digits))
         precondition(SmartCleanup.isCleanup("6.25", of: "5.25", entries: digits))
         let smart = SmartCleanup()
+        smart.requestsPerMinute = .max
         var requests: [SmartCleanup.Pending] = []
         for i in 0..<40 {
-            requests.append(smart.request("Actually wait \(i)", entries: [], provider: .deepseek)!)
+            requests.append(smart.request("Wait, wait \(i)", entries: [], provider: .deepseek)!)
         }
         precondition(requests.filter { $0.result == nil }.count == 2)
         precondition(requests.prefix(38).allSatisfy { $0.result?.outcome == "cancelled" })
@@ -64,33 +85,41 @@ import Foundation
         precondition(requests.allSatisfy { $0.result?.outcome == "cancelled" })
         precondition(APIKeyClient.cancellations == 40)
         APIKeyClient.ignoreCancellation = true
-        let old = smart.request("Actually stale reply", entries: [], provider: .deepseek)!
+        let old = smart.request("Wait, wait stale reply", entries: [], provider: .deepseek)!
         try! await Task.sleep(nanoseconds: 20_000_000)
         smart.cancel(old)
         APIKeyClient.slow = false
         APIKeyClient.ignoreCancellation = false
-        let current = smart.request("Actually stale reply", entries: [], provider: .deepseek)!
+        let current = smart.request("Wait, wait stale reply", entries: [], provider: .deepseek)!
         try! await Task.sleep(nanoseconds: 50_000_000)
         precondition(old.result?.outcome == "cancelled" && current.result?.outcome == "used")
-        precondition(smart.request("Actually stale reply", entries: [], provider: .deepseek) === current)
-        let accepted = smart.request("Actually wait", entries: [], provider: .deepseek)!
+        precondition(smart.request("Wait, wait stale reply", entries: [], provider: .deepseek) === current)
+        let accepted = smart.request("Wait, wait now", entries: [], provider: .deepseek)!
         try! await Task.sleep(nanoseconds: 50_000_000)
         precondition(accepted.result?.outcome == "used")
         let calls = APIKeyClient.calls
-        precondition(smart.request("Actually wait", entries: [], provider: .deepseek) === accepted)
+        precondition(smart.request("Wait, wait now", entries: [], provider: .deepseek) === accepted)
         precondition(APIKeyClient.calls == calls)
         var cached: [SmartCleanup.Pending] = []
         for i in 0..<40 {
-            cached.append(smart.request("Actually cache \(i)", entries: [], provider: .deepseek)!)
+            cached.append(smart.request("Wait, wait cache \(i)", entries: [], provider: .deepseek)!)
             try! await Task.sleep(nanoseconds: 5_000_000)
             precondition(cached.last!.result?.outcome == "used")
         }
-        precondition(smart.request("Actually cache 0", entries: [], provider: .deepseek) !== cached[0])
-        precondition(smart.request("Actually cache 39", entries: [], provider: .deepseek) === cached[39])
+        precondition(smart.request("Wait, wait cache 0", entries: [], provider: .deepseek) !== cached[0])
+        precondition(smart.request("Wait, wait cache 39", entries: [], provider: .deepseek) === cached[39])
         APIKeyClient.slow = true
-        let deadline = smart.request("Actually wait for deadline", entries: [], provider: .deepseek)!
+        let deadline = smart.request("Wait, wait wait for deadline", entries: [], provider: .deepseek)!
         try! await Task.sleep(nanoseconds: 10_200_000_000)
         precondition(deadline.result?.outcome == "cancelled")
-        print("Passed 38 cleanup integrity checks and request limit, cancellation, cache, and deadline checks")
+        // Speculative requests stop 4 below the budget; the request at release can use those 4.
+        let budget = SmartCleanup()
+        budget.requestsPerMinute = 6
+        let early = (0..<3).map { budget.request("Wait, wait early \($0)", entries: [], provider: .deepseek, speculative: true) }
+        precondition(early[0] != nil && early[1] != nil && early[2] == nil)
+        let final = (0..<5).map { budget.request("Wait, wait final \($0)", entries: [], provider: .deepseek)! }
+        precondition(final.prefix(4).allSatisfy { $0.result?.outcome != "limited" } && final[4].result?.outcome == "limited")
+        (early.compactMap { $0 } + final).forEach { budget.cancel($0) }
+        print("Passed 58 cleanup integrity checks and request limit, budget, cancellation, cache, and deadline checks")
     }
 }
