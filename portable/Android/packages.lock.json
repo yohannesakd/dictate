@@ -1,0 +1,58 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0-android36.0": {
+      "Microsoft.NET.ILLink.Tasks": {
+        "type": "Direct",
+        "requested": "[10.0.12, )",
+        "resolved": "10.0.12",
+        "contentHash": "xi+BDjFpW+Sb+MHFHaH6Y/gV9I8BluFwRXc1QyCdoZbIK26eNiBeFuMTe/FMwc33G1wdHCyDg7CVTmb8OdQrMQ=="
+      },
+      "Whisper.net.Runtime": {
+        "type": "Direct",
+        "requested": "[1.9.1, )",
+        "resolved": "1.9.1",
+        "contentHash": "TipPJkry69VwJ3XL38U082QK5Trqte6NgSOoosuyj/C1eRHabmBbLQ3ujjcDryg5pkXT7wXwAKU5+PxGIJyxkQ==",
+        "dependencies": {
+          "Whisper.net.Runtime.Metal": "1.9.1"
+        }
+      },
+      "Microsoft.Extensions.AI.Abstractions": {
+        "type": "Transitive",
+        "resolved": "10.2.0",
+        "contentHash": "ONGlIBht0ygEdKc0bCt9XWUiq19/460dAu7fCKzPM34OFJSMQIohEDTJwjCJ8vVp8znNakloc9xFF9+R/eDCYQ=="
+      },
+      "Whisper.net": {
+        "type": "Transitive",
+        "resolved": "1.9.1",
+        "contentHash": "82WAKyyMun44cAXE80sP7vIra1oYhbVp2WrnqJm0CISTfMAvint1k/umt0SvsQH+IkDyekZ3BgMdS3Rag9SZ5A==",
+        "dependencies": {
+          "Microsoft.Extensions.AI.Abstractions": "10.2.0"
+        }
+      },
+      "Whisper.net.Runtime.Metal": {
+        "type": "Transitive",
+        "resolved": "1.9.1",
+        "contentHash": "Ut5tZyCUwXMVdThoLvdvQ7GyLwjRMreR/p3LuMJvRiXidQ2AXxx2Tv8UOGtMxvL395AC3+IkHdN/kMfd+EPSEw=="
+      },
+      "Whisper.net.Runtime.NoAvx": {
+        "type": "Transitive",
+        "resolved": "1.9.1",
+        "contentHash": "5itvwa/WN+e8dFa6izByrG9yeHEKi+hRQPtAlcoRxvSJZMq4+q9z7JEm36hmbcAJZ2Jiyaai/yFOPfFcdDjK+Q=="
+      },
+      "dictate.core": {
+        "type": "Project"
+      },
+      "dictate.speech": {
+        "type": "Project",
+        "dependencies": {
+          "Dictate.Core": "[1.0.0, )",
+          "Whisper.net": "[1.9.1, )",
+          "Whisper.net.Runtime": "[1.9.1, )",
+          "Whisper.net.Runtime.NoAvx": "[1.9.1, )"
+        }
+      }
+    },
+    "net10.0-android36.0/android-x64": {}
+  }
+}
