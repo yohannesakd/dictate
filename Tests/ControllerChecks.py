@@ -63,6 +63,13 @@ struct Stopwatch {
     var cpuMs: Int { 0 }
 }
 enum MetricsLog { static func write(_ fields: [String: Any]) {} }
+struct Trace {
+    var snapshots = 0, speculativeRequests = 0
+    init(pressed: Double = 0) {}
+    mutating func mark(_ name: String, at time: Double = 0) {}
+    mutating func update(_ name: String, at time: Double = 0) {}
+    var fields: [String: Any] { [:] }
+}
 enum TranscriptLog { static func write(_ fields: [String: Any?]) {} }
 final class APIKeyClient: CleanupClient {
     init(_ provider: CleanupProvider) {}
