@@ -4,10 +4,18 @@
 import Foundation
 
 enum CleanupProvider: String, CaseIterable, Identifiable {
-    case deepseek, chatgpt
+    case groq, deepseek, chatgpt
 
     var id: String { rawValue }
-    var title: String { self == .deepseek ? "DeepSeek" : "ChatGPT" }
+    var title: String {
+        switch self {
+        case .groq: return "Groq"
+        case .deepseek: return "DeepSeek"
+        case .chatgpt: return "ChatGPT"
+        }
+    }
+    /// Providers that use an API key, kept in the Keychain. ChatGPT uses a sign-in instead.
+    var usesAPIKey: Bool { self != .chatgpt }
 }
 
 protocol CleanupClient {
@@ -121,7 +129,8 @@ final class SmartCleanup: @unchecked Sendable {
         }
     }
 
-    let deepseek = DeepSeekClient()
+    let groq = APIKeyClient(.groq)
+    let deepseek = APIKeyClient(.deepseek)
     let chatgpt = ChatGPTClient()
     /// Requests by provider and message, used on the main queue only. Failed requests leave, so the next one retries.
     private var requests: [String: Pending] = [:]
@@ -130,7 +139,19 @@ final class SmartCleanup: @unchecked Sendable {
     private let requestLifetime = 10.0
 
     func client(_ provider: CleanupProvider) -> CleanupClient {
-        provider == .deepseek ? deepseek : chatgpt
+        switch provider {
+        case .groq: return groq
+        case .deepseek: return deepseek
+        case .chatgpt: return chatgpt
+        }
+    }
+
+    func keyClient(_ provider: CleanupProvider) -> APIKeyClient? {
+        switch provider {
+        case .groq: return groq
+        case .deepseek: return deepseek
+        case .chatgpt: return nil
+        }
     }
 
     /// Starts a request, or returns the one with the same input. Nil when the transcript does not need the model.

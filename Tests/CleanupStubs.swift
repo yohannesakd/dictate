@@ -1,6 +1,7 @@
 import Foundation
 
-final class DeepSeekClient: CleanupClient {
+final class APIKeyClient: CleanupClient {
+    init(_ provider: CleanupProvider) {}
     static var slow = true
     static var ignoreCancellation = false
     static var calls = 0

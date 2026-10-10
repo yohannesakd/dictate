@@ -32,10 +32,11 @@ final class AppModel: ObservableObject {
     @Published var removeRepeats = AppModel.stored("removeRepeats", default: true) { didSet { store("removeRepeats", removeRepeats) } }
     @Published var scratchThat = AppModel.stored("scratchThat", default: true) { didSet { store("scratchThat", scratchThat) } }
     @Published var smartCleanup = AppModel.stored("smartCleanup", default: true) { didSet { store("smartCleanup", smartCleanup) } }
-    @Published var cleanupProvider = CleanupProvider(rawValue: UserDefaults.standard.string(forKey: "cleanupProvider") ?? "") ?? .deepseek {
+    @Published var cleanupProvider = CleanupProvider(rawValue: UserDefaults.standard.string(forKey: "cleanupProvider") ?? "") ?? .groq {
         didSet { UserDefaults.standard.set(cleanupProvider.rawValue, forKey: "cleanupProvider") }
     }
-    @Published var deepseekKeySaved = false
+    /// API key providers with a key in the Keychain.
+    @Published var savedKeys: Set<CleanupProvider> = []
     @Published var chatgptSignedIn = false
     @Published var signingIn = false
     /// The last smart cleanup error. A successful request clears it.
@@ -155,7 +156,7 @@ final class DictationController {
         engine.load { [weak self] error in
             self?.model.modelStatus = error.map { .failed($0.localizedDescription) } ?? .ready
         }
-        model.deepseekKeySaved = smart.deepseek.hasKey
+        model.savedKeys = Set(CleanupProvider.allCases.filter { smart.keyClient($0)?.hasKey == true })
         model.chatgptSignedIn = smart.chatgpt.auth.isSignedIn
         // Open at login by default. The switch in the Hub changes it later.
         if !UserDefaults.standard.bool(forKey: "openAtLoginSet") {
@@ -485,20 +486,21 @@ final class DictationController {
 
     // MARK: Smart cleanup accounts
 
-    func saveDeepSeekKey(_ key: String) {
+    func saveKey(_ key: String, for provider: CleanupProvider) {
         let key = key.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !key.isEmpty else { return }
+        guard !key.isEmpty, let client = smart.keyClient(provider) else { return }
         do {
-            try smart.deepseek.setKey(key)
-            model.deepseekKeySaved = true
+            try client.setKey(key)
+            model.savedKeys.insert(provider)
             model.smartIssue = nil
         } catch { model.smartIssue = error.localizedDescription }
     }
 
-    func removeDeepSeekKey() {
+    func removeKey(for provider: CleanupProvider) {
+        guard let client = smart.keyClient(provider) else { return }
         do {
-            try smart.deepseek.setKey(nil)
-            model.deepseekKeySaved = false
+            try client.setKey(nil)
+            model.savedKeys.remove(provider)
             model.smartIssue = nil
         } catch { model.smartIssue = error.localizedDescription }
     }

@@ -1,51 +1,72 @@
-// The two smart cleanup models: DeepSeek with an API key, and GPT-6-Luna with a ChatGPT sign-in.
+// The smart cleanup models: Groq and DeepSeek with an API key, and GPT-6-Luna with a ChatGPT sign-in.
 
 import AppKit
 import CryptoKit
 import Network
 
-// MARK: DeepSeek
+// MARK: API key providers
 
-final class DeepSeekClient: CleanupClient {
-    private let endpoint = URL(string: "https://api.deepseek.com/chat/completions")!
-    private let keychainAccount = "deepseek-api-key"
+/// A chat-completions API with an API key: Groq and DeepSeek.
+final class APIKeyClient: CleanupClient {
+    let provider: CleanupProvider
+    private let endpoint: URL
+    private let options: [String: Any]
+    private var keychainAccount: String { "\(provider.rawValue)-api-key" }
+
+    init(_ provider: CleanupProvider) {
+        self.provider = provider
+        switch provider {
+        case .groq:
+            // Measured from the owner's Mac: about 190 ms median for a cleanup. Thinking off; it only adds time here.
+            endpoint = URL(string: "https://api.groq.com/openai/v1/chat/completions")!
+            options = ["model": "qwen/qwen3.8-27b", "reasoning_effort": "none"]
+        default:
+            endpoint = URL(string: "https://api.deepseek.com/chat/completions")!
+            options = ["model": "deepseek-chat"]
+        }
+    }
 
     var hasKey: Bool { Keychain.read(keychainAccount) != nil }
 
     func setKey(_ key: String?) throws {
         let status = Keychain.write(keychainAccount, key.map { Data($0.utf8) })
         guard status == errSecSuccess else {
-            throw CleanupError.setup("DeepSeek key could not be saved (Keychain status \(status)).")
+            throw CleanupError.setup("\(provider.title) key could not be saved (Keychain status \(status)).")
         }
     }
 
     func complete(instructions: String, message: String, timing: RequestTiming) async throws -> String {
+        let name = provider.title
         guard let key = Keychain.read(keychainAccount).flatMap({ String(data: $0, encoding: .utf8) }) else {
-            throw CleanupError.setup("Add a DeepSeek API key in Dictate.")
+            throw CleanupError.setup("Add a \(name) API key in Dictate.")
         }
         var request = URLRequest(url: endpoint)
         request.httpMethod = "POST"
         request.setValue("Bearer \(key)", forHTTPHeaderField: "Authorization")
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.httpBody = try JSONSerialization.data(withJSONObject: [
-            "model": "deepseek-chat", "temperature": 0, "max_tokens": 4096,
+        request.httpBody = try JSONSerialization.data(withJSONObject: options.merging([
+            "temperature": 0, "max_tokens": 4096,
             "messages": [["role": "system", "content": instructions], ["role": "user", "content": message]],
-        ] as [String: Any])
+        ] as [String: Any]) { $1 })
         let (data, response) = try await URLSession.shared.data(for: request, delegate: timing)
         let status = (response as? HTTPURLResponse)?.statusCode ?? 0
         guard status == 200 else {
-            throw status == 401 ? CleanupError.setup("DeepSeek rejected the API key.")
-                                : CleanupError.server("DeepSeek error \(status): \(serverMessage(data))")
+            switch status {
+            case 401: throw CleanupError.setup("\(name) rejected the API key.")
+            case 429: throw CleanupError.server("\(name) rate limit reached: \(serverMessage(data))")
+            default: throw CleanupError.server("\(name) error \(status): \(serverMessage(data))")
+            }
         }
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
         let usage = json?["usage"] as? [String: Any]
-        timing.setTokens(input: usage?["prompt_tokens"] as? Int, output: usage?["completion_tokens"] as? Int,
-                         cached: usage?["prompt_cache_hit_tokens"] as? Int)
+        let cached = usage?["prompt_cache_hit_tokens"] as? Int  // DeepSeek
+            ?? (usage?["prompt_tokens_details"] as? [String: Any])?["cached_tokens"] as? Int
+        timing.setTokens(input: usage?["prompt_tokens"] as? Int, output: usage?["completion_tokens"] as? Int, cached: cached)
         let choice = (json?["choices"] as? [[String: Any]])?.first
         // "length" means the reply was cut off. A shortened cleanup could pass the guard and lose words.
         guard choice?["finish_reason"] as? String == "stop",
               let text = (choice?["message"] as? [String: Any])?["content"] as? String else {
-            throw CleanupError.server("DeepSeek sent no complete reply.")
+            throw CleanupError.server("\(name) sent no complete reply.")
         }
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
