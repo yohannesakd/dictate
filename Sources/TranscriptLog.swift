@@ -1,5 +1,6 @@
 // The transcript log: every dictation, kept on this Mac without a limit, so Dictate can learn from it later.
-// One JSON object per line: the raw transcript, the rule result, the model reply, the inserted text, and the app.
+// One JSON object per line: the raw transcript, the rule result, the cleanup outcome, the model, prompt version, and
+// reply, the inserted text, and the app. The id matches the dictation's line in the metrics log.
 
 import Foundation
 

@@ -45,7 +45,7 @@ Dictate uses the rule result when the model exceeds 3 seconds or fails the order
 
 Smart cleanup sends at most 12 requests a minute, below the Groq free tier's 8000 tokens a minute. Requests during recording stop at 8 a minute, so the request at fn release still runs. Above the limit, Dictate uses the rule result. These checks reduce mistakes; they do not prove meaning preservation.
 
-Every dictation is saved in `~/Library/Application Support/Dictate/transcripts.jsonl`: the raw transcript, the rule result, the model reply, the final text, delivery outcome, and app.
+Every dictation is saved in `~/Library/Application Support/Dictate/transcripts.jsonl`: the raw transcript, the rule result, the cleanup outcome and its reason, the model, the prompt version, the model reply, the final text, the delivery outcome, and the app. The `id` field matches the dictation's line in the metrics log.
 
 Each dictation appends one JSON line of timing and resource metrics to `~/Library/Logs/Dictate/metrics.jsonl`.
 The `at_*_ms` fields are a timeline in milliseconds since the fn press: microphone ready, first audio, first and last speech, fn release, transcript, rules, model request start and end, text ready, events posted, and text verified.

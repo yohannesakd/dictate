@@ -1,6 +1,7 @@
 // Smart cleanup: a language model removes repeated words and restarts, and uses the dictionary as hints.
 // The rules already remove filler sounds. The rules give the text when the model is not needed, too slow, or wrong.
 
+import CryptoKit
 import Foundation
 
 enum CleanupProvider: String, CaseIterable, Identifiable {
@@ -12,6 +13,13 @@ enum CleanupProvider: String, CaseIterable, Identifiable {
         case .groq: return "Groq"
         case .deepseek: return "DeepSeek"
         case .chatgpt: return "ChatGPT"
+        }
+    }
+    var model: String {
+        switch self {
+        case .groq: return "qwen/qwen3.8-27b"
+        case .deepseek: return "deepseek-chat"
+        case .chatgpt: return "gpt-6-luna"
         }
     }
     /// Providers that use an API key, kept in the Keychain. ChatGPT uses a sign-in instead.
@@ -247,6 +255,9 @@ final class SmartCleanup: @unchecked Sendable {
         <transcript>What is the, what is the capital of France?</transcript> → What is the capital of France?
         <hints>Sol (heard as soul)</hints><transcript>Ask soul to check it, but my soul is tired.</transcript> → Ask Sol to check it, but my soul is tired.
         """
+
+    /// Changes with every edit of the instructions, so the transcript log shows which prompt produced each reply.
+    static let promptVersion = SHA256.hash(data: Data(instructions.utf8)).prefix(4).map { String(format: "%02x", $0) }.joined()
 
     static func message(_ raw: String, entries: [DictionaryEntry]) -> String {
         let hints = entries.compactMap { entry -> String? in

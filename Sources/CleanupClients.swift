@@ -19,10 +19,10 @@ final class APIKeyClient: CleanupClient {
         case .groq:
             // Measured from the owner's Mac: about 190 ms median for a cleanup. Thinking off; it only adds time here.
             endpoint = URL(string: "https://api.groq.com/openai/v1/chat/completions")!
-            options = ["model": "qwen/qwen3.8-27b", "reasoning_effort": "none"]
+            options = ["model": provider.model, "reasoning_effort": "none"]
         default:
             endpoint = URL(string: "https://api.deepseek.com/chat/completions")!
-            options = ["model": "deepseek-chat"]
+            options = ["model": provider.model]
         }
     }
 
@@ -93,7 +93,7 @@ final class ChatGPTClient: CleanupClient {
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         // The endpoint accepts only streamed responses.
         request.httpBody = try JSONSerialization.data(withJSONObject: [
-            "model": "gpt-6-luna", "store": false, "stream": true, "instructions": instructions,
+            "model": CleanupProvider.chatgpt.model, "store": false, "stream": true, "instructions": instructions,
             "input": [["role": "user", "content": [["type": "input_text", "text": message]]]],
             "reasoning": ["effort": "none"], "text": ["verbosity": "low"], "prompt_cache_key": "dictate",
         ] as [String: Any])
