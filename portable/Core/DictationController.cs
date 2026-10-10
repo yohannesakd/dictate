@@ -36,12 +36,14 @@ public sealed class DictationController(IAudioCapture recorder, ISpeechEngine sp
             catch { next.Cancellation.Dispose(); throw; }
             operation = next;
             phase = DictationPhase.Listening;
-            next.AutoStop = new Timer(_ => _ = FinishAsync(), null, TimeSpan.FromMinutes(5), Timeout.InfiniteTimeSpan);
+            next.AutoStop = new Timer(_ => _ = FinishAsync(next), null, TimeSpan.FromMinutes(5), Timeout.InfiniteTimeSpan);
         }
         PhaseChanged?.Invoke(DictationPhase.Listening);
     }
 
-    public async Task FinishAsync()
+    public Task FinishAsync() => FinishAsync(null);
+
+    private async Task FinishAsync(Operation? expected)
     {
         Operation current;
         float[] pcm = [];
@@ -50,6 +52,7 @@ public sealed class DictationController(IAudioCapture recorder, ISpeechEngine sp
         lock (sync)
         {
             if (phase != DictationPhase.Listening || operation is null) return;
+            if (expected is not null && !ReferenceEquals(operation, expected)) return;
             current = operation;
             current.AutoStop?.Dispose();
             current.AutoStop = null;
