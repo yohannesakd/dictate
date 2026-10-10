@@ -1,4 +1,4 @@
-// Adds a dictionary word from a dictation mistake: select the wrong text in any app, press Control-Command-E,
+// Adds a dictionary word from a dictation mistake: select the wrong text in any app, press fn + D,
 // and type what you meant. The selection becomes "heard as"; the typed text becomes "write as".
 
 import AppKit
@@ -130,7 +130,7 @@ final class WordCapture {
         let source = CGEventSource(stateID: .hidSystemState)
         for keyDown in [true, false] {
             let event = CGEvent(keyboardEventSource: source, virtualKey: CGKeyCode(kVK_ANSI_C), keyDown: keyDown)
-            event?.flags = .maskCommand  // Not the Control key the user still holds from the shortcut.
+            event?.flags = .maskCommand  // Not the fn key the user still holds from the shortcut.
             event?.post(tap: .cghidEventTap)
         }
         // Apps usually copy within a few milliseconds. Without a selection, the clipboard does not change.

@@ -375,7 +375,7 @@ private struct SettingsScreen: View {
                     ShortcutRow(title: "Hands-free", keys: [["fn", "fn"], ["fn", "Space"]])
                     ShortcutRow(title: "Cancel", keys: [["esc"]])
                     ShortcutRow(title: "Insert last dictation", keys: [["⌃", "⌘", "V"]])
-                    ShortcutRow(title: "Add selected text to the dictionary", keys: [["⌃", "⌘", "E"]])
+                    ShortcutRow(title: "Add selected text to the dictionary", keys: [["fn", "D"]])
                 }
                 Section {
                     LabeledContent("Speech model") { ModelStatusLabel(status: model.modelStatus) }
@@ -489,7 +489,7 @@ private struct DictionarySection: View {
         } header: {
             Text("Dictionary")
         } footer: {
-            Text("Words the speech model mishears, such as “ask soul” for “ask Sol”. To add one, select it in any app and press ⌃⌘E.")
+            Text("Words the speech model mishears, such as “ask soul” for “ask Sol”. To add one, select it in any app and press fn + D.")
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

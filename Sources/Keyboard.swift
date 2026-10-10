@@ -82,11 +82,12 @@ final class KeyboardMonitor {
                 if !isRepeat { DispatchQueue.main.async(execute: onPasteLast) }
                 return nil
             }
-            if keyCode == kVK_ANSI_E, chord == [.maskCommand, .maskControl] {
+            if fnDown { DispatchQueue.main.async(execute: onOtherKeyWithFn) }
+            // fn + D: pressing fn has already started a recording. The line above drops it.
+            if fnDown, keyCode == kVK_ANSI_D {
                 if !isRepeat { DispatchQueue.main.async(execute: onCaptureWord) }
                 return nil
             }
-            if fnDown { DispatchQueue.main.async(execute: onOtherKeyWithFn) }
             return pass
 
         default:
