@@ -44,6 +44,32 @@ Change the text, caret, or field before correction.
 The correction must refuse the changed field.
 Test microphone interruption and app shutdown during recording.
 
+The Windows native checks use a separate process with two standard Edit controls.
+Run the checks in an interactive Windows desktop session.
+The check process opens and closes its own windows and records two short microphone samples.
+The PowerShell runner also checks CPU recognition and the Home, History, and Settings pages.
+It checks F8 recording and Escape cancellation with an external field focused.
+Keep other applications from taking focus during that check.
+
+Publish the three check packages before running the Windows runner.
+
+```sh
+dotnet publish portable/NativeChecks -c Release -r win-x64 --self-contained false -o portable/artifacts/windows/native
+dotnet publish portable/Checks -c Release -r win-x64 --self-contained false -o portable/artifacts/windows/speech
+dotnet publish portable/Desktop -c Release -r win-x64 --self-contained false -o portable/artifacts/windows/app
+```
+
+Supply the public JFK WAV file and a model directory to the runner.
+The speech check downloads `tiny.en` if that model is absent.
+
+```powershell
+powershell -NoProfile -File portable/scripts/check-windows.ps1 `
+  -PackageDirectory portable/artifacts/windows `
+  -OutputDirectory portable/artifacts/windows/results `
+  -FixtureAudio portable/artifacts/jfk.wav `
+  -ModelDirectory portable/models
+```
+
 ## Android checks
 
 Build an x64 APK and install it on the shared Android emulator.
@@ -64,7 +90,9 @@ Wayland global shortcuts need a compositor-supported integration.
 Unreadable Linux fields require copying from History.
 Windows correction currently supports standard Edit controls.
 Other Windows controls need an accessibility adapter for verified correction and selected-word capture.
-Desktop microphone hardware and Windows input delivery still require physical-device checks.
+Linux microphone hardware still requires a physical-device check.
+Microphone capture remains untested in Saibot Linux's WSL environment.
+The Windows F8 check remains incomplete after Saibot lost its connection during the final check run.
 Android ARM64 packages compile, but physical ARM64 devices still need microphone and latency checks.
 Provider cleanup has protocol tests but no live account checks.
 Provider sign-in still needs a live account check.
@@ -76,6 +104,35 @@ The portable model differs from Phonon-2.
 Accuracy and interactive latency require recordings from each target device.
 
 ## Evidence
+
+On October 10, 2026, Dispatch job `d5b5071a-fe3d-49f2-bb6e-f329a8a6fe81` passed the Linux checks on Saibot Linux.
+It passed 22 core tests, CPU recognition, silence, active cancellation, and recovery.
+It also passed the native GTK field checks and captured Home, History, and Settings with software rendering.
+The local screenshots are under `portable/artifacts/saibot-linux`.
+
+Dispatch job `95893162-e52c-4d62-808a-42f2fc12345d` published the Windows app and check packages on Saibot Linux.
+Dispatch job `e8731468-fd01-4128-a176-33772f265111` published the final native check fixture.
+On Saibot's Windows 11 desktop, native checks passed Unicode insertion, selection replacement, selected-word capture, raw restoration, and undo.
+They refused stale fields, edited text, and changed carets.
+Cancelled insertion left the field unchanged.
+The microphone produced samples at 16 kHz in two recording cycles.
+CPU recognition, silence, active cancellation, and recovery passed with normal hardware intrinsics and with hardware intrinsics disabled.
+The Windows app opened Home, History, and Settings with software rendering.
+The local screenshots are under `portable/artifacts/saibot-windows`.
+
+The separate F8 check could not establish focus while Task Manager held the foreground.
+The final retry did not return a result before Saibot became unreachable through SSH and Dispatch.
+The task-owned Windows task is `DictateVerification-20261010`, with a ten-minute execution limit.
+After Saibot returns, stop that task.
+Close only its check processes before another run.
+The check files are under `C:\Users\yohannes\AppData\Local\DictateVerification`.
+Restore Task Manager if the temporary check left its window minimized.
+
+The Android 15 emulator on Saibot repeated `DeviceChecks` and passed all native checks.
+The voice keyboard also completed a silent recording cycle through Start dictation and Stop and insert.
+It reported `No speech detected.` and left the input field unchanged.
+Android reported a completed microphone operation, with no recording still running.
+Home, History, and Settings remained usable after recording.
 
 Dispatch job `1f3b591b-1ca0-49ae-b6e9-ae66cd8cbe25` passed CPU recognition and cancellation with .NET hardware intrinsics disabled.
 That setting selected the no-AVX speech library on x64.

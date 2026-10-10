@@ -1,6 +1,13 @@
 using Dictate.Core;
 using Dictate.Desktop;
 
+if (OperatingSystem.IsWindows())
+{
+    if (args is ["--fixture", var path]) WindowsChecks.RunFixture(path);
+    else await WindowsChecks.RunAsync();
+    return;
+}
+
 var command = args[0];
 async Task Signal(string value)
 {
