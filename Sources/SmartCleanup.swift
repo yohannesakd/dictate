@@ -278,20 +278,29 @@ final class SmartCleanup: @unchecked Sendable {
 
     /// Words that the speaker abandons: an exact repeat, as in "the new, the new design", or a restart set off by
     /// punctuation that begins with the same two or more words, as in "is it like, is it possible".
-    /// Without punctuation, "the man saw the man" is literal text.
+    /// Without punctuation, "the man saw the man" is literal text. Repeats that end at punctuation, as in
+    /// "no, no, no," or "I know, I know.", are meant.
     private static func restarts(in baseline: String) -> [(start: Int, count: Int)] {
         let value = baseline as NSString
         let ranges = tokenPattern.matches(in: baseline, range: NSRange(location: 0, length: value.length)).map(\.range)
         let source = ranges.map { value.substring(with: $0).lowercased().replacingOccurrences(of: "’", with: "'") }
+        func separated(before index: Int) -> Bool {
+            let start = NSMaxRange(ranges[index - 1])
+            let end = index < ranges.count ? ranges[index].location : value.length
+            return index == ranges.count
+                || value.substring(with: NSRange(location: start, length: end - start)).rangeOfCharacter(from: separators) != nil
+        }
         var found: [(start: Int, count: Int)] = []
         for start in source.indices {
             for count in 1...6 where start + count < source.count {
                 let next = start + count
                 var shared = 0
                 while shared < count, next + shared < source.count, source[start + shared] == source[next + shared] { shared += 1 }
-                let gap = value.substring(with: NSRange(location: NSMaxRange(ranges[next - 1]),
-                                                        length: ranges[next].location - NSMaxRange(ranges[next - 1])))
-                if shared == count || (shared >= 2 && count - shared <= 2 && gap.rangeOfCharacter(from: separators) != nil) {
+                if shared == count {
+                    var end = next + count
+                    while matches(Array(source[start..<next]), in: source, at: end) { end += count }
+                    if !separated(before: end) { found.append((start, count)) }
+                } else if shared >= 2, count - shared <= 2, separated(before: next) {
                     found.append((start, count))
                 }
             }

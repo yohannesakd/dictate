@@ -45,6 +45,10 @@ import Foundation
             ("Is it, like, possible?", "Is it possible?", false),
             ("I do not, I do want it.", "I do want it.", true),
             ("Had had a long day, I had had a long day.", "I had a long day.", false),
+            ("Yeah, yeah, I know, I know.", "Yeah, I know.", false),
+            ("No, no, no, that's not it.", "No, that's not it.", false),
+            ("Hello, hello, can you hear me?", "Hello, can you hear me?", false),
+            ("We should, we should, we should probably wait.", "We should probably wait.", true),
             ("So move it to Thursday, actually Friday.", "So move it to Friday, actually.", false),
         ]
         for (raw, reply, expected) in cases {
@@ -90,11 +94,11 @@ import Foundation
         try! await Task.sleep(nanoseconds: 50_000_000)
         precondition(old.result?.outcome == "cancelled" && current.result?.outcome == "used")
         precondition(smart.request("Wait, wait stale reply", entries: [], provider: .deepseek) === current)
-        let accepted = smart.request("Wait, wait wait", entries: [], provider: .deepseek)!
+        let accepted = smart.request("Wait, wait now", entries: [], provider: .deepseek)!
         try! await Task.sleep(nanoseconds: 50_000_000)
         precondition(accepted.result?.outcome == "used")
         let calls = APIKeyClient.calls
-        precondition(smart.request("Wait, wait wait", entries: [], provider: .deepseek) === accepted)
+        precondition(smart.request("Wait, wait now", entries: [], provider: .deepseek) === accepted)
         precondition(APIKeyClient.calls == calls)
         var cached: [SmartCleanup.Pending] = []
         for i in 0..<40 {
@@ -116,6 +120,6 @@ import Foundation
         let final = (0..<5).map { budget.request("Wait, wait final \($0)", entries: [], provider: .deepseek)! }
         precondition(final.prefix(4).allSatisfy { $0.result?.outcome != "limited" } && final[4].result?.outcome == "limited")
         (early.compactMap { $0 } + final).forEach { budget.cancel($0) }
-        print("Passed 54 cleanup integrity checks and request limit, budget, cancellation, cache, and deadline checks")
+        print("Passed 58 cleanup integrity checks and request limit, budget, cancellation, cache, and deadline checks")
     }
 }
