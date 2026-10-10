@@ -1,0 +1,1013 @@
+[
+  {
+    "raw": "I would like you not to delete it.",
+    "reply": "I would like you to delete it.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Actually, would you like tea or coffee?",
+    "reply": "Tea.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Actually, set it to 5.",
+    "reply": "Set it to -5.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Actually, set it to -5.",
+    "reply": "Set it to 5.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Actually, send Alice to Bob.",
+    "reply": "Send Bob to Alice.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Actually wait.",
+    "reply": "Delete all files.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "What is two plus two?",
+    "reply": "4",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "nyc. nyc",
+    "reply": "New York City New York City",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "nyc nyc",
+    "reply": "New York City New York City",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Ask soul to help Bob",
+    "reply": "Ask Bob to help Sol",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Ask soul to help Bob",
+    "reply": "Ask Sol to help Bob",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Ask soul but my soul is tired",
+    "reply": "Ask Sol but my soul is tired",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Set it to two actually three",
+    "reply": "Set it to two three",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Set it to two actually three",
+    "reply": "Set it to three",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Set it to 5.25",
+    "reply": "Set it to 525",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Set it to .5",
+    "reply": "Set it to 5",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Calculate 5 * 5",
+    "reply": "Calculate 5 5",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Set it to 5%",
+    "reply": "Set it to 5",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Don't delete it",
+    "reply": "Do delete it",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Send 5 then 10",
+    "reply": "Send 10 then 5",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Um, I I need help.",
+    "reply": "I need help.",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Actually, would you like tea or coffee?",
+    "reply": "Would you like tea or coffee?",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Send it to John, scratch that, send it to Sarah.",
+    "reply": "Send it to Sarah.",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Do not scratch that surface.",
+    "reply": "Surface.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "It looks like it'll rain, you know?",
+    "reply": "It looks like it'll rain.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Is it like, is it possible to get it by Monday?",
+    "reply": "Is it possible to get it by Monday?",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Let's meet at noon, sorry, at one.",
+    "reply": "Let's meet at one.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "It went from twenty to thirty, sorry, thirty five dollars.",
+    "reply": "It went from twenty to thirty-five dollars.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "I'm sorry I missed the call.",
+    "reply": "I missed the call.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Send it to Maria, no wait, send it to James.",
+    "reply": "Send it to Maria.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Set it to two, actually, three.",
+    "reply": "Set it to two three.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "I do not think we should ship it, you know.",
+    "reply": "I think we should ship it.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "I want to, I want to go home, you know?",
+    "reply": "I want to go home, you know?",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "We need the new, the new design.",
+    "reply": "We need the new design.",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "The man saw the man.",
+    "reply": "The man.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Is it like, is it possible?",
+    "reply": "Is it possible?",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Is it, like, possible?",
+    "reply": "Is it possible?",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "I do not, I do want it.",
+    "reply": "I do want it.",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Had had a long day, I had had a long day.",
+    "reply": "I had a long day.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Yeah, yeah, I know, I know.",
+    "reply": "Yeah, I know.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "I think that that is the right call.",
+    "reply": "I think that is the right call.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "It's, it's fine.",
+    "reply": "It's fine.",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "No, no, no, that's not it.",
+    "reply": "No, that's not it.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Hello, hello, can you hear me?",
+    "reply": "Hello, can you hear me?",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "We should, we should, we should probably wait.",
+    "reply": "We should probably wait.",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "So move it to Thursday, actually Friday.",
+    "reply": "So move it to Friday, actually.",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "New York City"
+      },
+      {
+        "heard": "soul",
+        "written": "Sol"
+      },
+      {
+        "heard": "unmatched",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "Send. Alice.",
+    "reply": "Delete all files",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "send alice",
+        "written": "Delete all files"
+      }
+    ]
+  },
+  {
+    "raw": "New York City",
+    "reply": "NY City",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "new york",
+        "written": "NY"
+      },
+      {
+        "heard": "new york city",
+        "written": "NYC"
+      }
+    ]
+  },
+  {
+    "raw": "New York City",
+    "reply": "NYC",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "new york",
+        "written": "NY"
+      },
+      {
+        "heard": "new york city",
+        "written": "NYC"
+      }
+    ]
+  },
+  {
+    "raw": "nyc",
+    "reply": "old",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "old"
+      },
+      {
+        "heard": "nyc",
+        "written": "new"
+      }
+    ]
+  },
+  {
+    "raw": "nyc",
+    "reply": "new",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "nyc",
+        "written": "old"
+      },
+      {
+        "heard": "nyc",
+        "written": "new"
+      }
+    ]
+  },
+  {
+    "raw": "-5",
+    "reply": "6",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "5",
+        "written": "6"
+      }
+    ]
+  },
+  {
+    "raw": "-5",
+    "reply": "-6",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "5",
+        "written": "6"
+      }
+    ]
+  },
+  {
+    "raw": "5%",
+    "reply": "6",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "5",
+        "written": "6"
+      }
+    ]
+  },
+  {
+    "raw": "5%",
+    "reply": "6%",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "5",
+        "written": "6"
+      }
+    ]
+  },
+  {
+    "raw": "5.25",
+    "reply": "6",
+    "expected": false,
+    "dictionary": [
+      {
+        "heard": "5",
+        "written": "6"
+      }
+    ]
+  },
+  {
+    "raw": "5.25",
+    "reply": "6.25",
+    "expected": true,
+    "dictionary": [
+      {
+        "heard": "5",
+        "written": "6"
+      }
+    ]
+  }
+]

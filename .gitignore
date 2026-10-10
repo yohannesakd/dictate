@@ -2,3 +2,7 @@ build/
 models/
 vendor/
 signing/
+portable/**/bin/
+portable/**/obj/
+portable/artifacts/
+portable/.tools/

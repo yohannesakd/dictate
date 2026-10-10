@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Core/Dictate.Core.csproj" />
+    <PackageReference Include="Whisper.net" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime.NoAvx" Version="1.9.1" />
+  </ItemGroup>
+</Project>
