@@ -46,6 +46,8 @@ import Foundation
             ("I do not, I do want it.", "I do want it.", true),
             ("Had had a long day, I had had a long day.", "I had a long day.", false),
             ("Yeah, yeah, I know, I know.", "Yeah, I know.", false),
+            ("I think that that is the right call.", "I think that is the right call.", false),
+            ("It's, it's fine.", "It's fine.", true),
             ("No, no, no, that's not it.", "No, that's not it.", false),
             ("Hello, hello, can you hear me?", "Hello, can you hear me?", false),
             ("We should, we should, we should probably wait.", "We should probably wait.", true),
@@ -120,6 +122,6 @@ import Foundation
         let final = (0..<5).map { budget.request("Wait, wait final \($0)", entries: [], provider: .deepseek)! }
         precondition(final.prefix(4).allSatisfy { $0.result?.outcome != "limited" } && final[4].result?.outcome == "limited")
         (early.compactMap { $0 } + final).forEach { budget.cancel($0) }
-        print("Passed 58 cleanup integrity checks and request limit, budget, cancellation, cache, and deadline checks")
+        print("Passed 60 cleanup integrity checks and request limit, budget, cancellation, cache, and deadline checks")
     }
 }
