@@ -1,6 +1,6 @@
 # Dictate
 
-System-wide dictation for macOS in the style of Wispr Flow. Hold fn, speak, and release: the text is typed into the focused field. Speech recognition runs on this Mac with Phonon-2 on the Neural Engine. Optional smart cleanup uses DeepSeek or GPT-6-Luna.
+System-wide dictation for macOS in the style of Wispr Flow. Hold fn, speak, and release: the text is typed into the focused field. Speech recognition runs on this Mac with Phonon-2 on the Neural Engine. Optional smart cleanup uses Groq, DeepSeek, or GPT-6-Luna.
 
 ## Build
 
@@ -35,7 +35,8 @@ Smart cleanup sends a transcript to a language model when it contains words that
 
 Choose the model in Settings (the gear button, or ⌘,), under Cleanup:
 
-- DeepSeek (`deepseek-chat`): about 1 s. Save a DeepSeek API key in Dictate. Dictate keeps it in the Keychain.
+- Groq (`qwen/qwen3.8-27b`, thinking off): about 0.2 s. This is the default. Save a Groq API key in Dictate. Groq lists this model as a preview, so it can remove it at short notice. The free tier allows about 30 requests per minute; when Groq refuses a request, Dictate uses the rule result.
+- DeepSeek (`deepseek-chat`): about 1 s. Save a DeepSeek API key in Dictate. Dictate keeps each API key in the Keychain.
 - ChatGPT (`gpt-6-luna`): about 1.5 s. Click "Sign In with ChatGPT". Dictate uses the same sign-in flow as the Codex CLI and Pi, and keeps its own tokens in the Keychain. The endpoint (`chatgpt.com/backend-api/codex/responses`) is not a public API, so OpenAI can change it. Usage counts against your plan limits.
 
 Dictate uses the rule result when the model exceeds 3 seconds or fails the ordered-edit guard. The guard permits matching dictionary replacements and limited removals. It rejects substantive omissions, reordered words, and changed numeric notation. Unrecognized spoken corrections can remain in the result. These checks reduce mistakes; they do not prove meaning preservation.

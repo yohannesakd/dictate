@@ -23,7 +23,7 @@ final class AppModel {
     var phase = Phase.idle, handsFree = false
     var levels = [CGFloat](repeating: 0, count: 11)
     var micAuthorized = true, accessibilityTrusted = true, keyboardReady = true, fnKeyFree = true
-    var deepseekKeySaved = false, chatgptSignedIn = false, signingIn = false, openAtLogin = false
+    var savedKeys: Set<CleanupProvider> = [], chatgptSignedIn = false, signingIn = false, openAtLogin = false
     var smartCleanup = false, cleanupProvider = CleanupProvider.deepseek
     var smartIssue: String?, modelStatus = ModelStatus.ready
     var dictionary: [DictionaryEntry] = []
@@ -64,7 +64,8 @@ struct Stopwatch {
 }
 enum MetricsLog { static func write(_ fields: [String: Any]) {} }
 enum TranscriptLog { static func write(_ fields: [String: Any?]) {} }
-final class DeepSeekClient: CleanupClient {
+final class APIKeyClient: CleanupClient {
+    init(_ provider: CleanupProvider) {}
     var hasKey: Bool { false }
     func setKey(_ key: String?) throws {}
     func complete(instructions: String, message: String, timing: RequestTiming) async throws -> String { throw CancellationError() }

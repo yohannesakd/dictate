@@ -62,13 +62,13 @@ import Foundation
         requests.suffix(2).forEach { smart.cancel($0) }
         try! await Task.sleep(nanoseconds: 50_000_000)
         precondition(requests.allSatisfy { $0.result?.outcome == "cancelled" })
-        precondition(DeepSeekClient.cancellations == 40)
-        DeepSeekClient.ignoreCancellation = true
+        precondition(APIKeyClient.cancellations == 40)
+        APIKeyClient.ignoreCancellation = true
         let old = smart.request("Actually stale reply", entries: [], provider: .deepseek)!
         try! await Task.sleep(nanoseconds: 20_000_000)
         smart.cancel(old)
-        DeepSeekClient.slow = false
-        DeepSeekClient.ignoreCancellation = false
+        APIKeyClient.slow = false
+        APIKeyClient.ignoreCancellation = false
         let current = smart.request("Actually stale reply", entries: [], provider: .deepseek)!
         try! await Task.sleep(nanoseconds: 50_000_000)
         precondition(old.result?.outcome == "cancelled" && current.result?.outcome == "used")
@@ -76,9 +76,9 @@ import Foundation
         let accepted = smart.request("Actually wait", entries: [], provider: .deepseek)!
         try! await Task.sleep(nanoseconds: 50_000_000)
         precondition(accepted.result?.outcome == "used")
-        let calls = DeepSeekClient.calls
+        let calls = APIKeyClient.calls
         precondition(smart.request("Actually wait", entries: [], provider: .deepseek) === accepted)
-        precondition(DeepSeekClient.calls == calls)
+        precondition(APIKeyClient.calls == calls)
         var cached: [SmartCleanup.Pending] = []
         for i in 0..<40 {
             cached.append(smart.request("Actually cache \(i)", entries: [], provider: .deepseek)!)
@@ -87,7 +87,7 @@ import Foundation
         }
         precondition(smart.request("Actually cache 0", entries: [], provider: .deepseek) !== cached[0])
         precondition(smart.request("Actually cache 39", entries: [], provider: .deepseek) === cached[39])
-        DeepSeekClient.slow = true
+        APIKeyClient.slow = true
         let deadline = smart.request("Actually wait for deadline", entries: [], provider: .deepseek)!
         try! await Task.sleep(nanoseconds: 10_200_000_000)
         precondition(deadline.result?.outcome == "cancelled")

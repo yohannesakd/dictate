@@ -423,28 +423,29 @@ private struct SmartCleanupSection: View {
             return "A language model can remove fillers by context and apply spoken corrections such as “at two, actually three”."
         }
         switch model.cleanupProvider {
-        case .deepseek:
-            return "Runs only for dictations with fillers, corrections, or dictionary words. That text goes to DeepSeek and uses your API key."
+        case .groq, .deepseek:
+            return "Runs only for dictations with fillers, corrections, or dictionary words. That text goes to \(model.cleanupProvider.title) and uses your API key."
         case .chatgpt:
             return "Runs only for dictations with fillers, corrections, or dictionary words. That text goes to OpenAI and uses your ChatGPT plan."
         }
     }
 
     @ViewBuilder private var account: some View {
-        switch model.cleanupProvider {
-        case .deepseek:
-            if model.deepseekKeySaved {
+        let provider = model.cleanupProvider
+        switch provider {
+        case .groq, .deepseek:
+            if model.savedKeys.contains(provider) {
                 LabeledContent("API key") {
                     HStack {
                         Text("Saved in the Keychain").foregroundStyle(.secondary)
-                        Button("Remove", action: controller.removeDeepSeekKey)
+                        Button("Remove") { controller.removeKey(for: provider) }
                     }
                 }
             } else {
                 HStack {
-                    SecureField("API key", text: $key, prompt: Text("Paste your DeepSeek API key"))
+                    SecureField("API key", text: $key, prompt: Text("Paste your \(provider.title) API key"))
                     Button("Save") {
-                        controller.saveDeepSeekKey(key)
+                        controller.saveKey(key, for: provider)
                         key = ""
                     }
                     .disabled(key.isEmpty)
