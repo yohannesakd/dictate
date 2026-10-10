@@ -41,7 +41,11 @@ public sealed class WhisperEngine(string directory) : ISpeechEngine, IDisposable
             else builder.WithLanguage(language);
             await using var processor = builder.Build();
             var parts = new List<string>();
-            await foreach (var segment in processor.ProcessAsync(pcm, cancellation).ConfigureAwait(false)) parts.Add(segment.Text.Trim());
+            await foreach (var segment in processor.ProcessAsync(pcm, cancellation).ConfigureAwait(false))
+            {
+                var text = segment.Text.Replace("[BLANK_AUDIO]", "", StringComparison.Ordinal).Trim();
+                if (text.Length > 0) parts.Add(text);
+            }
             return string.Join(' ', parts);
         }
         finally { gate.Release(); }
@@ -75,7 +79,7 @@ public sealed class WhisperEngine(string directory) : ISpeechEngine, IDisposable
         Status?.Invoke("Loading the speech model.");
         var x86 = RuntimeInformation.ProcessArchitecture is Architecture.X64 or Architecture.X86;
         var vectorCpu = Avx.IsSupported && Avx2.IsSupported && Fma.IsSupported && (X86Base.CpuId(1, 0).Ecx & (1 << 29)) != 0;
-        RuntimeOptions.RuntimeLibraryOrder = x86 && !vectorCpu ? [RuntimeLibrary.CpuNoAvx] : [RuntimeLibrary.Cpu];
+        RuntimeOptions.RuntimeLibraryOrder = x86 && !OperatingSystem.IsAndroid() && !vectorCpu ? [RuntimeLibrary.CpuNoAvx] : [RuntimeLibrary.Cpu];
         var next = await Task.Run(() => WhisperFactory.FromPath(path, new WhisperFactoryOptions { UseGpu = false }), cancellation).ConfigureAwait(false);
         factory?.Dispose();
         factory = next;

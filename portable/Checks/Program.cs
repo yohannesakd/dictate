@@ -31,6 +31,8 @@ var transcript = await engine.TranscribeAsync(pcm, "tiny.en", "en", Cancellation
 Console.WriteLine(transcript);
 if (!transcript.Contains("country", StringComparison.OrdinalIgnoreCase) || !transcript.Contains("fellow", StringComparison.OrdinalIgnoreCase))
     throw new InvalidOperationException("The CPU speech engine did not recognize the reference recording.");
+if (await engine.TranscribeAsync(new float[32000], "tiny.en", "en", CancellationToken.None) != "")
+    throw new InvalidOperationException("Silent audio produced dictation text.");
 using var cancelled = new CancellationTokenSource();
 cancelled.CancelAfter(TimeSpan.FromMilliseconds(100));
 var longRecording = Enumerable.Range(0, 20).SelectMany(_ => pcm).ToArray();
