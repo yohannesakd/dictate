@@ -399,7 +399,8 @@ final class DictationController {
             // Only a transcript taken in a pause is likely to be final. Mid-speech snapshots only keep the engine warm.
             guard paused, self.isRecording, recording == self.requestID, self.model.smartCleanup,
                   case .success(let raw) = result, !raw.isEmpty else { return }
-            let next = self.smart.request(raw, entries: self.model.dictionary, provider: self.model.cleanupProvider)
+            let next = self.smart.request(raw, entries: self.model.dictionary, provider: self.model.cleanupProvider,
+                                          speculative: true)
             if let previous = self.speculation, previous !== next { self.smart.cancel(previous) }
             if let next, next !== self.speculation { self.trace.speculativeRequests += 1 }
             self.speculation = next
@@ -427,6 +428,7 @@ final class DictationController {
             case "timeout": return "Rules used: the model did not reply within 3 seconds."
             case "rejected": return "Rules used: the model reply was not a cleanup of the transcript."
             case "error": return "Rules used: \(smart?.error?.localizedDescription ?? "the model failed.")"
+            case "limited": return "Rules used: smart cleanup is limited to 12 requests a minute."
             default: return nil
             }
         }

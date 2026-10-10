@@ -30,6 +30,14 @@ import Foundation
             ("Actually, would you like tea or coffee?", "Would you like tea or coffee?", true),
             ("Send it to John, scratch that, send it to Sarah.", "Send it to Sarah.", true),
             ("Do not scratch that surface.", "Surface.", false),
+            ("It looks like it will rain, you know.", "It looks like it will rain.", true),
+            ("Is it like, is it possible to get it by Monday?", "Is it possible to get it by Monday?", true),
+            ("Let's meet at noon, sorry, at one.", "Let's meet at one.", true),
+            ("It went from twenty to thirty, sorry, thirty five dollars.", "It went from twenty to thirty-five dollars.", true),
+            ("I'm sorry I missed the call.", "I missed the call.", false),
+            ("Send it to Maria, no wait, send it to James.", "Send it to Maria.", false),
+            ("Set it to two, actually, three.", "Set it to two three.", false),
+            ("I do not think we should ship it, you know.", "I think we should ship it.", false),
         ]
         for (raw, reply, expected) in cases {
             precondition(SmartCleanup.isCleanup(reply, of: raw, entries: dictionary) == expected, raw)
@@ -53,6 +61,7 @@ import Foundation
         precondition(!SmartCleanup.isCleanup("6", of: "5.25", entries: digits))
         precondition(SmartCleanup.isCleanup("6.25", of: "5.25", entries: digits))
         let smart = SmartCleanup()
+        smart.requestsPerMinute = .max
         var requests: [SmartCleanup.Pending] = []
         for i in 0..<40 {
             requests.append(smart.request("Actually wait \(i)", entries: [], provider: .deepseek)!)
@@ -91,6 +100,14 @@ import Foundation
         let deadline = smart.request("Actually wait for deadline", entries: [], provider: .deepseek)!
         try! await Task.sleep(nanoseconds: 10_200_000_000)
         precondition(deadline.result?.outcome == "cancelled")
-        print("Passed 38 cleanup integrity checks and request limit, cancellation, cache, and deadline checks")
+        // Speculative requests stop 4 below the budget; the request at release can use those 4.
+        let budget = SmartCleanup()
+        budget.requestsPerMinute = 6
+        let early = (0..<3).map { budget.request("Actually early \($0)", entries: [], provider: .deepseek, speculative: true) }
+        precondition(early[0] != nil && early[1] != nil && early[2] == nil)
+        let final = (0..<5).map { budget.request("Actually final \($0)", entries: [], provider: .deepseek)! }
+        precondition(final.prefix(4).allSatisfy { $0.result?.outcome != "limited" } && final[4].result?.outcome == "limited")
+        (early.compactMap { $0 } + final).forEach { budget.cancel($0) }
+        print("Passed 46 cleanup integrity checks and request limit, budget, cancellation, cache, and deadline checks")
     }
 }

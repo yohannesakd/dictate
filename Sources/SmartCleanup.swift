@@ -137,6 +137,10 @@ final class SmartCleanup: @unchecked Sendable {
     private let cacheLimit = 32
     private let activeLimit = 2
     private let requestLifetime = 10.0
+    /// Free tiers limit requests and tokens per minute. Groq's free tier allows 8000 tokens a minute, about 16
+    /// requests with this prompt. Requests during recording stop first, so the request at fn release still runs.
+    var requestsPerMinute = 12
+    private var sent: [Double] = []
 
     func client(_ provider: CleanupProvider) -> CleanupClient {
         switch provider {
@@ -154,12 +158,22 @@ final class SmartCleanup: @unchecked Sendable {
         }
     }
 
-    /// Starts a request, or returns the one with the same input. Nil when the transcript does not need the model.
-    func request(_ raw: String, entries: [DictionaryEntry], provider: CleanupProvider) -> Pending? {
+    /// Starts a request, or returns the one with the same input. Nil when the transcript does not need the model,
+    /// or when a speculative request would exceed the budget.
+    func request(_ raw: String, entries: [DictionaryEntry], provider: CleanupProvider, speculative: Bool = false) -> Pending? {
         guard Self.needsModel(raw, entries: entries) else { return nil }
         let message = Self.message(raw, entries: entries)
         let key = provider.rawValue + "\n" + message
         if let existing = requests[key] { return existing }
+        let now = ProcessInfo.processInfo.systemUptime
+        sent.removeAll { now - $0 >= 60 }
+        guard sent.count < requestsPerMinute - (speculative ? 4 : 0) else {
+            if speculative { return nil }
+            let limited = Pending(key: key)
+            limited.resolve(Result(text: nil, reply: nil, outcome: "limited", error: nil))
+            return limited
+        }
+        sent.append(now)
         let active = requests.values.filter { $0.result == nil }
         if active.count >= activeLimit, let oldest = active.min(by: { $0.started < $1.started }) { cancel(oldest) }
         let pending = Pending(key: key)
@@ -261,11 +275,11 @@ final class SmartCleanup: @unchecked Sendable {
         return contains(raw, any: corrections + ambiguousFillers + heard)
     }
 
-    /// Accepts ordered edits, with dictionary replacements at their matching source positions.
-    /// Substantive omissions and unrecognized corrections keep the deterministic result.
+    /// Accepts the source words in order, with these edits: dictionary replacements at their matching positions,
+    /// removed fillers, restarts, and spoken corrections. Other omissions keep the deterministic result.
     static func isCleanup(_ reply: String, of raw: String, entries: [DictionaryEntry]) -> Bool {
-        let baseline = TextCleanup.clean(raw, rules: .init())
-        let source = tokens(baseline), output = tokens(reply)
+        let baseline = joinedWords(TextCleanup.clean(raw, rules: .init()))
+        let source = tokens(baseline), output = tokens(joinedWords(reply))
         guard !output.isEmpty else { return false }
         let value = baseline as NSString
         let ranges = tokenPattern.matches(in: baseline, range: NSRange(location: 0, length: value.length)).map(\.range)
@@ -288,19 +302,59 @@ final class SmartCleanup: @unchecked Sendable {
         // Each literal occurrence grants its own expansion. Unmatched entries grant nothing.
         let growth = terms.values.reduce(0) { $0 + max(0, $1.written.count - $1.count) }
         guard output.count <= source.count + growth else { return false }
+        // A spoken correction is a marker set off by punctuation, as in "at noon, sorry, at one". Without punctuation,
+        // "I'm sorry I missed it" and "scratch that surface" are literal text.
+        let separators = CharacterSet(charactersIn: ",.;:!?…—–-")
+        func setOff(_ start: Int, _ end: Int) -> Bool {
+            let before = start == 0 ? 0 : NSMaxRange(ranges[start - 1])
+            let after = NSMaxRange(ranges[end - 1])
+            return [NSRange(location: before, length: ranges[start].location - before),
+                    NSRange(location: after, length: ranges[end].location - after)]
+                .contains { value.substring(with: $0).rangeOfCharacter(from: separators) != nil }
+        }
+        var corrections: [(start: Int, end: Int)] = []
+        for start in source.indices {
+            for marker in correctionMarkers where matches(marker, in: source, at: start) {
+                let end = start + marker.count
+                if end < source.count, setOff(start, end) { corrections.append((start, end)) }
+            }
+        }
         var positions = [Set<Int>](repeating: [], count: source.count + 1)
         positions[0].insert(0)
-        for i in source.indices {
+        for i in source.indices where !positions[i].isEmpty {
             for j in positions[i] {
                 if j < output.count, source[i] == output[j] { positions[i + 1].insert(j + 1) }
-                // A leading discourse marker can be omitted. Keep correction markers between values.
-                if i == 0, source[i] == "actually" { positions[i + 1].insert(j) }
                 if let term = terms[i], matches(term.written, in: output, at: j) {
                     positions[i + term.count].insert(j + term.written.count)
                 }
             }
+            // Removed words keep the output position.
+            let here = positions[i]
+            if i == 0, ["actually", "so"].contains(source[0]) { positions[1].formUnion(here) }
+            for filler in removableFillers where matches(filler, in: source, at: i) {
+                positions[i + filler.count].formUnion(here)
+            }
+            // The marker and up to 12 words before it. The marker alone stays, so "two, actually, three" keeps both values.
+            for correction in corrections where correction.start > i && correction.start - i <= 12 {
+                positions[correction.end].formUnion(here)
+            }
+            // A restart: the speaker begins the same words again, as in "is it like, is it possible".
+            for length in 1...min(6, source.count - i) {
+                let repeated = source[i..<(i + length)].filter { !removableFillers.contains([$0]) }
+                if !repeated.isEmpty, matches(repeated, in: source, at: i + length) {
+                    positions[i + length].formUnion(here)
+                }
+            }
         }
         return positions[source.count].contains(output.count)
+    }
+
+    private static let removableFillers = ["um", "uh", "er", "ah", "like", "you know", "sort of", "kind of"].map(words)
+    private static let correctionMarkers = corrections.map(words)
+
+    /// "thirty-five" and "thirty five" are the same words. A hyphen between digits stays a minus or a range.
+    private static func joinedWords(_ text: String) -> String {
+        text.replacingOccurrences(of: #"(?<=\p{L})-(?=\p{L})"#, with: " ", options: .regularExpression)
     }
 
     private static func matches(_ phrase: [String], in words: [String], at index: Int) -> Bool {
