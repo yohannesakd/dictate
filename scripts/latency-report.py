@@ -47,7 +47,7 @@ def mark(row, name):
 
 def span(row, start, end):
     # Dictations without a model request have no model wait. A zero would pull the median down.
-    if (start, end) == ("rules_done", "text_ready") and row.get("smart") in (None, "not needed"):
+    if (start, end) == ("rules_done", "text_ready") and row.get("smart") in (None, "off", "not needed"):
         return None
     a, b = mark(row, start), mark(row, end)
     return None if a is None or b is None else max(0, b - a)

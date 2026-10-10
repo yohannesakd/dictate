@@ -329,7 +329,7 @@ final class DictationController {
                                                            entries: self.model.dictionary)
                 trace.mark("rules_done")
                 guard let pending else {
-                    if self.model.smartCleanup { dictation.metrics["smart"] = "not needed" }
+                    dictation.metrics["smart"] = self.model.smartCleanup ? "not needed" : "off"
                     dictation.trace = trace
                     return self.complete(dictation, interruption: interruption)
                 }
@@ -442,9 +442,15 @@ final class DictationController {
         metrics.merge(trace.fields) { $1 }
         metrics["chars"] = text.count
         metrics["chars_changed"] = dictation.raw.count - text.count
+        // The same id in both logs joins a transcript to its timing.
+        let id = UUID().uuidString
+        metrics["id"] = id
+        let asked = dictation.smart != nil
         var log: [String: Any?] = [
-            "app": dictation.app, "audio_s": (dictation.audioSeconds * 10).rounded() / 10, "raw": dictation.raw,
-            "rules": dictation.ruled, "provider": dictation.provider?.rawValue, "smart": dictation.smart?.outcome,
+            "id": id, "app": dictation.app, "audio_s": (dictation.audioSeconds * 10).rounded() / 10, "raw": dictation.raw,
+            "rules": dictation.ruled, "smart": metrics["smart"] as? String, "note": dictation.note,
+            "provider": dictation.provider?.rawValue, "model": asked ? dictation.provider?.model : nil,
+            "prompt": asked ? SmartCleanup.promptVersion : nil,
             "model_reply": dictation.smart?.reply, "text": text, "inserted": false,
         ]
         guard !text.isEmpty else {

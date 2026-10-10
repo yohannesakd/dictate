@@ -41,11 +41,11 @@ Choose the model in Settings (the gear button, or ⌘,), under Cleanup:
 - DeepSeek (`deepseek-chat`): about 1 s. Save a DeepSeek API key in Dictate. Dictate keeps each API key in the Keychain.
 - ChatGPT (`gpt-6-luna`): about 1.5 s. Click "Sign In with ChatGPT". Dictate uses the same sign-in flow as the Codex CLI and Pi, and keeps its own tokens in the Keychain. The endpoint (`chatgpt.com/backend-api/codex/responses`) is not a public API, so OpenAI can change it. Usage counts against your plan limits.
 
-Dictate uses the rule result when the model exceeds 3 seconds or fails the ordered-edit guard. The guard keeps the rule result's words in order. It permits dictionary replacements, exact repeats ("the new, the new design"), and restarts that begin with the same two or more words after punctuation ("is it like, is it possible"). A repeat that ends at punctuation, such as "no, no, no," or "I know, I know.", stays. The guard rejects other omissions, reordered words, and changed numeric notation.
+Dictate uses the rule result when the model exceeds 3 seconds or fails the ordered-edit guard. The guard keeps the rule result's words in order. It permits dictionary replacements, exact repeats ("the new, the new design"), and restarts that begin with the same two or more words after punctuation ("is it like, is it possible"). A repeat that ends at punctuation, such as "no, no, no," or "I know, I know.", stays. So does one word twice without a comma, such as "that that". The guard rejects other omissions, reordered words, and changed numeric notation.
 
 Smart cleanup sends at most 12 requests a minute, below the Groq free tier's 8000 tokens a minute. Requests during recording stop at 8 a minute, so the request at fn release still runs. Above the limit, Dictate uses the rule result. These checks reduce mistakes; they do not prove meaning preservation.
 
-Every dictation is saved in `~/Library/Application Support/Dictate/transcripts.jsonl`: the raw transcript, the rule result, the model reply, the final text, delivery outcome, and app.
+Every dictation is saved in `~/Library/Application Support/Dictate/transcripts.jsonl`: the raw transcript, the rule result, the cleanup outcome and its reason, the model, the prompt version, the model reply, the final text, the delivery outcome, and the app. The `id` field matches the dictation's line in the metrics log.
 
 Each dictation appends one JSON line of timing and resource metrics to `~/Library/Logs/Dictate/metrics.jsonl`.
 The `at_*_ms` fields are a timeline in milliseconds since the fn press: microphone ready, first audio, first and last speech, fn release, transcript, rules, model request start and end, text ready, events posted, and text verified.
