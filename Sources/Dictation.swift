@@ -18,9 +18,10 @@ struct HistoryItem: Codable, Identifiable {
 enum ModelStatus: Equatable { case loading, ready, failed(String) }
 
 final class AppModel: ObservableObject {
-    enum Phase: Equatable { case idle, listening, processing, notice(String) }
+    enum Phase: Equatable { case idle, listening, processing }
 
     @Published var phase = Phase.idle
+    @Published var notice: String?
     @Published var handsFree = false
     @Published var levels = [CGFloat](repeating: 0, count: 11)
     @Published var modelStatus = ModelStatus.loading
@@ -49,7 +50,6 @@ final class AppModel: ObservableObject {
             DispatchQueue.main.async { self.openAtLogin = SMAppService.mainApp.status == .enabled }
         }
     }
-    @Published var showIdleBar = AppModel.stored("showIdleBar", default: true) { didSet { store("showIdleBar", showIdleBar) } }
     @Published var dictionary: [DictionaryEntry] = AppModel.decoded("dictionary") ?? [] { didSet { encode("dictionary", dictionary) } }
     @Published private(set) var history: [HistoryItem] = AppModel.decoded("history") ?? []
     @Published private(set) var usage: Usage = AppModel.decoded("usage") ?? Usage()
@@ -467,6 +467,10 @@ final class DictationController {
             metrics["delivery_outcome"] = result.outcome.rawValue
             metrics["verification_ms"] = result.verificationMs
             metrics["posted_utf16_units"] = result.postedUnits
+            if let verification = result.verification {
+                metrics.merge(verification.fields) { $1 }
+                log.merge(verification.fields.mapValues { $0 as Any? }) { $1 }
+            }
             if let posted = result.postedMs, let postedAt = result.postedAt {
                 trace.mark("events_posted", at: postedAt)
                 metrics["delivery_to_posted_events_ms"] = posted
@@ -587,7 +591,7 @@ final class DictationController {
                     ? "The target changed. The dictation is in History."
                     : "The target changed during delivery. Check the field before inserting again.")
                 case .unchanged: self.notice("The field did not change. The dictation is in History.")
-                case .unexpected: self.notice("Text delivery was incomplete or changed. Check the field before inserting again.")
+                case .unexpected: self.notice("Text delivery could not be verified. Check the field before inserting again. The dictation is in History.")
                 case .unavailable: self.notice(result.postedUnits == 0
                     ? "The target could not be read. The dictation is in History."
                     : "Text delivery stopped. Check the field before inserting again.")
@@ -635,11 +639,8 @@ final class DictationController {
     }
 
     private func notice(_ text: String) {
-        model.handsFree = false
-        model.phase = .notice(text)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
-            if self?.model.phase == .notice(text) { self?.model.phase = .idle }
-        }
+        reset()
+        model.notice = text
     }
 
     private func pushLevel(_ rms: Float) {

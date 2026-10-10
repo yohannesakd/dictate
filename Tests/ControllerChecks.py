@@ -16,12 +16,15 @@ source = source[:source.index('    func requestMicrophone()')] + '}\n'
 (root / 'Controller.swift').write_text(source)
 (root / 'Stubs.swift').write_text(r'''
 import AppKit
+import Combine
 struct HistoryItem { var text: String; var raw: String? }
 enum ModelStatus: Equatable { case loading, ready, failed(String) }
-final class AppModel {
-    enum Phase: Equatable { case idle, listening, processing, notice(String) }
-    var phase = Phase.idle, handsFree = false
-    var levels = [CGFloat](repeating: 0, count: 11)
+final class AppModel: ObservableObject {
+    enum Phase: Equatable { case idle, listening, processing }
+    @Published var phase = Phase.idle
+    @Published var handsFree = false
+    @Published var notice: String?
+    @Published var levels = [CGFloat](repeating: 0, count: 11)
     var micAuthorized = true, accessibilityTrusted = true, keyboardReady = true, fnKeyFree = true
     var savedKeys: Set<CleanupProvider> = [], chatgptSignedIn = false, signingIn = false, openAtLogin = false
     var smartCleanup = false, cleanupProvider = CleanupProvider.deepseek
@@ -98,7 +101,9 @@ enum Insertion {
     struct Result {
         var outcome: Outcome; var postedMs: Int?; var postedAt: Double?; var verifiedAt: Double?
         var postedUnits: Int; var verifiedMs: Int?; var verificationMs: Int; var snapshot: Snapshot?
+        var verification: Verification? = nil
     }
+    struct Verification { var fields: [String: Any] { [:] } }
     enum MutationOutcome: String { case noWrite, uncertain, verified }
     static var pending: [(OperationCancellation, (Result) -> Void)] = []
     static func captureTarget() -> Target { .init(app: .init(), element: nil) }
@@ -114,6 +119,10 @@ import AppKit
     static func main() {
         let model = AppModel()
         let controller = DictationController(model: model)
+        let app = NSApplication.shared
+        let flowBar = FlowBar(model: model, controller: controller)
+        let panel = app.windows.first { $0 is NSPanel }!
+        precondition(!panel.isVisible && FlowBarLayout.pillSize(model) == .zero)
         let result = Insertion.Result(outcome: .verified, postedMs: 1, postedAt: Monotonic.now, verifiedAt: Monotonic.now,
                                       postedUnits: 14, verifiedMs: 1, verificationMs: 0, snapshot: nil)
         controller.pasteLast()
@@ -144,12 +153,32 @@ import AppKit
         precondition(model.phase == .processing)
         Insertion.pending[2].1(result)
         precondition(model.phase == .idle)
-        print("Passed retry serialization, busy phase, cancellation, and stale recognition/delivery ownership checks")
+        controller.pasteLast()
+        var unexpected = result
+        unexpected.outcome = .unexpected
+        Insertion.pending[3].1(unexpected)
+        precondition(model.phase == .idle && !model.handsFree)
+        precondition(model.notice?.contains("could not be verified") == true)
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        precondition(!panel.isVisible)
+        controller.keyboard.onFnDown(Monotonic.now)
+        precondition(model.phase == .listening)
+        RunLoop.main.run(until: Date().addingTimeInterval(3.2))
+        precondition(model.phase == .listening && model.notice != nil)
+        precondition(panel.isVisible && !panel.canBecomeKey && !panel.canBecomeMain && app.keyWindow == nil)
+        controller.cancel()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        precondition(!panel.isVisible)
+        model.notice = nil
+        precondition(model.phase == .idle)
+        withExtendedLifetime(flowBar) {}
+        print("Passed controller ownership, persistent app notices, and live indicator visibility checks")
     }
 }
 ''')
 subprocess.run(['xcrun', 'swiftc', '-swift-version', '5', '-parse-as-library', str(repo / 'Sources/Operation.swift'),
                 str(repo / 'Sources/TextCleanup.swift'), str(repo / 'Sources/PersonalDictionary.swift'),
                 str(repo / 'Sources/SmartCleanup.swift'), str(root / 'Controller.swift'), str(root / 'Stubs.swift'),
+                str(repo / 'Sources/FlowBar.swift'),
                 str(root / 'Checks.swift'), '-o', str(root / 'checks')], check=True)
 subprocess.run([str(root / 'checks')], check=True)

@@ -1,5 +1,5 @@
 // The flow bar: a small pill at the bottom center of the screen.
-// Idle: a thin capsule that ignores the mouse, so clicks reach the Dock and windows below.
+// Idle: hidden. Messages appear in the app window.
 // Listening: white level bars; hands-free adds cancel and stop buttons, the only clickable parts.
 // Processing: pulsing dots. The panel never takes keyboard focus from the target app.
 
@@ -11,13 +11,11 @@ enum FlowBarLayout {
     static let panelSize = CGSize(width: 420, height: 90)
     static let bottomPadding: CGFloat = 10
 
-    /// Pill size for interactive phases; nil means the pill sizes to its text.
-    static func pillSize(_ model: AppModel) -> CGSize? {
+    static func pillSize(_ model: AppModel) -> CGSize {
         switch model.phase {
-        case .idle: return model.showIdleBar ? CGSize(width: 42, height: 9) : .zero
+        case .idle: return .zero
         case .listening: return model.handsFree ? CGSize(width: 148, height: 36) : CGSize(width: 92, height: 32)
-        case .processing: return model.modelStatus == .loading ? nil : CGSize(width: 92, height: 32)
-        case .notice: return nil
+        case .processing: return CGSize(width: 92, height: 32)
         }
     }
 
@@ -28,7 +26,8 @@ enum FlowBarLayout {
 
     /// The hands-free pill, in panel coordinates (origin bottom-left).
     static func buttonsRect(_ model: AppModel) -> CGRect? {
-        guard isInteractive(model), let size = pillSize(model) else { return nil }
+        guard isInteractive(model) else { return nil }
+        let size = pillSize(model)
         return CGRect(x: (panelSize.width - size.width) / 2, y: bottomPadding, width: size.width, height: size.height)
     }
 }
@@ -63,14 +62,14 @@ final class FlowBar {
                                onCancel: { [weak controller] in controller?.cancel() })
         panel.contentView = FirstClickHostingView(rootView: view)
         reposition()
-        panel.orderFrontRegardless()
+        updatePresentation()
 
         NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification,
                                                object: nil, queue: .main) { [weak self] _ in self?.reposition() }
         panel.acceptsMouseMovedEvents = true
         stateChange = model.objectWillChange
             .receive(on: DispatchQueue.main)
-            .sink { [weak self] _ in self?.updateMouseHandling() }
+            .sink { [weak self] _ in self?.updatePresentation() }
     }
 
     private func reposition() {
@@ -79,7 +78,12 @@ final class FlowBar {
     }
 
     /// Watches the mouse only while the hands-free buttons are on screen.
-    private func updateMouseHandling() {
+    private func updatePresentation() {
+        if model.phase == .idle {
+            panel.orderOut(nil)
+        } else if !panel.isVisible {
+            panel.orderFrontRegardless()
+        }
         if FlowBarLayout.isInteractive(model), mouseMonitors.isEmpty {
             let global = NSEvent.addGlobalMonitorForEvents(matching: .mouseMoved) { [weak self] _ in self?.trackMouse() }
             let local = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
@@ -118,29 +122,11 @@ struct FlowBarView: View {
     }
 
     @ViewBuilder private var pill: some View {
-        if let size = FlowBarLayout.pillSize(model) {
+        if model.phase != .idle {
+            let size = FlowBarLayout.pillSize(model)
             content
                 .frame(width: size.width, height: size.height)
                 .background(capsule)
-                .opacity(size == .zero ? 0 : 1)
-        } else if let text = message {
-            Text(text)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(.white)
-                .lineLimit(1)
-                .padding(.horizontal, 14)
-                .frame(height: 30)
-                .frame(maxWidth: FlowBarLayout.panelSize.width - 20)
-                .background(capsule)
-        }
-    }
-
-    /// Text shown in the pill instead of graphics: a notice, or the one-time model preparation.
-    private var message: String? {
-        switch model.phase {
-        case .notice(let text): return text
-        case .processing where model.modelStatus == .loading: return "Preparing the speech model (first run only)…"
-        default: return nil
         }
     }
 
@@ -163,8 +149,6 @@ struct FlowBarView: View {
             }
         case .processing:
             ProcessingDots()
-        case .notice:
-            EmptyView()
         }
     }
 }

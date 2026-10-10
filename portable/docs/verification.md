@@ -3,12 +3,45 @@
 ## Required behavior
 
 The existing Mac app remains the behavior reference.
-Changes under `Sources`, `Tests`, `build.sh`, `Info.plist`, and the Mac installation scripts are outside this change.
-Check those paths against the branch base before each commit.
+The requested Mac warning presentation change is included in this branch.
+Keep the Mac speech runtime, model, build, and installation scripts unchanged.
 
 The portable core preserves filler removal, stutters, scratch-that cleanup, literal dictionary matching, and the ordered-edit guard.
 Each platform supplies microphone capture, a local speech runtime, text delivery, credential storage, and its interface.
 The portable apps do not change the Mac's runtime or model.
+
+## Mac warning checks
+
+The indicator appears only during recording and processing.
+Warnings appear on Home, History, and Settings until dismissed.
+Warnings do not open the app or take focus from the target field.
+
+On October 10, Mac delivery and controller checks passed through SSH on `saiMBP`.
+Run `Tests/run-insertion.sh` and `python3 Tests/ControllerChecks.py` on a Mac.
+The controller checks include a real indicator panel, idle visibility, and keyboard focus behavior.
+They also check that a retained warning cannot reset a later recording.
+Delivery checks cover partial text, changed text, and a different caret with complete text.
+Those checks retain strict verification and refuse correction snapshots after a mismatch.
+The full signed Mac build passed.
+The verified build was installed in `/Applications/Dictate.app` and started without opening the app window.
+The installed executable matches the checked build and passes strict signature verification.
+The previous app remains at `/tmp/dictate-notices.RPe2Cy/Installed.previous.app` on the Mac.
+
+A scratch interface check rendered the warning on all three app pages.
+Its accessibility traversal did not reach the SwiftUI dismissal button.
+Window capture through SSH failed with `could not create image from window`.
+Visual dismissal verification remains incomplete.
+The screenshots from that scratch check do not establish complete interface rendering.
+
+The reported warning matches dictation `082229E2-537B-4DA3-A784-DE94B7DBBC90` at `2026-10-10T10:29:28Z`.
+The target was `site.saibot.t3code.stable`.
+Dictate posted 263 UTF-16 units and recorded `unexpected` after 160 milliseconds of verification.
+The existing logs contain no observed field text or caret evidence for that event.
+The user could not confirm whether text was missing.
+The incident therefore cannot establish actual text loss or identify the precise mismatch.
+New mismatch diagnostics record lengths, selection ranges, and whether text, the caret, or both differed.
+The diagnostics exclude the target field text.
+Dictate does not retry uncertain delivery.
 
 ## Core checks
 
@@ -174,6 +207,7 @@ Dispatch job `6954d95d-1b6e-4a4b-b9ee-34fef309abe5` passed CPU speech, silence, 
 The engine removes Whisper's `[BLANK_AUDIO]` annotation before delivery.
 The silence check produced an empty transcript while the JFK recording retained its expected words.
 
-The Mac source, tests, build, and installation scripts have no changes against `origin/main`.
+The Mac build and installation scripts have no changes against `origin/main`.
+Mac source and tests include the requested indicator and warning changes, with delivery mismatch diagnostics.
 The portable core is a behavior port.
 The Mac app does not yet consume that core.

@@ -1,7 +1,8 @@
 # Portable Dictate
 
 This branch adds a portable implementation beside the existing Mac app.
-The Mac source, speech model, build, and installation path stay unchanged.
+The portable implementation preserves the Mac speech model, build, and installation path.
+The Mac indicator now hides when idle. Mac warnings appear inside the app window.
 The portable apps share cleanup, dictionary matching, request limits, cancellation, history, and delivery contracts.
 
 ## Run the desktop app

@@ -21,6 +21,9 @@ To build from another machine, such as a server, keep the repository there. On t
 
 The first launch prepares the model for the Neural Engine. This takes about one minute, once per Mac.
 
+The dictation indicator appears while Dictate listens or processes speech. It disappears when dictation ends.
+Warnings appear inside the app window and remain until dismissed.
+
 ## Use
 
 - Hold fn to talk; release to insert the text.
@@ -60,6 +63,8 @@ The `llm_*` fields split each model request into connection, network round trip,
 To graph them, run `scripts/latency-report.py`. It writes `latency.html` (charts by stage) and `latency.csv` next to the log.
 Durations use a monotonic clock. Metrics separate event posting, verified text, request cache hits, and delivery outcomes.
 Dictate checks readable fields against the expected text and caret. Verification has a 150-millisecond polling budget, plus Accessibility call time.
+For dictations with an unexpected delivery result, the logs distinguish text differences from caret differences.
+They record expected and observed lengths and selections, without the target field text.
 Many apps, such as Electron apps, do not expose the field text. Dictate then logs `sent`: every event was posted, but the text was not read back. Dictate never repeats uncertain delivery automatically.
 
 ## Credits

@@ -16,17 +16,35 @@ struct HubView: View {
     let controller: DictationController
 
     var body: some View {
-        ZStack {
-            switch navigation.screen {
-            case .home:
-                HomeScreen(model: model, controller: controller, navigation: navigation)
-                    .transition(.move(edge: .leading))
-            case .history:
-                HistoryScreen(history: model.history) { navigation.screen = .home }
-                    .transition(.move(edge: .trailing))
-            case .settings:
-                SettingsScreen(model: model, controller: controller) { navigation.screen = .home }
-                    .transition(.move(edge: .trailing))
+        VStack(spacing: 0) {
+            if let notice = model.notice {
+                HStack(alignment: .top, spacing: 12) {
+                    Label(notice, systemImage: "exclamationmark.triangle.fill")
+                        .font(.callout)
+                        .foregroundStyle(.orange)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Button { model.notice = nil } label: {
+                        Image(systemName: "xmark")
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Dismiss message")
+                    .help("Dismiss message")
+                }
+                .padding(.horizontal, 24)
+                .padding(.vertical, 12)
+            }
+            ZStack {
+                switch navigation.screen {
+                case .home:
+                    HomeScreen(model: model, controller: controller, navigation: navigation)
+                        .transition(.move(edge: .leading))
+                case .history:
+                    HistoryScreen(history: model.history) { navigation.screen = .home }
+                        .transition(.move(edge: .trailing))
+                case .settings:
+                    SettingsScreen(model: model, controller: controller) { navigation.screen = .home }
+                        .transition(.move(edge: .trailing))
+                }
             }
         }
         .animation(.easeInOut(duration: 0.2), value: navigation.screen)
@@ -367,7 +385,6 @@ private struct SettingsScreen: View {
                 }
                 DictionarySection(entries: $model.dictionary)
                 Section("General") {
-                    Toggle("Show the bar when not dictating", isOn: $model.showIdleBar)
                     Toggle("Open at login", isOn: $model.openAtLogin)
                 }
                 Section("Shortcuts") {
