@@ -29,6 +29,7 @@ final class AppModel: ObservableObject {
     var savedKeys: Set<CleanupProvider> = [], chatgptSignedIn = false, signingIn = false, openAtLogin = false
     var smartCleanup = false, cleanupProvider = CleanupProvider.deepseek
     var smartIssue: String?, modelStatus = ModelStatus.ready
+    var speechModel = SpeechModel.default
     var dictionary: [DictionaryEntry] = []
     var history = [HistoryItem(text: "Generated text", raw: "Generated raw text")]
     var needsSetup: Bool { false }
@@ -54,8 +55,9 @@ final class Recorder {
 final class Engine {
     struct Timing { var queueMs = 0, inferenceMs = 0, preparationMs = 0, callbackMs = 0 }
     static var pending: [(OperationCancellation, (Result<String, Error>, Timing) -> Void)] = []
-    func load(completion: @escaping (Error?) -> Void) {}
-    func transcribe(_ pcm: [Float], cancellation: OperationCancellation, completion: @escaping (Result<String, Error>, Timing) -> Void) {
+    func shutdown() {}
+    func load(_ selection: SpeechModel = .phonon, completion: @escaping (Error?) -> Void) {}
+    func transcribe(_ pcm: [Float], selection: SpeechModel = .phonon, cancellation: OperationCancellation, completion: @escaping (Result<String, Error>, Timing) -> Void) {
         Self.pending.append((cancellation, completion))
     }
 }
@@ -176,7 +178,7 @@ import AppKit
     }
 }
 ''')
-subprocess.run(['xcrun', 'swiftc', '-swift-version', '5', '-parse-as-library', str(repo / 'Sources/Operation.swift'),
+subprocess.run(['xcrun', 'swiftc', '-swift-version', '5', '-parse-as-library', str(repo / 'Sources/Operation.swift'), str(repo / 'Sources/SpeechModel.swift'),
                 str(repo / 'Sources/TextCleanup.swift'), str(repo / 'Sources/PersonalDictionary.swift'),
                 str(repo / 'Sources/SmartCleanup.swift'), str(root / 'Controller.swift'), str(root / 'Stubs.swift'),
                 str(repo / 'Sources/FlowBar.swift'),

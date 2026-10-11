@@ -1,5 +1,5 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
   <uses-permission android:name="android.permission.RECORD_AUDIO" />
   <uses-permission android:name="android.permission.INTERNET" />
-  <application android:hardwareAccelerated="false" android:label="Dictate" android:allowBackup="false" android:usesCleartextTraffic="false" android:theme="@style/DictateTheme" />
+  <application android:extractNativeLibs="true" android:hardwareAccelerated="false" android:label="Dictate" android:allowBackup="false" android:usesCleartextTraffic="false" android:theme="@style/DictateTheme" />
 </manifest>

@@ -6,6 +6,7 @@ export DOTNET_ROOT="$tools/dotnet"
 export PATH="$DOTNET_ROOT:$PATH"
 configuration="${1:-Release}"
 runtime="${2:-android-arm64}"
+if [[ "$runtime" == android-arm64 ]]; then bash portable/scripts/setup-whistle-android.sh; fi
 dotnet publish portable/Android/Dictate.Android.csproj -c "$configuration" -r "$runtime" -p:RuntimeIdentifiers="$runtime" \
   -p:AndroidSdkDirectory="$tools/android-sdk" \
   -p:JavaSdkDirectory="$tools/jdk" -p:AndroidPackageFormats=apk -p:EmbedAssembliesIntoApk=true -m:1 --nologo

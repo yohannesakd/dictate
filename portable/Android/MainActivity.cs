@@ -50,7 +50,7 @@ public sealed class MainActivity : Activity
         body.AddView(Button("Allow microphone", () => { RequestPermissions([global::Android.Manifest.Permission.RecordAudio], 1); return Task.CompletedTask; }));
         body.AddView(Button("Enable voice keyboard", () => { StartActivity(new Intent(global::Android.Provider.Settings.ActionInputMethodSettings)); return Task.CompletedTask; }));
         body.AddView(Button("Choose keyboard", () => { ((InputMethodManager)GetSystemService(Context.InputMethodService)!).ShowInputMethodPicker(); return Task.CompletedTask; }));
-        body.AddView(Button("Download speech model", async () => await session.Speech.PrepareAsync(session.Settings.SpeechModel)));
+        body.AddView(Button("Download speech model", PrepareSpeech));
         body.AddView(Text("Try dictation below. Tap the field, choose Dictate, and tap Start dictation."));
         var sample = new EditText(this) { Hint = "Your dictated text appears here", InputType = InputTypes.ClassText | InputTypes.TextFlagMultiLine };
         body.AddView(sample);
@@ -79,14 +79,34 @@ public sealed class MainActivity : Activity
 
     private void Settings()
     {
-        body.AddView(Text("Speech model"));
+        body.AddView(Text("Speech engine"));
+        var engines = new Spinner(this) { ContentDescription = "Speech engine" };
+        engines.Adapter = new ArrayAdapter<string>(this, global::Android.Resource.Layout.SimpleSpinnerDropDownItem, Enum.GetNames<SpeechEngineKind>());
+        engines.SetSelection((int)session.Settings.SpeechEngine);
+        engines.ItemSelected += async (_, args) =>
+        {
+            var choice = (SpeechEngineKind)args.Position;
+            if (choice == session.Settings.SpeechEngine) return;
+            if (choice == SpeechEngineKind.Whistle && !session.Speech.WhistleSupported)
+            {
+                session.Message("Whistle requires the ARM64 Android package. Select Whisper on this device.");
+                engines.SetSelection((int)session.Settings.SpeechEngine); return;
+            }
+            await Save(session.Settings with { SpeechEngine = choice }); Render();
+        };
+        body.AddView(engines);
+        body.AddView(Text(session.Settings.SpeechEngine == SpeechEngineKind.Whisper ? "Whisper model" :
+            "Whistle supports English, German, French, Spanish, Italian, Dutch, and Polish. It runs on your CPU."));
         var models = new Spinner(this);
         models.Adapter = new ArrayAdapter<string>(this, global::Android.Resource.Layout.SimpleSpinnerDropDownItem, WhisperEngine.Models);
         models.SetSelection(Array.IndexOf(WhisperEngine.Models, session.Settings.SpeechModel));
         models.ItemSelected += async (_, args) => await Save(session.Settings with { SpeechModel = WhisperEngine.Models[args.Position] });
-        body.AddView(models);
-        body.AddView(Text("Tiny uses less memory. Base balances speed and accuracy. Small needs more memory and time."));
-        body.AddView(Button("Download and load model", async () => await session.Speech.PrepareAsync(session.Settings.SpeechModel)));
+        if (session.Settings.SpeechEngine == SpeechEngineKind.Whisper)
+        {
+            body.AddView(models);
+            body.AddView(Text("Tiny uses less memory. Base balances speed and accuracy. Small needs more memory and time."));
+        }
+        body.AddView(Button("Download and load model", PrepareSpeech));
         var language = new EditText(this) { Text = session.Settings.Language, Hint = "Language: auto, en, de, ..." };
         body.AddView(language);
         body.AddView(Button("Save language", async () => await Save(session.Settings with { Language = language.Text?.Trim() ?? "auto" })));
@@ -153,6 +173,11 @@ public sealed class MainActivity : Activity
         finally { listener.Stop(); }
     }
 
+    private async Task PrepareSpeech()
+    {
+        if (session.Controller.Phase != DictationPhase.Idle) { session.Message("Finish or cancel dictation before loading a model."); return; }
+        await session.Speech.PrepareAsync(session.Settings.SpeechEngine, session.Settings.SpeechModel);
+    }
     private async Task Save(DictationSettings settings)
     {
         try { await session.Store.SaveSettingsAsync(settings); session.Settings = settings; }

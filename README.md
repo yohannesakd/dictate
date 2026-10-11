@@ -1,6 +1,9 @@
 # Dictate
 
-System-wide dictation for macOS in the style of Wispr Flow. Hold fn, speak, and release: the text is typed into the focused field. Speech recognition runs on this Mac with Phonon-2 on the Neural Engine. Optional smart cleanup uses Groq, DeepSeek, or GPT-6-Luna.
+System-wide dictation for macOS. Hold fn, speak, and release to type into the focused field.
+Phonon-2 remains the default speech engine on the Neural Engine.
+Settings also offers Whistle and Whisper base, which run on the CPU.
+Optional smart cleanup uses Groq, DeepSeek, or GPT-6-Luna.
 
 The Windows, Linux, and Android implementation is under [portable](portable/README.md).
 It uses a shared core and CPU speech recognition.
@@ -15,7 +18,9 @@ Requirements: Apple silicon, macOS 15 or later, Xcode.
 2. Download the model folder from https://huggingface.co/FermionResearch/Phonon-2-CoreML into `models/Phonon-2-CoreML`.
    The build needs `manifest.json`, `decoder.bin`, `Phonon-2.mlpackage`, `NOTICE`, and `LICENSE-WEIGHTS-CC-BY-4.0.txt`.
 3. Run `./make-signing-identity.sh` once. It creates a separate keychain in `signing/` with a local signing certificate. A stable signature keeps the Microphone and Accessibility grants across rebuilds.
-4. Run `./build.sh`, then open `build/Dictate.app`.
+4. Run `scripts/setup-whistle.sh` to download the pinned Whistle runtime, model, and licence.
+5. Run `scripts/setup-whisper-mac.sh` to build the CPU-only Whisper helper and download the base model.
+6. Run `./build.sh`, then open `build/Dictate.app`.
 
 To build from another machine, such as a server, keep the repository there. On the Mac, put `models/`, `vendor/`, and `signing/` from the steps above in `~/Library/Application Support/Dictate Build`. Then run `scripts/install-mac.sh <ssh-host>` from the checkout. It builds in a temporary folder on the Mac, installs `/Applications/Dictate.app`, and restarts it.
 
@@ -25,6 +30,12 @@ The dictation indicator appears while Dictate listens or processes speech. It di
 Warnings appear inside the app window and remain until dismissed.
 
 ## Use
+
+Choose **Speech engine** under **Speech recognition** in Settings.
+The selection survives restart. Engine changes require idle dictation.
+Whistle supports English, German, French, Spanish, Italian, Dutch, and Polish.
+Whisper base supports more languages. Both CPU choices work without a GPU.
+See the [audio evaluation](docs/whistle-whisper-evaluation.md) for measured results and verification limits.
 
 - Hold fn to talk; release to insert the text.
 - Double-tap fn, or press fn + Space, for hands-free mode. Press fn again to finish.
@@ -70,3 +81,4 @@ Many apps, such as Electron apps, do not expose the field text. Dictate then log
 ## Credits
 
 Phonon-2 by Fermion Research, based on NVIDIA Parakeet TDT 0.6B v3. Model weights: CC-BY-4.0. Runtime: Apache-2.0.
+Whistle and Needle by Cactus Compute: Apache-2.0. Whisper by OpenAI and whisper.cpp: MIT.

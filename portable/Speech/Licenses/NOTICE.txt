@@ -1,0 +1,5 @@
+Whistle speech model and Needle inference engine: Cactus Compute, Apache-2.0.
+Engine revision: 8354babbfb92d719ee559f2999d133f11fb9374c.
+Model revision: ca5287601bef25af26dcf2e1b2bdc0843a7c19e5.
+Sources: https://huggingface.co/Cactus-Compute/needle3 and https://huggingface.co/Cactus-Compute/whistle.
+See Whistle-Apache-2.0.txt for the license.

@@ -28,6 +28,11 @@ model.mkdir(parents=True)
 for name in ['manifest.json', 'decoder.bin', 'NOTICE', 'LICENSE-WEIGHTS-CC-BY-4.0.txt']:
     (model / name).write_text('generated fixture')
 (model / 'Phonon-2.mlpackage').mkdir()
+for path in ['vendor/whistle/needle', 'vendor/whistle/LICENSE-needle', 'vendor/whisper/whisper-cli',
+             'vendor/whisper/LICENSE-whisper', 'models/Whistle/whistle.cact', 'models/Whisper/ggml-base.bin']:
+    destination = root / path
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    destination.write_text('generated fixture')
 (root / 'signing').mkdir()
 (root / 'signing/keychain-password').write_text('fake password')
 bin_dir = root / 'bin'

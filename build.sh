@@ -38,6 +38,10 @@ xcrun swiftc -O -swift-version 6 -target "$TARGET" -parse-as-library -module-nam
   -emit-library -static -o "$STAGING/phonon/libPhononCoreML.a"
 
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/Phonon-2-CoreML"
+mkdir -p "$APP/Contents/Helpers" "$APP/Contents/Resources/Whistle" "$APP/Contents/Resources/Whisper"
+cp vendor/whistle/needle vendor/whisper/whisper-cli "$APP/Contents/Helpers/"
+cp models/Whistle/whistle.cact vendor/whistle/LICENSE-needle "$APP/Contents/Resources/Whistle/"
+cp models/Whisper/ggml-base.bin vendor/whisper/LICENSE-whisper "$APP/Contents/Resources/Whisper/"
 cp Info.plist "$APP/Contents/Info.plist"
 MODEL=models/Phonon-2-CoreML
 cp -c -R "$MODEL/manifest.json" "$MODEL/decoder.bin" "$MODEL/Phonon-2.mlpackage" \
@@ -55,6 +59,7 @@ security list-keychains -d user -s "${ORIGINAL_KEYCHAINS[@]}" "$KEYCHAIN"
 security unlock-keychain -p "$(cat signing/keychain-password)" "$KEYCHAIN"
 IDENTITY=$(security find-identity -p codesigning "$KEYCHAIN" | awk '/Dictate Local Signing/ { print $2; exit }')
 [[ -n "$IDENTITY" ]]
+for helper in "$APP/Contents/Helpers/"*; do codesign --force --sign "$IDENTITY" "$helper"; done
 codesign --force --sign "$IDENTITY" --identifier dev.local.dictate "$APP"
 codesign --verify --strict "$APP"
 

@@ -384,6 +384,14 @@ private struct SettingsScreen: View {
                     }
                 }
                 DictionarySection(entries: $model.dictionary)
+                Section("Speech recognition") {
+                    Picker("Speech engine", selection: $model.speechModel) {
+                        ForEach(SpeechModel.allCases) { selection in Text(selection.title).tag(selection) }
+                    }
+                    .disabled(model.phase != .idle)
+                    .onChange(of: model.speechModel) { controller.loadSpeechModel() }
+                    Text(model.speechModel.summary).font(.caption).foregroundStyle(.secondary)
+                }
                 Section("General") {
                     Toggle("Open at login", isOn: $model.openAtLogin)
                 }
@@ -395,14 +403,14 @@ private struct SettingsScreen: View {
                     ShortcutRow(title: "Add selected text to the dictionary", keys: [["fn", "D"]])
                 }
                 Section {
-                    LabeledContent("Speech model") { ModelStatusLabel(status: model.modelStatus) }
+                    LabeledContent("Speech model") { ModelStatusLabel(status: model.modelStatus, selection: model.speechModel) }
                     LabeledContent("Transcript log") {
                         Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([TranscriptLog.url]) }
                     }
                 } header: {
                     Text("About")
                 } footer: {
-                    Text("Phonon-2 by Fermion Research, based on NVIDIA Parakeet TDT 0.6B v3. Model licence: CC-BY-4.0. Speech recognition runs on this Mac.")
+                    Text(model.speechModel.credit + " Speech recognition runs on this Mac.")
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
@@ -515,15 +523,16 @@ private struct DictionarySection: View {
 
 private struct ModelStatusLabel: View {
     let status: ModelStatus
+    let selection: SpeechModel
 
     var body: some View {
         switch status {
         case .ready:
-            Text("Phonon-2, ready").foregroundStyle(.secondary)
+            Text(selection.title + ", ready").foregroundStyle(.secondary)
         case .loading:
             HStack(spacing: 5) { ProgressView().controlSize(.mini); Text("Loading").foregroundStyle(.secondary) }
         case .failed(let message):
-            Text("Phonon-2, error").foregroundStyle(.red).help(message)
+            Text(selection.title + ", error").foregroundStyle(.red).help(message)
         }
     }
 }

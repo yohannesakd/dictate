@@ -7,7 +7,7 @@ using Whisper.net.LibraryLoader;
 
 namespace Dictate.Speech;
 
-public sealed class WhisperEngine(string directory) : ISpeechEngine, IDisposable
+public sealed class WhisperEngine(string directory) : IDisposable
 {
     public static readonly string[] Models = ["tiny", "base", "small", "tiny.en", "base.en", "small.en"];
     private readonly SemaphoreSlim gate = new(1);
@@ -81,10 +81,19 @@ public sealed class WhisperEngine(string directory) : ISpeechEngine, IDisposable
         var vectorCpu = Avx.IsSupported && Avx2.IsSupported && Fma.IsSupported && (X86Base.CpuId(1, 0).Ecx & (1 << 29)) != 0;
         RuntimeOptions.RuntimeLibraryOrder = x86 && !OperatingSystem.IsAndroid() && !vectorCpu ? [RuntimeLibrary.CpuNoAvx] : [RuntimeLibrary.Cpu];
         var next = await Task.Run(() => WhisperFactory.FromPath(path, new WhisperFactoryOptions { UseGpu = false }), cancellation).ConfigureAwait(false);
+        if (cancellation.IsCancellationRequested) { next.Dispose(); cancellation.ThrowIfCancellationRequested(); }
         factory?.Dispose();
         factory = next;
         loadedModel = model;
         Status?.Invoke("Ready. Speech recognition stays on this device.");
+    }
+
+    /// <summary>Releases the cached native model before another speech engine is selected.</summary>
+    public async Task UnloadAsync(CancellationToken cancellation = default)
+    {
+        await gate.WaitAsync(cancellation).ConfigureAwait(false);
+        try { factory?.Dispose(); factory = null; loadedModel = null; }
+        finally { gate.Release(); }
     }
 
     public void Dispose()

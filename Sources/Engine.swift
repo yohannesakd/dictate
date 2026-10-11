@@ -6,11 +6,16 @@ import PhononCoreML
 final class Engine {
     private let queue = DispatchQueue(label: "dictate.engine", qos: .userInitiated)
     private var transcriber: Transcriber?
+    private let offline = OfflineSpeech.Runner()
 
-    func load(completion: @escaping (Error?) -> Void) {
+    func load(_ selection: SpeechModel = .phonon, completion: @escaping (Error?) -> Void) {
         queue.async {
             let result: Error?
-            do { _ = try self.loadedTranscriber(); result = nil } catch { result = error }
+            do {
+                if selection == .phonon { _ = try self.loadedTranscriber() }
+                else { self.transcriber = nil; _ = try OfflineSpeech.Assets.bundled(selection) }
+                result = nil
+            } catch { result = error }
             DispatchQueue.main.async { completion(result) }
         }
     }
@@ -22,13 +27,30 @@ final class Engine {
         let callbackMs: Int
     }
 
-    func transcribe(_ pcm: [Float], cancellation: OperationCancellation,
+    func transcribe(_ pcm: [Float], selection: SpeechModel = .phonon, cancellation: OperationCancellation,
                     completion: @escaping (Result<String, Error>, Timing) -> Void) {
         let queued = Monotonic.now
         queue.async {
             guard !cancellation.isCancelled else { return }
             let queueMs = Monotonic.milliseconds(since: queued)
             let preparation = Monotonic.now
+            if selection != .phonon {
+                self.transcriber = nil
+                let assets = Result { try OfflineSpeech.Assets.bundled(selection) }
+                let run: OfflineSpeech.Run
+                switch assets {
+                case .success(let assets): run = self.offline.transcribe(pcm, assets: assets, cancellation: cancellation)
+                case .failure(let error): run = .init(result: .failure(error), preparationMs: 0, inferenceMs: 0)
+                }
+                let completed = Monotonic.now
+                DispatchQueue.main.async {
+                    guard !cancellation.isCancelled else { return }
+                    completion(run.result, Timing(queueMs: queueMs, inferenceMs: run.inferenceMs,
+                                                  preparationMs: run.preparationMs,
+                                                  callbackMs: Monotonic.milliseconds(since: completed)))
+                }
+                return
+            }
             let loaded = Result { try self.loadedTranscriber() }
             let preparationMs = Monotonic.milliseconds(since: preparation)
             let inference = Monotonic.now
@@ -44,6 +66,8 @@ final class Engine {
             }
         }
     }
+
+    func shutdown() { offline.shutdown() }
 
     private func loadedTranscriber() throws -> Transcriber {
         if let transcriber { return transcriber }

@@ -15,4 +15,9 @@
     <ProjectReference Include="../Speech/Dictate.Speech.csproj" />
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
   </ItemGroup>
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == 'android-arm64'">
+    <AndroidNativeLibrary Include="../.tools/whistle/arm64-v8a/libdictate_needle.so" Abi="arm64-v8a" />
+  </ItemGroup>
+  <ItemGroup><AndroidAsset Include="../Speech/Licenses/*" Link="Licenses/%(Filename)%(Extension)" /></ItemGroup>
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'"><Compile Include="../Checks/SpeechEvaluation.cs" Link="SpeechEvaluation.cs" /></ItemGroup>
 </Project>

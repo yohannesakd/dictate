@@ -31,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool { false }
+    func applicationWillTerminate(_ notification: Notification) { controller.shutdown() }
 
     // MARK: Menus
 
@@ -122,6 +123,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         NSApp.activate(ignoringOtherApps: true)
     }
 }
+
+if CommandLine.arguments.dropFirst().first == "--benchmark" { Benchmark.run(Array(CommandLine.arguments.dropFirst(2))) }
 
 let app = NSApplication.shared
 let delegate = AppDelegate()

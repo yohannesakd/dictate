@@ -1,7 +1,7 @@
 # Portable Dictate
 
 This branch adds a portable implementation beside the existing Mac app.
-The portable implementation preserves the Mac speech model, build, and installation path.
+The Mac keeps Phonon-2 as its default and adds Whistle and Whisper choices.
 The Mac indicator now hides when idle. Mac warnings appear inside the app window.
 The portable apps share cleanup, dictionary matching, request limits, cancellation, history, and delivery contracts.
 
@@ -20,7 +20,15 @@ Run this command from the repository root.
 dotnet run --project portable/Desktop/Dictate.Desktop.csproj
 ```
 
-In Settings, download a speech model.
+In Settings, choose **Speech engine**, then select **Download and load model**.
+Whisper base remains the portable default.
+Whistle runs its pinned 16.9 MB model on the CPU.
+Whistle supports English, German, French, Spanish, Italian, Dutch, and Polish.
+Android Whistle requires the ARM64 package. The x64 package supports Whisper.
+Both engines work without a GPU.
+See the [audio evaluation](../docs/whistle-whisper-evaluation.md) for measured results and verification limits.
+
+For Whisper, choose a model size.
 Choose `tiny` for lower memory use, `base` for general use, or `small` for higher accuracy.
 The `.en` models recognize English only.
 Other models support language detection.

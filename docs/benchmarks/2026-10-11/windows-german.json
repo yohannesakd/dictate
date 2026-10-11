@@ -1,0 +1,131 @@
+{
+  "host": "SAIBOT",
+  "platform": "Microsoft Windows 10.0.26200",
+  "architecture": "X64",
+  "logicalCores": 8,
+  "whisperModel": "base",
+  "passes": 5,
+  "samples": [
+    {
+      "Name": "german",
+      "Kind": "Mac say, Anna, 170 words per minute",
+      "Sha256": "02c23b4c686a8726a4c9f9d41eb4427cef50ccaca923452cc8952732a0a62068",
+      "Reference": "Bitte verschiebe die Besprechung auf Donnerstag um halb vier und sende die neuen Notizen an das Team.",
+      "Language": "de"
+    }
+  ],
+  "measurements": [
+    {
+      "Sample": "german",
+      "Engine": 1,
+      "Pass": 1,
+      "AudioSeconds": 5.5128125,
+      "PreparationMs": 31.4521,
+      "RecognitionMs": 324.5509,
+      "Text": "Bitte verschiebe die Besprechung auf Donnerstag umhalt vier und sende die neuen Notizen an das Team.",
+      "Error": null,
+      "ParentRssBytes": 41144320
+    },
+    {
+      "Sample": "german",
+      "Engine": 0,
+      "Pass": 1,
+      "AudioSeconds": 5.5128125,
+      "PreparationMs": 125.5457,
+      "RecognitionMs": 792.472,
+      "Text": "Bitte verschiebe die Besprechung auf Donnerstag um halb vier und sende die neuen Notizen an das Team.",
+      "Error": null,
+      "ParentRssBytes": 204402688
+    },
+    {
+      "Sample": "german",
+      "Engine": 0,
+      "Pass": 2,
+      "AudioSeconds": 5.5128125,
+      "PreparationMs": 0.0159,
+      "RecognitionMs": 767.6036,
+      "Text": "Bitte verschiebe die Besprechung auf Donnerstag um halb vier und sende die neuen Notizen an das Team.",
+      "Error": null,
+      "ParentRssBytes": 205107200
+    },
+    {
+      "Sample": "german",
+      "Engine": 1,
+      "Pass": 2,
+      "AudioSeconds": 5.5128125,
+      "PreparationMs": 34.105,
+      "RecognitionMs": 394.0908,
+      "Text": "Bitte verschiebe die Besprechung auf Donnerstag umhalt vier und sende die neuen Notizen an das Team.",
+      "Error": null,
+      "ParentRssBytes": 50429952
+    },
+    {
+      "Sample": "german",
+      "Engine": 1,
+      "Pass": 3,
+      "AudioSeconds": 5.5128125,
+      "PreparationMs": 21.7746,
+      "RecognitionMs": 335.763,
+      "Text": "Bitte verschiebe die Besprechung auf Donnerstag umhalt vier und sende die neuen Notizen an das Team.",
+      "Error": null,
+      "ParentRssBytes": 51421184
+    },
+    {
+      "Sample": "german",
+      "Engine": 0,
+      "Pass": 3,
+      "AudioSeconds": 5.5128125,
+      "PreparationMs": 107.7296,
+      "RecognitionMs": 936.1336,
+      "Text": "Bitte verschiebe die Besprechung auf Donnerstag um halb vier und sende die neuen Notizen an das Team.",
+      "Error": null,
+      "ParentRssBytes": 207273984
+    },
+    {
+      "Sample": "german",
+      "Engine": 0,
+      "Pass": 4,
+      "AudioSeconds": 5.5128125,
+      "PreparationMs": 0.0227,
+      "RecognitionMs": 805.8624,
+      "Text": "Bitte verschiebe die Besprechung auf Donnerstag um halb vier und sende die neuen Notizen an das Team.",
+      "Error": null,
+      "ParentRssBytes": 207777792
+    },
+    {
+      "Sample": "german",
+      "Engine": 1,
+      "Pass": 4,
+      "AudioSeconds": 5.5128125,
+      "PreparationMs": 30.5285,
+      "RecognitionMs": 469.0706,
+      "Text": "Bitte verschiebe die Besprechung auf Donnerstag umhalt vier und sende die neuen Notizen an das Team.",
+      "Error": null,
+      "ParentRssBytes": 52338688
+    },
+    {
+      "Sample": "german",
+      "Engine": 1,
+      "Pass": 5,
+      "AudioSeconds": 5.5128125,
+      "PreparationMs": 21.5032,
+      "RecognitionMs": 689.0404,
+      "Text": "Bitte verschiebe die Besprechung auf Donnerstag umhalt vier und sende die neuen Notizen an das Team.",
+      "Error": null,
+      "ParentRssBytes": 53235712
+    },
+    {
+      "Sample": "german",
+      "Engine": 0,
+      "Pass": 5,
+      "AudioSeconds": 5.5128125,
+      "PreparationMs": 114.3398,
+      "RecognitionMs": 909.7096,
+      "Text": "Bitte verschiebe die Besprechung auf Donnerstag um halb vier und sende die neuen Notizen an das Team.",
+      "Error": null,
+      "ParentRssBytes": 209534976
+    }
+  ],
+  "timing": "Preparation includes model verification/loading. Recognition includes app WAV/process work; cleanup and field delivery are excluded.",
+  "memory": "Parent RSS after completion excludes Whistle\u0027s exited child. Do not use this value to compare total engine memory."
+}

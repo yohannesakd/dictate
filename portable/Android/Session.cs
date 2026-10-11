@@ -14,7 +14,7 @@ public sealed class Session
     public HttpClient Http { get; } = new() { Timeout = TimeSpan.FromSeconds(30) };
     public AndroidDelivery Delivery { get; } = new();
     public AndroidAudio Audio { get; } = new();
-    public WhisperEngine Speech { get; }
+    public SpeechRecognizer Speech { get; }
     public DictationController Controller { get; }
     public event Action<string>? Notice;
     public string Status { get; private set; } = "Enable the Dictate voice keyboard to dictate in other apps.";
@@ -24,7 +24,8 @@ public sealed class Session
         Store = new(context.FilesDir!.AbsolutePath);
         Settings = Store.LoadSettings();
         Secrets = new(context);
-        Speech = new(Path.Combine(Store.DirectoryPath, "models"));
+        Speech = new(Path.Combine(Store.DirectoryPath, "models"), new AndroidWhistleProcess(),
+            Path.Combine(context.ApplicationInfo!.NativeLibraryDir!, "libdictate_needle.so"));
         Speech.Status += Message;
         Controller = new(Audio, Speech, Delivery, new(new HttpCleanupClient(Http, Secrets)), Store);
         Controller.Notice += Message;

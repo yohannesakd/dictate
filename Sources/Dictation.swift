@@ -25,6 +25,9 @@ final class AppModel: ObservableObject {
     @Published var handsFree = false
     @Published var levels = [CGFloat](repeating: 0, count: 11)
     @Published var modelStatus = ModelStatus.loading
+    @Published var speechModel = SpeechModel(rawValue: UserDefaults.standard.string(forKey: SpeechModel.preferenceKey) ?? "") ?? .default {
+        didSet { UserDefaults.standard.set(speechModel.rawValue, forKey: SpeechModel.preferenceKey) }
+    }
     @Published var micAuthorized = false
     @Published var accessibilityTrusted = false
     @Published var keyboardReady = false
@@ -90,6 +93,8 @@ final class DictationController {
     let model: AppModel
     let keyboard = KeyboardMonitor()
     private let engine = Engine()
+    private var recordingModel = SpeechModel.default
+    private var modelLoadID = 0
     private let recorder = Recorder()
     private let smart = SmartCleanup()
     private let startSound = NSSound(named: "Tink")
@@ -153,9 +158,7 @@ final class DictationController {
 
     func start() {
         refreshPermissions()
-        engine.load { [weak self] error in
-            self?.model.modelStatus = error.map { .failed($0.localizedDescription) } ?? .ready
-        }
+        loadSpeechModel()
         model.savedKeys = Set(CleanupProvider.allCases.filter { smart.keyClient($0)?.hasKey == true })
         model.chatgptSignedIn = smart.chatgpt.auth.isSignedIn
         // Open at login by default. The switch in the Hub changes it later.
@@ -170,6 +173,19 @@ final class DictationController {
     }
 
     // MARK: Keyboard events
+
+    func loadSpeechModel() {
+        modelLoadID += 1
+        let generation = modelLoadID
+        let selected = model.speechModel
+        model.modelStatus = .loading
+        engine.load(selected) { [weak self] error in
+            guard let self, generation == self.modelLoadID, self.model.speechModel == selected else { return }
+            self.model.modelStatus = error.map { .failed($0.localizedDescription) } ?? .ready
+        }
+    }
+
+    func shutdown() { cancel(); engine.shutdown() }
 
     private func fnDown(observed: Double) {
         switch mode {
@@ -239,6 +255,7 @@ final class DictationController {
             return
         }
         requestID += 1
+        recordingModel = model.speechModel
         operation.cancel()
         operation = OperationCancellation()
         snapshotCancellation?.cancel()
@@ -302,7 +319,7 @@ final class DictationController {
         trace.mark("recorder_stopped")
         // Transcription runs while the main thread looks up the focus. Its result arrives on the main queue after this.
         let context = ReleaseContext()
-        engine.transcribe(pcm, cancellation: operation) { [weak self] result, timing in
+        engine.transcribe(pcm, selection: recordingModel, cancellation: operation) { [weak self] result, timing in
             guard let self, request == self.requestID else { return }  // Cancelled with Esc.
             switch result {
             case .success(let raw):
@@ -374,7 +391,7 @@ final class DictationController {
 
     /// Transcribes the audio so far during recording. Called with each level update.
     private func snapshotIfUseful(levelDB: Float) {
-        guard isRecording else { return }
+        guard isRecording, recordingModel.warmsWithSnapshots else { return }
         let now = Monotonic.now
         if levelDB > speechLevelDB {
             lastSpeech = now
@@ -393,7 +410,7 @@ final class DictationController {
         let recording = requestID
         let cancellation = OperationCancellation()
         snapshotCancellation = cancellation
-        engine.transcribe(pcm, cancellation: cancellation) { [weak self] result, _ in
+        engine.transcribe(pcm, selection: recordingModel, cancellation: cancellation) { [weak self] result, _ in
             guard let self, recording == self.requestID else { return }
             self.snapshotRunning = false
             // Only a transcript taken in a pause is likely to be final. Mid-speech snapshots only keep the engine warm.

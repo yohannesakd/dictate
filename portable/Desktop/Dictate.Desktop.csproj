@@ -8,4 +8,5 @@
     <PackageReference Include="NAudio" Version="2.2.1" />
   </ItemGroup>
   <ItemGroup><AvaloniaResource Include="Assets/tray.png" /></ItemGroup>
+<ItemGroup><None Include="../Speech/Licenses/*" Link="Licenses/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
 </Project>

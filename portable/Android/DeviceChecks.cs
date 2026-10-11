@@ -75,10 +75,21 @@ public sealed class DeviceChecks : Instrumentation
         reader.BaseStream.Position = 44;
         var pcm = new List<float>();
         while (reader.BaseStream.Position + 2 <= reader.BaseStream.Length) pcm.Add(reader.ReadInt16() / 32768f);
-        using var speech = new WhisperEngine(Path.Combine(context.FilesDir.AbsolutePath, "models"));
-        var transcript = await speech.TranscribeAsync(pcm.ToArray(), "tiny.en", "en", CancellationToken.None);
-        Require(transcript.Contains("country", StringComparison.OrdinalIgnoreCase) && transcript.Contains("fellow", StringComparison.OrdinalIgnoreCase), "Unexpected CPU transcript: " + transcript);
-        Require(await speech.TranscribeAsync(new float[32000], "tiny.en", "en", CancellationToken.None) == "", "Silent audio produced dictation text.");
+        using var speech = new SpeechRecognizer(Path.Combine(context.FilesDir.AbsolutePath, "models"), new AndroidWhistleProcess(),
+            Path.Combine(context.ApplicationInfo!.NativeLibraryDir!, "libdictate_needle.so"));
+        foreach (var engine in Enum.GetValues<SpeechEngineKind>())
+        {
+            var transcript = await speech.TranscribeAsync(pcm.ToArray(), engine, "base", "en", CancellationToken.None);
+            Require(transcript.Contains("country", StringComparison.OrdinalIgnoreCase) && transcript.Contains("fellow", StringComparison.OrdinalIgnoreCase), "Unexpected CPU transcript: " + transcript);
+            RunOnMainSync(() => { field!.Text = ""; field.SetSelection(0); });
+            delivery.Bind(connection, context.PackageName);
+            Require((await delivery.CaptureTarget().InsertAsync(transcript, transcript, CancellationToken.None)).Outcome == DeliveryOutcome.Verified,
+                engine + " transcript did not reach the real field.");
+        }
+        await Dictate.Checks.SpeechEvaluation.CheckCancellationAsync(speech, pcm.ToArray(), "base");
+        var manifest = Path.Combine(context.FilesDir.AbsolutePath, "evaluation", "samples.json");
+        if (File.Exists(manifest)) await Dictate.Checks.SpeechEvaluation.RunAsync(speech, manifest,
+            Path.Combine(context.FilesDir.AbsolutePath, "speech-evaluation.json"));
     }
     private static void Require(bool condition, string error) { if (!condition) throw new InvalidOperationException(error); }
 }

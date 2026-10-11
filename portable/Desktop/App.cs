@@ -64,7 +64,7 @@ public sealed class DesktopSession : IDisposable
     public DictationSettings Settings { get; set; }
     public DesktopSecrets Secrets { get; } = new();
     public HttpClient Http { get; } = new() { Timeout = TimeSpan.FromSeconds(30) };
-    public WhisperEngine Speech { get; }
+    public SpeechRecognizer Speech { get; }
     public DictationController Controller { get; }
     public ShortcutController Shortcuts { get; }
     public GlobalShortcuts Hotkeys { get; }

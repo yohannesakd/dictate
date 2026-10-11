@@ -104,11 +104,19 @@ public sealed class MainWindow : Window
     private void Settings()
     {
         body.Children.Add(Heading("Speech recognition"));
+        var engine = new ComboBox { ItemsSource = Enum.GetValues<SpeechEngineKind>(), SelectedItem = session.Settings.SpeechEngine, MinWidth = 180 };
+        Avalonia.Automation.AutomationProperties.SetName(engine, "Speech engine");
+        engine.SelectionChanged += async (_, _) => { await Save(session.Settings with { SpeechEngine = (SpeechEngineKind)engine.SelectedItem! }); Render(); };
+        body.Children.Add(Label("Speech engine", engine));
         var model = new ComboBox { ItemsSource = WhisperEngine.Models, SelectedItem = session.Settings.SpeechModel, MinWidth = 180 };
         model.SelectionChanged += async (_, _) => await Save(session.Settings with { SpeechModel = (string)model.SelectedItem! });
-        body.Children.Add(model);
-        body.Children.Add(Text("Tiny uses less memory. Base balances speed and accuracy. Small can improve accuracy but needs more memory and time."));
-        body.Children.Add(Button("Download and load model", async () => await session.Speech.PrepareAsync(session.Settings.SpeechModel)));
+        if (session.Settings.SpeechEngine == SpeechEngineKind.Whisper)
+        {
+            body.Children.Add(model);
+            body.Children.Add(Text("Tiny uses less memory. Base balances speed and accuracy. Small needs more memory and time."));
+        }
+        else body.Children.Add(Text("Whistle supports English, German, French, Spanish, Italian, Dutch, and Polish. It runs on your CPU."));
+        body.Children.Add(Button("Download and load model", PrepareSpeech));
         var language = new TextBox { Text = session.Settings.Language, PlaceholderText = "auto, en, de, ..." };
         body.Children.Add(Label("Language", language));
         body.Children.Add(Button("Save language", async () => await Save(session.Settings with { Language = language.Text?.Trim() ?? "auto" })));
@@ -180,6 +188,11 @@ public sealed class MainWindow : Window
         catch (Exception error) { session.Message(error.Message); }
     }
 
+    private async Task PrepareSpeech()
+    {
+        if (session.Controller.Phase != DictationPhase.Idle) { session.Message("Finish or cancel dictation before loading a model."); return; }
+        await session.Speech.PrepareAsync(session.Settings.SpeechEngine, session.Settings.SpeechModel);
+    }
     private async Task Save(DictationSettings value) { await session.Store.SaveSettingsAsync(value); session.Settings = value; session.RefreshSettings(); }
     private static TextBlock Heading(string text) => new() { Text = text, FontSize = 16, FontWeight = FontWeight.SemiBold };
     private static TextBlock Text(string text) => new() { Text = text, TextWrapping = TextWrapping.Wrap, FontSize = 14 };

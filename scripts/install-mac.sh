@@ -17,6 +17,8 @@ for input in models vendor signing; do
   [[ -d "$INPUTS/$input" ]] || { print -u2 "Missing $INPUTS/$input"; exit 1; }
   ln -s "$INPUTS/$input" "$input"
 done
+zsh scripts/setup-whistle.sh "$INPUTS"
+zsh scripts/setup-whisper-mac.sh "$INPUTS"
 ./build.sh
 pkill -x Dictate || true
 while pgrep -x Dictate >/dev/null; do sleep 0.2; done

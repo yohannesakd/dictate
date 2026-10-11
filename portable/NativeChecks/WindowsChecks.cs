@@ -6,6 +6,7 @@ using System.Text;
 using System.Text.Json;
 using Dictate.Core;
 using Dictate.Desktop;
+using Dictate.Speech;
 using NAudio.Wave;
 
 [SupportedOSPlatform("windows")]
@@ -71,6 +72,21 @@ internal static class WindowsChecks
             cancellation.Cancel();
             Require((await delivery.CaptureTarget().InsertAsync("cancelled", "cancelled", cancellation.Token)).Outcome == DeliveryOutcome.Cancelled, "Cancelled insertion succeeded.");
             Require(Read((nint)fields.First) == "", "Cancelled insertion changed the field.");
+            var speechFixture = Environment.GetEnvironmentVariable("DICTATE_SPEECH_FIXTURES");
+            if (speechFixture is not null)
+            {
+                using var speech = new SpeechRecognizer(Path.Combine(speechFixture, "models"));
+                foreach (var engine in Enum.GetValues<SpeechEngineKind>())
+                {
+                    var text = await speech.TranscribeAsync(WaveAudio.Read(Path.Combine(speechFixture, "jfk.wav")), engine, "base", "en", CancellationToken.None);
+                    Require(text.Contains("country", StringComparison.OrdinalIgnoreCase), "Unexpected " + engine + " transcript: " + text);
+                    await Signal("reset");
+                    var insertedSpeech = await delivery.CaptureTarget().InsertAsync(text, text, CancellationToken.None);
+                    Require(insertedSpeech.Outcome == DeliveryOutcome.Verified && Read((nint)fields.First) == text,
+                        engine + " speech did not reach the native Windows field: " + insertedSpeech + "; actual=" + Read((nint)fields.First) + "; expected=" + text);
+                    Console.WriteLine(engine + " recognition and native field delivery passed.");
+                }
+            }
             Console.WriteLine("Windows native Unicode insertion, selection replacement, selected-word capture, raw restoration, undo, focus changes, edit guards, caret guards, and cancellation passed.");
             Console.WriteLine("Windows microphone devices: " + WaveInEvent.DeviceCount);
             Require(WaveInEvent.DeviceCount > 0, "Windows has no microphone capture device.");
@@ -105,8 +121,8 @@ internal static class WindowsChecks
         };
         Require(RegisterClass(ref windowClass) != 0, "Windows could not register the fixture window.");
         var window = CreateWindowEx(0, windowClass.Name, "Dictate native Windows checks", 0x10CF0000, 100, 100, 600, 240, 0, 0, windowClass.Instance, 0);
-        var first = CreateWindowEx(0, "EDIT", "", 0x50810000, 20, 30, 500, 30, window, 0, 0, 0);
-        var second = CreateWindowEx(0, "EDIT", "", 0x50810000, 20, 90, 500, 30, window, 0, 0, 0);
+        var first = CreateWindowEx(0, "EDIT", "", 0x50810080, 20, 30, 500, 30, window, 0, 0, 0);
+        var second = CreateWindowEx(0, "EDIT", "", 0x50810080, 20, 90, 500, 30, window, 0, 0, 0);
         Require(window != 0 && first != 0 && second != 0, "Windows could not create the native fields.");
         File.WriteAllText(command + ".ready", JsonSerializer.Serialize(new Fields(window, first, second)));
         try

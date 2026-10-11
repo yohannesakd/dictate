@@ -8,7 +8,13 @@ The exported Mac fixtures preserve the current cleanup contract during that work
 ## Ownership
 
 `Core` owns cleanup rules, dictionary matching, the ordered-edit guard, provider requests, settings, history, shortcuts, and the dictation lifecycle.
-`Speech` owns model downloads and CPU recognition through Whisper.net.
+`Speech` owns engine selection, pinned Whistle downloads, native process lifetimes, and Whisper.net CPU recognition.
+Each recording captures its engine, Whisper model, and language before recognition starts.
+History records the engine and model used.
+Selecting Whistle unloads the cached Whisper model before inference.
+Whistle runs in an owned process with bounded output, a time limit, and private temporary WAV files.
+Cancellation ends that process and waits for cleanup before accepting another recognition request.
+Android uses Java ProcessBuilder to execute its packaged helper from the extracted native library directory.
 `Desktop` owns Windows and Linux microphones, field delivery, credentials, startup, shortcuts, and windows.
 `Android` owns its microphone, input-method service, field connections, Keystore, and activities.
 Platform code reports what delivery observed.

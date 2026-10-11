@@ -1,0 +1,45 @@
+[
+  {
+    "name": "jfk",
+    "kind": "human reference",
+    "source": "https://raw.githubusercontent.com/ggml-org/whisper.cpp/master/samples/jfk.wav",
+    "sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+    "reference": "And so my fellow Americans ask not what your country can do for you ask what you can do for your country",
+    "language": "en"
+  },
+  {
+    "name": "dictate-short",
+    "kind": "Mac say, Samantha",
+    "sha256": "eb4c810cb6f97c13d3ab9bdf016180112c08005033f9bf4adda43d1fa09fd32d",
+    "reference": "Please move the design review to Thursday at three thirty and send the updated notes to the team.",
+    "language": "en"
+  },
+  {
+    "name": "dictate-technical",
+    "kind": "Mac say, Samantha",
+    "sha256": "57aca0f42e50795a10dbf468e8b59119f2c3afef3073f8cef8d8d3db4d763d44",
+    "reference": "Open the Dictate settings and choose Whistle. Compare the transcription speed, memory usage, and accuracy with Phonon. Keep the original recording so that both models receive the same audio. The new branch is called feature slash Mac Whistle model. Please send the results tomorrow morning.",
+    "language": "en"
+  },
+  {
+    "name": "dictate-long",
+    "kind": "Mac say, Samantha",
+    "sha256": "a05da10313937660698f1107cdfe0873ea2a7949cca9d5d4d84bc7bd4247c731",
+    "reference": "I want to review the changes before we release the new version. First, check that the settings menu shows both speech models and remembers the selection after a restart. Next, record a short message with the microphone and compare the transcript with what was spoken. Repeat the same check with a longer recording. We should measure the time after the recording stops, because that delay affects the user. Memory usage matters as well, especially when other applications are running. If a transcription is cancelled, the application must stop the pending work and allow another recording. Write down the results and explain which model you would choose for daily dictation.",
+    "language": "en"
+  },
+  {
+    "name": "silence",
+    "kind": "two seconds of digital silence",
+    "sha256": "28d773c3292ead92685c9f768979ddfd715132f8b676ac12d42717995c0c2d68",
+    "reference": "",
+    "language": "en"
+  },
+  {
+    "name": "jfk-noise",
+    "kind": "JFK plus seeded Gaussian noise, seed 61011, standard deviation 1200 PCM16 units",
+    "sha256": "b3a0075e73145ff01d6acd751fedcdea49f890fd5d1c9de495b931285f3be419",
+    "reference": "And so my fellow Americans ask not what your country can do for you ask what you can do for your country",
+    "language": "en"
+  }
+]

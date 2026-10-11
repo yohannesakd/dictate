@@ -3,6 +3,7 @@ namespace Dictate.Core;
 public enum CleanupProvider { Groq, DeepSeek, ChatGPT }
 public enum DictationPhase { Idle, Listening, Processing, Delivering }
 public enum DeliveryOutcome { Verified, Sent, FocusChanged, Cancelled, Failed, Unsupported }
+public enum SpeechEngineKind { Whisper, Whistle }
 
 public sealed record DictationSettings
 {
@@ -11,6 +12,7 @@ public sealed record DictationSettings
     public bool SmartCleanup { get; init; } = true;
     public CleanupProvider Provider { get; init; } = CleanupProvider.Groq;
     public string SpeechModel { get; init; } = "base";
+    public SpeechEngineKind SpeechEngine { get; init; } = SpeechEngineKind.Whisper;
     public string Language { get; init; } = "auto";
     public bool ShowIdleBar { get; init; } = true;
     public bool OpenAtLogin { get; init; }
@@ -26,7 +28,7 @@ public interface IAudioCapture : IDisposable
 
 public interface ISpeechEngine
 {
-    Task<string> TranscribeAsync(float[] pcm, string model, string language, CancellationToken cancellation);
+    Task<string> TranscribeAsync(float[] pcm, SpeechEngineKind engine, string model, string language, CancellationToken cancellation);
 }
 
 public interface ITextTarget
@@ -78,6 +80,8 @@ public sealed record TranscriptRecord
     public string? Provider { get; init; }
     public string? Model { get; init; }
     public string? Prompt { get; init; }
+    public SpeechEngineKind SpeechEngine { get; init; }
+    public string? SpeechModel { get; init; }
     public double AudioSeconds { get; init; }
     public required DeliveryOutcome Delivery { get; init; }
     public int PostedUtf16Units { get; init; }
