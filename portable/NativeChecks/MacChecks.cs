@@ -1,42 +1,28 @@
 using System.Runtime.InteropServices;
 using System.Diagnostics;
 using System.Text.Json;
-using Avalonia;
-using Avalonia.Controls;
-using Avalonia.Controls.ApplicationLifetimes;
-using Avalonia.Media.Imaging;
-using Avalonia.Styling;
-using Avalonia.Themes.Fluent;
-using Avalonia.Threading;
-using Avalonia.VisualTree;
 using Dictate.Core;
 using Dictate.Checks;
 using Dictate.Desktop;
 using Dictate.Speech;
 
-internal sealed class MacChecks : Application
+internal static class MacChecks
 {
     internal static string Output = "";
     internal static string Fixtures = "";
     internal static string Models = "";
-    public override void Initialize() { RequestedThemeVariant = ThemeVariant.Light; Styles.Add(new FluentTheme()); }
-    public override void OnFrameworkInitializationCompleted()
+    internal static void Run(string[] args)
     {
-        if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
+        Output = args[0]; Fixtures = args[1]; Models = args[2];
+        Directory.CreateDirectory(Output);
+        DesktopRuntime.Run(async () =>
         {
-            var session = new DesktopSession(Path.Combine(Output, "data"));
-            var window = new MainWindow(session);
-            desktop.MainWindow = window;
-            window.Opened += (_, _) => Dispatcher.UIThread.Post(async () =>
-            {
-                try { await CheckAsync(session, window); File.WriteAllText(Path.Combine(Output, "exit-code.txt"), "0"); }
-                catch (Exception error) { File.WriteAllText(Path.Combine(Output, "error.txt"), error.ToString()); File.WriteAllText(Path.Combine(Output, "exit-code.txt"), "1"); }
-                finally { session.Dispose(); desktop.Shutdown(); }
-            });
-        }
-        base.OnFrameworkInitializationCompleted();
+            using var session = new DesktopSession(Path.Combine(Output, "data"));
+            try { await CheckAsync(session); File.WriteAllText(Path.Combine(Output, "exit-code.txt"), "0"); }
+            catch (Exception error) { File.WriteAllText(Path.Combine(Output, "error.txt"), error.ToString()); File.WriteAllText(Path.Combine(Output, "exit-code.txt"), "1"); }
+        });
     }
-    private static async Task CheckAsync(DesktopSession session, MainWindow window)
+    private static async Task CheckAsync(DesktopSession session)
     {
         Directory.CreateDirectory(Output);
         void Require(bool condition, string message) { if (!condition) throw new InvalidOperationException(message); }
@@ -56,23 +42,12 @@ internal sealed class MacChecks : Application
         Require(permissions.GetProperty("microphone").GetBoolean(), "Microphone permission is required for the signed verification bundle.");
         session.Hotkeys.Start();
         Require(MacNative.Permissions(false).GetProperty("keyboard").GetBoolean(), "The native fn shortcut did not start.");
-        foreach (var page in new[] { "Home", "History", "Settings" })
-        {
-            var button = window.GetVisualDescendants().OfType<Button>().Single(button => button.Content as string == page);
-            button.RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
-            await Task.Delay(150);
-            using var bitmap = new RenderTargetBitmap(new PixelSize(500, 640));
-            bitmap.Render(window); bitmap.Save(Path.Combine(Output, page.ToLowerInvariant() + ".png"), new PngBitmapEncoderOptions());
-        }
-        var choice = window.GetVisualDescendants().OfType<ComboBox>().Single(box => Avalonia.Automation.AutomationProperties.GetName(box) == "Speech engine");
         foreach (var engine in SpeechProfiles.Engines)
         {
-            choice.SelectedItem = engine;
-            await Task.Delay(150);
-            Require(session.Settings.SpeechEngine == engine, "The shared menu did not select " + engine);
-            Require(session.Store.LoadSettings().SpeechEngine == engine, "The menu choice did not persist.");
+            await session.SelectEngineAsync(engine);
+            Require(session.Store.LoadSettings().SpeechEngine == engine, "The engine choice did not persist.");
         }
-        notes.Add("Shared Home, History, Settings, and both menu choices rendered. Choices persisted.");
+        notes.Add("Both engine choices persisted in the native service.");
         var delivery = new MacDelivery();
         var command = Path.Combine(Output, "fixture-command");
         using var fixture = new ExternalFixture(command);
@@ -84,8 +59,11 @@ internal sealed class MacChecks : Application
             return File.ReadAllText(command + (index == 0 ? ".first" : ".second"));
         }
         await Signal(0);
-        var receipt = await delivery.CaptureTarget().InsertAsync("Hello ☀ 😀.", "hello", CancellationToken.None);
-        Require(receipt.Outcome == DeliveryOutcome.Verified && await Text() == "Hello ☀ 😀.", "Unicode delivery failed: " + receipt);
+        var target = delivery.CaptureTarget();
+        Require(target.Application == "dev.local.dictate.fixture", "The external fixture has no focus. Keep the Mac unlocked and the check window active.");
+        var receipt = await target.InsertAsync("Hello ☀ 😀.", "hello", CancellationToken.None);
+        var observed = await Text();
+        Require(receipt.Outcome == DeliveryOutcome.Verified && observed == "Hello ☀ 😀.", "Unicode delivery failed: " + receipt + "; target=" + File.ReadAllText(command + ".focus.json") + "; observed=" + observed);
         Require(receipt.Correction is not null && await receipt.Correction.ReplaceAsync("hello", CancellationToken.None), "Raw restoration failed: " + receipt);
         Require(await Text() == "hello", "Raw restoration changed the text.");
         await Signal(0);
@@ -110,38 +88,6 @@ internal sealed class MacChecks : Application
             receipt = await delivery.CaptureTarget().InsertAsync("wrong", "wrong", cancelled.Token);
             Require(receipt.Outcome == DeliveryOutcome.Cancelled && await Text() == "", "Cancelled delivery posted text.");
         }
-        // Dictate can also receive text in its own Settings fields.
-        window.Activate(); await Task.Delay(200);
-        var ownField = window.GetVisualDescendants().OfType<TextBox>().Single(field => field.PlaceholderText == "Heard as");
-        ownField.Text = ""; ownField.BringIntoView(); ownField.Focus(); await Task.Delay(100);
-        receipt = await delivery.CaptureTarget().InsertAsync("Own field.", "own", CancellationToken.None);
-        Require(receipt.Outcome is DeliveryOutcome.Verified or DeliveryOutcome.Sent, "Own-field delivery failed: " + receipt);
-        var ownText = "";
-        for (var attempt = 0; attempt < 50; attempt++)
-        {
-            ownText = ownField.Text ?? "";
-            if (ownText == "Own field.") break;
-            await Task.Delay(20);
-        }
-        Require(ownText == "Own field.", "The app's own field did not receive text: " + ownText + "; " + receipt);
-        if (receipt.Correction is not null) Require(await receipt.Correction.ReplaceAsync("", CancellationToken.None), "Verified own-field correction failed.");
-        await Signal(0);
-        var focused = delivery.CaptureTarget();
-        var bar = new FlowBar(session);
-        try
-        {
-            bar.Show();
-            session.Controller.Start(session.Settings with { SmartCleanup = false });
-            await Task.Delay(200); bar.Update();
-            Require(bar.Opacity == 1, "The listening indicator did not appear.");
-            Require((await focused.InsertAsync("Focus preserved.", "focus", CancellationToken.None)).Outcome == DeliveryOutcome.Verified, "The indicator moved focus from the external field.");
-            session.Shortcuts.Cancel(); bar.Update();
-            Require(bar.Opacity == 0, "The idle indicator did not disappear.");
-            session.Message("Verification warning"); await Task.Delay(50);
-            Require(!bar.GetVisualDescendants().OfType<TextBlock>().Any(label => label.Text == "Verification warning"), "A warning entered the indicator.");
-        }
-        finally { session.Shortcuts.Cancel(); bar.Close(); }
-        notes.Add("The indicator preserved focus, hid when idle, and excluded warnings. Own-field delivery used the same correction guards.");
         notes.Add("Native Unicode, raw restoration, undo, selection, focus change, edit guard, and cancellation passed.");
         var account = "shared-ui-check-" + Guid.NewGuid();
         try { await session.Secrets.WriteAsync(account, "test-only"); Require(await session.Secrets.ReadAsync(account) == "test-only", "Keychain roundtrip failed."); }
@@ -171,7 +117,8 @@ internal sealed class MacChecks : Application
         public async Task StartAsync()
         {
             var start = new ProcessStartInfo("/usr/bin/open") { UseShellExecute = false };
-            foreach (var argument in new[] { "-n", "-W", Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../..")), "--args", "--fixture", command }) start.ArgumentList.Add(argument);
+            var fixtureBundle = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../Dictate.Fixture.app"));
+            foreach (var argument in new[] { "-n", "-W", fixtureBundle, "--args", "--fixture", command }) start.ArgumentList.Add(argument);
             process = Process.Start(start)!;
             await WaitAsync(() => File.Exists(command + ".ready"));
         }

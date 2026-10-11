@@ -1,10 +1,9 @@
 using System.Runtime.InteropServices;
-using Avalonia.Threading;
 using Dictate.Core;
 
 namespace Dictate.Desktop;
 
-public sealed class GlobalShortcuts(ShortcutController shortcuts, DictationController controller) : IDisposable
+public sealed class GlobalShortcuts(ShortcutController shortcuts, DictationController controller, SynchronizationContext context) : IDisposable
 {
     private readonly CancellationTokenSource stopped = new();
     private Thread? thread;
@@ -38,6 +37,7 @@ public sealed class GlobalShortcuts(ShortcutController shortcuts, DictationContr
             if (MacNative.KeyboardStart(macCallback) == 0) Notice?.Invoke("Allow Accessibility access in Settings, then enable shortcuts.");
             return;
         }
+        if (thread is not null) return;
         thread = new Thread(() =>
         {
             try { if (OperatingSystem.IsWindows()) RunWindows(); else RunX11(); }
@@ -46,11 +46,11 @@ public sealed class GlobalShortcuts(ShortcutController shortcuts, DictationContr
         thread.Start();
     }
 
-    private void Post(Action action) => Dispatcher.UIThread.Post(() =>
+    private void Post(Action action) => context.Post(_ =>
     {
         try { action(); }
         catch (Exception error) { Notice?.Invoke(error.Message); }
-    });
+    }, null);
 
     private void RunWindows()
     {

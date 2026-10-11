@@ -1,8 +1,27 @@
-// macOS adapters for the shared desktop app. Recognition and UI live in .NET.
+// macOS adapters for the native service. Electron owns the desktop window.
 import AppKit
 import AVFoundation
 import Security
 import ServiceManagement
+
+public typealias LoopCallback = @convention(c) () -> Void
+public typealias DispatchCallback = @convention(c) (UnsafeMutableRawPointer) -> Void
+@_cdecl("dictate_run_loop") public func runLoop(_ started: LoopCallback) {
+    let app = NSApplication.shared
+    app.setActivationPolicy(.prohibited)
+    DispatchQueue.main.async { started() }
+    app.run()
+}
+@_cdecl("dictate_stop_loop") public func stopLoop() {
+    NSApplication.shared.stop(nil)
+    if let event = NSEvent.otherEvent(with: .applicationDefined, location: .zero, modifierFlags: [], timestamp: 0,
+                                     windowNumber: 0, context: nil, subtype: 0, data1: 0, data2: 0) {
+        NSApplication.shared.postEvent(event, atStart: true)
+    }
+}
+@_cdecl("dictate_post") public func post(_ callback: DispatchCallback, _ context: UnsafeMutableRawPointer) {
+    DispatchQueue.main.async { callback(context) }
+}
 
 private func json(_ object: [String: Any]) -> UnsafeMutablePointer<CChar> {
     let data = try! JSONSerialization.data(withJSONObject: object)
@@ -104,21 +123,6 @@ public typealias KeyCallback = @convention(c) (Int32) -> Void
     return json(["microphone": AVCaptureDevice.authorizationStatus(for: .audio) == .authorized,
                  "accessibility": AXIsProcessTrusted(), "keyboard": keyboard.isRunning,
                  "fn_free": (CFPreferencesCopyAppValue("AppleFnUsageType" as CFString, "com.apple.HIToolbox" as CFString) as? Int) == 0])
-}
-@_cdecl("dictate_indicator") public func indicator(_ pointer: UnsafeMutableRawPointer, _ interactive: Int32) {
-    // Avalonia exposes an NSWindow handle. Nonactivating panels keep the target field focused.
-    let window = Unmanaged<NSWindow>.fromOpaque(pointer).takeUnretainedValue()
-    window.styleMask.insert(.nonactivatingPanel)
-    window.level = .floating
-    window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-    window.ignoresMouseEvents = interactive == 0
-}
-@_cdecl("dictate_startup") public func startup(_ enabled: Int32) -> UnsafeMutablePointer<CChar>? {
-    do {
-        if enabled != 0 { try SMAppService.mainApp.register() }
-        else { try SMAppService.mainApp.unregister() }
-        return nil
-    } catch { return strdup(error.localizedDescription) }
 }
 
 private func accountQuery(_ account: String) -> [String: Any] {

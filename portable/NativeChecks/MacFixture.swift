@@ -39,6 +39,9 @@ private let second = NSTextView(frame: NSRect(x: 20, y: 25, width: 440, height: 
             if action != 6 { fixtureAction(action) }
             try first.string.write(toFile: command + ".first", atomically: true, encoding: .utf8)
             try second.string.write(toFile: command + ".second", atomically: true, encoding: .utf8)
+            let details: [String: Any] = ["frontmost": NSWorkspace.shared.frontmostApplication?.bundleIdentifier ?? "unknown",
+                                        "fixture_active": app.isActive, "window_key": fixture?.isKeyWindow ?? false]
+            try JSONSerialization.data(withJSONObject: details).write(to: URL(fileURLWithPath: command + ".focus.json"))
             try FileManager.default.removeItem(atPath: command)
         } catch { try? error.localizedDescription.write(toFile: command + ".error", atomically: true, encoding: .utf8) }
     }

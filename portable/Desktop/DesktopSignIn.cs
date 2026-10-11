@@ -8,9 +8,10 @@ namespace Dictate.Desktop;
 
 public static class DesktopSignIn
 {
-    public static async Task SignInAsync(ChatGptAuth auth)
+    public static async Task SignInAsync(ChatGptAuth auth, CancellationToken stopped = default)
     {
-        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(stopped);
+        timeout.CancelAfter(TimeSpan.FromMinutes(5));
         var cancellation = timeout.Token;
         var listener = new TcpListener(IPAddress.Loopback, 1455);
         listener.Start();

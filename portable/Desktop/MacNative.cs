@@ -18,6 +18,8 @@ internal static class MacNative
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void LevelCallback(float level);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void NoticeCallback(nint notice);
     [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void KeyCallback(int action);
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void LoopCallback();
+    [UnmanagedFunctionPointer(CallingConvention.Cdecl)] internal delegate void DispatchCallback(nint context);
     private static readonly ResultCallback completed = (result, context) =>
     {
         var handle = GCHandle.FromIntPtr(context);
@@ -69,8 +71,9 @@ internal static class MacNative
     [DllImport(Library, EntryPoint = "dictate_keyboard_stop")] internal static extern void KeyboardStop();
     [DllImport(Library, EntryPoint = "dictate_keyboard_active")] internal static extern void KeyboardActive(int active);
     [DllImport(Library, EntryPoint = "dictate_permissions")] private static extern nint GetPermissions(int request);
-    [DllImport(Library, EntryPoint = "dictate_indicator")] internal static extern void Indicator(nint window, int interactive);
-    [DllImport(Library, EntryPoint = "dictate_startup")] internal static extern nint Startup(int enabled);
+    [DllImport(Library, EntryPoint = "dictate_run_loop")] internal static extern void RunLoop(LoopCallback started);
+    [DllImport(Library, EntryPoint = "dictate_stop_loop")] internal static extern void StopLoop();
+    [DllImport(Library, EntryPoint = "dictate_post")] internal static extern void Post(DispatchCallback callback, nint context);
     [DllImport(Library, EntryPoint = "dictate_secret_read")] internal static extern nint SecretRead([MarshalAs(UnmanagedType.LPUTF8Str)] string account);
     [DllImport(Library, EntryPoint = "dictate_secret_write")] internal static extern nint SecretWrite([MarshalAs(UnmanagedType.LPUTF8Str)] string account, [MarshalAs(UnmanagedType.LPUTF8Str)] string? value);
     [DllImport(Library, EntryPoint = "dictate_legacy_settings")] internal static extern nint LegacySettings();

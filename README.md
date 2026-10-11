@@ -1,7 +1,7 @@
 # Dictate
 
 Dictate provides local English dictation on macOS, Windows, Linux, and Android.
-The three desktop apps use one Avalonia interface, one core, and software rendering.
+The three desktop apps use one Electron interface, one core, and software rendering.
 Speech recognition runs on the CPU without a GPU.
 
 The **Speech engine** menu offers two choices:
@@ -11,7 +11,7 @@ The **Speech engine** menu offers two choices:
 
 The choice survives restart. Engine changes require idle dictation.
 The [English comparison](docs/whistle-whisper-evaluation.md) explains quality and resource differences.
-The [current verification record](docs/shared-desktop-verification.md) identifies tested devices and remaining limits.
+The [current verification record](docs/electron-desktop-verification.md) identifies tested devices and remaining limits.
 
 ## Use dictation
 
@@ -34,7 +34,7 @@ Select a word and press **fn+D** or **F8+D** to add a dictionary entry.
 
 ## Build the Mac app
 
-The Mac build requires macOS 15 or later, Xcode tools, and the .NET 10 SDK.
+The Mac build requires macOS 15 or later, Xcode tools, Node.js 22 or later, and the .NET 10 SDK.
 The tested Mac uses Apple silicon.
 The pinned Whistle helper does not support Intel Macs.
 
@@ -73,4 +73,5 @@ ChatGPT cleanup uses an unofficial endpoint that can change.
 
 Whistle and Needle are from Cactus Compute and use Apache-2.0 licences.
 Whisper is from OpenAI. Whisper and whisper.cpp use MIT licences.
-The desktop interface uses Avalonia and the Inter font.
+The desktop interface uses Electron and the Inter font.
+The [design language](docs/design-language.md) defines its shared colors, spacing, controls, and indicator behavior.

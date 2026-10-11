@@ -6,3 +6,8 @@ portable/**/bin/
 portable/**/obj/
 portable/artifacts/
 portable/.tools/
+node_modules/
+desktop/dist/
+desktop/resources/backend/
+desktop/resources/.backend.*/
+desktop/test-results/

@@ -1,6 +1,6 @@
 # Verify the shared app
 
-The [current result record](../../docs/shared-desktop-verification.md) lists tested machines and remaining limits.
+The [current result record](../../docs/electron-desktop-verification.md) lists tested machines and remaining limits.
 The [October 10 archive](verification-2026-10-10.md) retains the original warning investigation and earlier platform results.
 
 ## Core and CPU checks
@@ -18,27 +18,29 @@ Use the dedicated comparison harness for resource comparisons.
 
 ## Linux checks
 
-Build `portable/NativeChecks` in Release mode.
+Build the Linux Electron package and `portable/NativeChecks` in Release mode.
 Run `portable/scripts/check-native.sh` on a Linux worker with Docker.
 The check opens GTK fields and the shared app in an isolated X11 display.
-It verifies Unicode readback, undo, stale-focus refusal, edited-text refusal, three pages, and engine persistence after restart.
+It verifies Unicode readback, undo, stale-focus refusal, edited-text refusal, all pages, copy, dictionary, cleanup, recording, and both engine choices after process restart.
 The isolated display does not verify a physical microphone or Wayland shortcuts.
 
 ## Windows checks
 
-Publish Desktop, NativeChecks, and Checks for `win-x64` into one package directory.
+Package Electron for `win32 x64` with the self-contained native service.
+Publish NativeChecks separately for `win-x64`.
+Put the pinned speech models in the fixture directory's `models` folder.
 Use an interactive Windows session for native input checks.
 
 ```powershell
 powershell -NoProfile -File portable/scripts/check-windows.ps1 `
-  -PackageDirectory portable/artifacts/windows `
+  -PackageDirectory desktop/dist/Dictate-win32-x64 `
+  -NativeChecksDirectory portable/artifacts/windows/native `
   -OutputDirectory portable/artifacts/windows/results `
-  -FixtureAudio portable/fixtures/speech/jfk.wav `
-  -ModelDirectory portable/models
+  -FixtureDirectory portable/fixtures/speech
 ```
 
-The runner checks real Edit controls, microphone restart, both CPU engines, the no-AVX path, three pages, and engine selection.
-It also checks F8 recording and Escape cancellation with an external field focused.
+The runner checks real Edit controls, correction guards, microphone restart, and both CPU engines.
+It checks Electron pages, controls, clipboard, recording, indicator isolation, and both engine choices after process restart.
 Other applications must not take focus during native delivery checks.
 An observed focus change must stop insertion.
 
@@ -54,8 +56,21 @@ open -n -W build/Dictate.Checks.app --args /tmp/dictate-checks portable/fixtures
 Use absolute argument paths when launching through `open`.
 Normal LaunchServices launch is required for correct microphone permission attribution and application identity.
 The signed check bundle uses the app’s stable identifier.
-It checks the shared pages, both menu choices, AppKit fields, correction guards, Keychain, and microphone restart.
+It checks AppKit fields, correction guards, Keychain, and microphone restart.
 It verifies CPU recognition, field delivery, and the six-fixture audio matrix.
+
+## Electron interface checks
+
+Seed an isolated data directory with `node desktop/scripts/seed-checks.cjs /absolute/data`.
+Run the packaged Electron executable with `--data-directory /absolute/data --verify-desktop /absolute/results`.
+The check uses the real renderer, native service, clipboard, and microphone adapter.
+It saves screenshots and exits with a result code.
+The normal recording button must hide the main window before capture starts.
+Warnings stay in the main window, and the indicator remains unfocused.
+Run twice more with `--verify-restart whistle` and `--verify-restart whisper` to check persistence across complete process restarts.
+On macOS, launch the signed package through `open -n -W` with absolute argument paths.
+Keep the Mac unlocked and the desktop active.
+The Linux runner supplies synthetic silence to test capture lifecycle.
 
 ## Android checks
 

@@ -2,17 +2,26 @@
 
 `Core` owns cleanup, dictionary matching, provider requests, settings, history, shortcuts, and the dictation lifecycle.
 `Speech` owns the two English CPU profiles, asset checks, and native recognition lifetimes.
-`Desktop` owns the shared Avalonia interface and platform adapters.
+`desktop/` owns the Electron windows, tray, clipboard, login settings, and shared HTML interface.
+`portable/Desktop` owns the headless native service and platform adapters.
 `Android` owns the native activity, microphone, input-method service, input connections, and Keystore.
 
 ## Desktop interface
 
-macOS, Windows, and Linux compile the same `MainWindow`, `FlowBar`, and tray menu.
+macOS, Windows, and Linux package the same HTML, CSS, JavaScript, and bundled font.
+Electron disables hardware acceleration and WebGL.
+The renderer has no Node.js access and uses a sandboxed preload with narrow commands.
+The main process exchanges bounded JSON lines with one owned native service through private pipes.
+There is no local HTTP API. Service failure rejects pending commands without replay.
+The service retains the native main loop and owns microphone capture, delivery, settings, and recognition.
+Closing the window hides it. Quitting stops the service before Electron exits.
+The floating indicator receives only dictation phase and audio level.
+It preserves destination focus and disappears when idle. Warnings appear in the app.
 The apps use the Inter font, a light theme, and software rendering.
 Only platform shortcut names and setup controls differ.
 The native window frame follows the operating system.
 
-The Mac bridge retains microphone capture, fn shortcuts, text delivery, Keychain, and login-item integration.
+The Mac bridge retains microphone capture, fn shortcuts, text delivery, and Keychain. Electron owns login-item integration.
 The old Swift app and Phonon paths are removed.
 The Mac build keeps the bundle identifier and signing identity.
 A first-launch import copies legacy preferences and transcripts into the shared data directory.
@@ -55,7 +64,7 @@ Standard Edit controls support readback and correction.
 Other controls can receive text without verification.
 
 Linux uses AT-SPI to replace the selected range in an editable field.
-X11 supplies global shortcuts and the indicator.
+X11 supplies global shortcuts. Electron owns the indicator.
 Wayland shortcut integration remains open.
 Unreadable fields require copying from History.
 

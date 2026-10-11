@@ -35,18 +35,28 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# All desktops publish the same UI and core. Swift supplies only macOS adapters.
+# Electron owns the window. Swift supplies only macOS adapters.
 export PATH=/usr/local/share/dotnet:/opt/homebrew/bin:$PATH
 ARCH=$(uname -m)
 RID=osx-arm64
 [[ "$ARCH" == x86_64 ]] && RID=osx-x64
-mkdir -p "$APP/Contents/MacOS"
-dotnet publish "$PROJECT" -c Release -r "$RID" --self-contained true \
-  -p:UseAppHost=true -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -m:2 -o "$APP/Contents/MacOS"
-mv "$APP/Contents/MacOS/$EXECUTABLE" "$APP/Contents/MacOS/Dictate"
-xcrun swiftc -O -swift-version 5 -target "$TARGET" -emit-library \
-  "${NATIVE_SOURCES[@]}" -o "$APP/Contents/MacOS/libdictate-macos.dylib"
-cp Info.plist "$APP/Contents/Info.plist"
+if [[ "${1:-}" == --checks ]]; then
+  mkdir -p "$APP/Contents/MacOS"
+  dotnet publish "$PROJECT" -c Release -r "$RID" --self-contained true \
+    -p:UseAppHost=true -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -m:2 -o "$APP/Contents/MacOS"
+  mv "$APP/Contents/MacOS/$EXECUTABLE" "$APP/Contents/MacOS/Dictate"
+  xcrun swiftc -O -swift-version 5 -target "$TARGET" -emit-library \
+    "${NATIVE_SOURCES[@]}" -o "$APP/Contents/MacOS/libdictate-macos.dylib"
+  cp Info.plist "$APP/Contents/Info.plist"
+else
+  ./desktop/scripts/build-backend.sh "$RID"
+  xcrun swiftc -O -swift-version 5 -target "$TARGET" -emit-library \
+    "${NATIVE_SOURCES[@]}" -o desktop/resources/backend/libdictate-macos.dylib
+  (cd desktop && npm ci && npm run prepare-ui && npm run package -- darwin "$([[ "$ARCH" == arm64 ]] && print arm64 || print x64)")
+  ELECTRON_ARCH=$ARCH
+  [[ "$ARCH" == arm64 ]] || ELECTRON_ARCH=x64
+  ditto "desktop/dist/Dictate-darwin-$ELECTRON_ARCH/Dictate.app" "$APP"
+fi
 
 # This is the app's separate signing keychain. Restore the original search list after signing.
 KEYCHAIN=$PWD/signing/dictate-signing.keychain-db
@@ -56,13 +66,33 @@ security list-keychains -d user -s "${ORIGINAL_KEYCHAINS[@]}" "$KEYCHAIN"
 security unlock-keychain -p "$(cat signing/keychain-password)" "$KEYCHAIN"
 IDENTITY=$(security find-identity -p codesigning "$KEYCHAIN" | awk '/Dictate Local Signing/ { print $2; exit }')
 [[ -n "$IDENTITY" ]]
-# macOS requires signatures for every file in Contents/MacOS.
-find "$APP/Contents/MacOS" -type f ! -name Dictate -print0 | while IFS= read -r -d '' library; do
-  codesign --force --sign "$IDENTITY" "$library"
-done
-codesign --force --sign "$IDENTITY" --identifier dev.local.dictate "$APP"
+if [[ "${1:-}" == --checks ]]; then
+  find "$APP/Contents/MacOS" -type f ! -name Dictate -print0 | while IFS= read -r -d '' library; do
+    codesign --force --sign "$IDENTITY" "$library"
+  done
+  codesign --force --sign "$IDENTITY" --identifier dev.local.dictate "$APP"
+else
+  # Sign the service before signing Electron's nested frameworks and outer bundle.
+  find "$APP/Contents/Resources/app.asar.unpacked/resources/backend" -type f -print0 | while IFS= read -r -d '' library; do
+    codesign --force --sign "$IDENTITY" "$library"
+  done
+  codesign --force --sign "$IDENTITY" --identifier dev.local.dictate \
+    "$APP/Contents/Resources/app.asar.unpacked/resources/backend/Dictate.Desktop"
+  DICTATE_SIGN_APP="$APP" DICTATE_SIGN_IDENTITY="$IDENTITY" DICTATE_SIGN_KEYCHAIN="$KEYCHAIN" \
+    node desktop/scripts/sign-mac.cjs
+fi
 codesign --verify --strict "$APP"
 
 if [[ -e build/$APP_NAME.app ]]; then mv build/$APP_NAME.app "$PREVIOUS"; fi
 mv "$APP" build/$APP_NAME.app
+if [[ "${1:-}" == --checks ]]; then
+  FIXTURE=$STAGING/Dictate.Fixture.app
+  ditto build/Dictate.Checks.app "$FIXTURE"
+  /usr/libexec/PlistBuddy -c 'Set :CFBundleIdentifier dev.local.dictate.fixture' "$FIXTURE/Contents/Info.plist"
+  /usr/libexec/PlistBuddy -c 'Set :CFBundleName Dictate Fixture' "$FIXTURE/Contents/Info.plist"
+  codesign --force --sign "$IDENTITY" --identifier dev.local.dictate.fixture "$FIXTURE"
+  codesign --verify --strict "$FIXTURE"
+  if [[ -e build/Dictate.Fixture.app ]]; then mv build/Dictate.Fixture.app "$STAGING/previous-fixture.app"; fi
+  mv "$FIXTURE" build/Dictate.Fixture.app
+fi
 print "Built build/$APP_NAME.app"

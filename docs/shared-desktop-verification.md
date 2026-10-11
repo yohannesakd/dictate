@@ -1,4 +1,6 @@
-# Shared desktop verification
+# Shared desktop verification archive
+
+This record covers the replaced Avalonia interface. See [the current Electron record](electron-desktop-verification.md).
 
 Branch: `feat/shared-desktop-ui`. Verification date: October 11, 2026.
 

@@ -1,18 +1,22 @@
 # Build Dictate for other platforms
 
-The desktop apps use the same Avalonia window, indicator, menus, and shared core.
+The desktop apps use the same Electron window, indicator, menus, and shared core.
 Android uses a native activity and voice keyboard with the same English speech choices.
 
 ## Run Windows or Linux
 
-Install the .NET 10 SDK.
+Install the .NET 10 SDK and Node.js 22 or later.
 On Linux, install `alsa-utils`, `libsecret-tools`, `at-spi2-core`, and `libgomp1`.
 Use X11 for global shortcuts.
 On Wayland, use the app recording controls.
 Linux insertion requires an accessible, editable field. Other fields require copying from History.
 
 ```sh
-dotnet run --project portable/Desktop/Dictate.Desktop.csproj
+desktop/scripts/build-backend.sh linux-x64
+cd desktop
+npm ci
+npm run prepare-ui
+npm start
 ```
 
 Choose **Whistle** or **Whisper** in the header menu or tray menu.
@@ -33,11 +37,30 @@ Use the tray menu to quit.
 These commands create independent distributions that include the .NET runtime.
 
 ```sh
-dotnet publish portable/Desktop -c Release -r win-x64 --self-contained true -o portable/artifacts/windows/app
-dotnet publish portable/Desktop -c Release -r linux-x64 --self-contained true -o portable/artifacts/linux/app
+desktop/scripts/build-backend.sh linux-x64
+cd desktop
+npm ci
+npm run prepare-ui
+npm run package -- linux x64
 ```
 
-For framework-dependent packages, use `--self-contained false` and install the .NET 10 runtime on the target machine.
+The package is in `desktop/dist/Dictate-linux-x64`.
+For Windows, build the backend with `win-x64` and package with `win32 x64`.
+From PowerShell, publish into `desktop/resources/backend` before packaging:
+
+```powershell
+dotnet publish portable/Desktop -c Release -r win-x64 --self-contained true `
+  -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false `
+  -o desktop/resources/backend
+cd desktop
+npm ci
+npm run prepare-ui
+npm run package -- win32 x64
+```
+
+The package includes Electron and the native service.
+If Linux restricts user namespaces, install the bundled Chromium sandbox with root ownership and mode `4755`.
+The packaged app does not require Node.js or the .NET SDK.
 The publisher retains only the target speech libraries and removes release debug symbols.
 The x64 Whisper runtime includes a no-AVX fallback.
 The selected Whistle binaries support Windows x64, Linux x64, and macOS ARM64.
@@ -75,4 +98,4 @@ dotnet test portable/Tests/Dictate.Tests.csproj
 ```
 
 The frozen cleanup fixtures preserve the original Mac guard cases.
-See [verification instructions](docs/verification.md) and the [current results](../docs/shared-desktop-verification.md).
+See [verification instructions](docs/verification.md) and the [current results](../docs/electron-desktop-verification.md).
