@@ -94,7 +94,7 @@ dotnet run --project portable/Checks/Dictate.Checks.csproj -c Release -- --evalu
 
 Android Debug instrumentation is `dev.local.dictate.portable.DeviceChecks`.
 Its fixtures and models belong in the app FilesDir. Its JSON output is `speech-evaluation.json`.
-The Windows helper is [`check-windows-engines.ps1` at d515489](https://github.com/yohannesakd/dictate/blob/d515489/portable/scripts/check-windows-engines.ps1).
+The Windows helper at that revision is `portable/scripts/check-windows-engines.ps1`.
 
 Dispatch evidence: Linux audio `d1a1a56d`, German audio `ef6df4e6`, native Linux `eb2e6a17`, Linux selector `b4dc9453`.
 Android Debug evidence is `0eef9372`. Android Release evidence is `20a00818`.
