@@ -50,12 +50,25 @@ An observed focus change must stop insertion.
 Tests/run-insertion.sh
 Tests/run-keyboard.sh
 ./build.sh --checks
-open -n -W build/Dictate.Checks.app --args /tmp/dictate-checks portable/fixtures/speech portable/models
+check_output=$(mktemp -d /tmp/dictate-checks.XXXXXX)
+open -n -W build/Dictate.Checks.app --args "$check_output" "$PWD/portable/fixtures/speech" "$PWD/portable/models" &
+check_launcher=$!
+for attempt in {1..100}; do
+  if test -f "$check_output/fixture-command.ready"; then
+    open build/Dictate.Fixture.app
+    break
+  fi
+  sleep 0.05
+done
+wait "$check_launcher"
+cat "$check_output/exit-code.txt"
 ```
 
 Use absolute argument paths when launching through `open`.
 Normal LaunchServices launch is required for correct microphone permission attribution and application identity.
 The signed check bundle uses the app’s stable identifier.
+The launcher activates the separate verification field after its ready file appears.
+Leave the keyboard and mouse idle during delivery checks.
 It checks AppKit fields, correction guards, Keychain, and microphone restart.
 It verifies CPU recognition, field delivery, and the six-fixture audio matrix.
 

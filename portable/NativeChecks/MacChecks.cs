@@ -59,6 +59,7 @@ internal static class MacChecks
             return File.ReadAllText(command + (index == 0 ? ".first" : ".second"));
         }
         await Signal(0);
+        await fixture.WaitAsync(() => delivery.CaptureTarget().Application == "dev.local.dictate.fixture");
         var target = delivery.CaptureTarget();
         Require(target.Application == "dev.local.dictate.fixture", "The external fixture has no focus. Keep the Mac unlocked and the check window active.");
         var receipt = await target.InsertAsync("Hello ☀ 😀.", "hello", CancellationToken.None);
@@ -129,10 +130,10 @@ internal static class MacChecks
             await WaitAsync(() => !File.Exists(command));
             if (File.Exists(command + ".error")) throw new InvalidOperationException(File.ReadAllText(command + ".error"));
         }
-        private async Task WaitAsync(Func<bool> ready)
+        public async Task WaitAsync(Func<bool> ready)
         {
             for (var i = 0; i < 250; i++) { if (process!.HasExited) throw new InvalidOperationException("The AppKit fixture exited."); if (ready()) return; await Task.Delay(20); }
-            throw new TimeoutException("The AppKit fixture did not respond.");
+            throw new TimeoutException("The AppKit fixture did not become ready.");
         }
         public void Dispose()
         {

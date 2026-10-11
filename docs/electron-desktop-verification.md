@@ -37,11 +37,12 @@ The app is installed at `/Applications/Dictate.app`.
 Settings, the dictionary, and all 10 existing history entries retained their exact file hashes after installation.
 The previous app remains at `/tmp/dictate-electron-rollback.OQc3QT/Dictate.previous.app` on the Mac.
 
-The final external AppKit field check is pending because the Mac locked during verification.
-The failed check identified `com.apple.loginwindow` as the active app and an inactive fixture window.
-This result does not establish text-delivery failure in an unlocked desktop session.
-The earlier [native delivery results](shared-desktop-verification.md) cover the unchanged Swift insertion adapter.
-The new headless service still needs its final external-field check while the Mac remains unlocked.
+The final external AppKit field check passed after the Mac was unlocked and the verification field was activated.
+Unicode delivery, raw restoration, undo, selection replacement, focus guards, edit guards, and cancellation passed.
+Both CPU engines transcribed the JFK fixture and delivered the full transcript into the external field.
+Keychain storage and deletion, two physical microphone cycles, and the native shortcut startup check passed.
+Both engines completed six English audio fixtures over five passes, followed by cancellation and recovery checks.
+Settings and history retained their exact file hashes after these checks.
 
 ### Windows
 

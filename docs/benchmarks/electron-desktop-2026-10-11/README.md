@@ -9,6 +9,7 @@ Screenshots use seeded test transcripts. They contain no personal dictation or c
 - Dispatch `3cc281e6-2ff2-4849-9800-89360a2df9ad` passed 25 core tests and three Node transport tests.
 - Windows interactive task `DictateElectron-20261011` returned zero. The task and the separate native-check task were removed.
 - Mac `/tmp/dictate-electron-ui/test-results-complete` returned zero. Both `/tmp/dictate-electron-ui/restart-*` checks returned zero.
+- Mac `/tmp/dictate-electron-ui/native-results-unlocked-idle` returned zero for native delivery, microphone, Keychain, and the CPU audio matrix.
 
 The Windows native checks also passed both selected CPU recognizers and two physical microphone cycles.
 Linux used synthetic silence for the microphone adapter lifecycle.
@@ -17,35 +18,51 @@ Linux used synthetic silence for the microphone adapter lifecycle.
 Values use Electron's native units of kilobytes. Shared resident pages can appear in several working sets.
 These snapshots exclude native-service memory and are not steady-state resource benchmarks.
 
-## Mac continuation
+## Mac native check
 
 The signed Electron app is installed at `/Applications/Dictate.app` and runs with the default data directory.
 The previous Avalonia bundle remains at `/tmp/dictate-electron-rollback.OQc3QT/Dictate.previous.app`.
 The earlier Swift rollback remains at `/tmp/dictate-shared-rollback.EgK9HW/Dictate.app`.
 Do not change the signing keychain or stored credentials.
 
-The final AppKit field check stopped because the Mac locked.
+The first AppKit field check stopped because the Mac locked.
 `/tmp/dictate-electron-ui/native-results-fourth/fixture-command.focus.json` reported `com.apple.loginwindow`, an inactive app, and a non-key window.
-A later diagnostic now refuses insertion unless the external fixture has focus.
+A later check refused insertion while T3 Code retained focus on the unlocked desktop.
+The checker now waits for the external fixture's activation before capturing its target.
+The launcher activates the existing fixture through LaunchServices after its ready file appears.
+One attempt received extra keystrokes. The final run passed while the keyboard and mouse remained idle.
 The headless service, microphone adapter, and Electron UI use the existing stable signing identity.
 
-After the user unlocks the Mac, stop only the installed task-owned Dictate process before native checks.
+Before native checks, stop only the installed task-owned Dictate process.
 Leave unrelated apps and user data intact.
-Launch the signed checks through LaunchServices:
+Keep the Mac unlocked and leave the keyboard and mouse idle during delivery checks.
+Launch the signed checks and activate the external fixture:
 
 ```sh
 cd /tmp/dictate-electron-ui
+check_output=$(mktemp -d /tmp/dictate-electron-ui/native-results.XXXXXX)
 open -n -W build/Dictate.Checks.app --args \
-  /tmp/dictate-electron-ui/native-results-final \
+  "$check_output" \
   /tmp/dictate-engines-20261011/portable/fixtures/speech \
-  /tmp/dictate-shared-ui/check-models
+  /tmp/dictate-shared-ui/check-models &
+check_launcher=$!
+for attempt in {1..100}; do
+  if test -f "$check_output/fixture-command.ready"; then
+    open build/Dictate.Fixture.app
+    break
+  fi
+  sleep 0.05
+done
+wait "$check_launcher"
+cat "$check_output/exit-code.txt"
 ```
 
 The bundle has already been rebuilt with the separate `dev.local.dictate.fixture` AppKit target.
 The checker verifies insertion, correction guards, Keychain, microphone restart, both CPU models, and the audio matrix.
-Keep the Verified requirement. Do not weaken the delivery guard to accommodate a locked desktop.
-Save successful results here and update the current verification record.
-Reopen `/Applications/Dictate.app` after the checks.
+Keep the Verified requirement. Do not weaken the delivery guard to accommodate an inactive desktop.
+The saved `mac/native-checks.txt`, `mac/audio.json`, and `mac/fixture-focus.json` record the successful run.
+The audio record contains 60 completed measurements and no recognition errors.
+The installed app was reopened after the checks. Settings and all 10 history entries retained their exact file hashes.
 
 ## Corrected development failures
 
