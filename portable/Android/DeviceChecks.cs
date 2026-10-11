@@ -5,6 +5,8 @@ using Android.OS;
 using Android.Views;
 using Android.Views.InputMethods;
 using Android.Widget;
+using Android.Webkit;
+using System.Text.Json;
 using Dictate.Core;
 using Dictate.Speech;
 
@@ -22,7 +24,7 @@ public sealed class DeviceChecks : Instrumentation
         try
         {
             CheckAsync().GetAwaiter().GetResult();
-            result.PutString("stream", "Android native insertion, correction, binding changes, Keystore, microphone, and CPU speech passed.\n");
+            result.PutString("stream", "Android shared UI, engine selection, model preparation, clipboard, draft preservation, native insertion, correction, binding changes, Keystore, microphone, and CPU speech passed.\n");
             Finish(Result.Ok, result);
         }
         catch (Exception error) { result.PutString("stream", error + "\n"); Finish(Result.Canceled, result); }
@@ -31,7 +33,8 @@ public sealed class DeviceChecks : Instrumentation
     private async Task CheckAsync()
     {
         var context = TargetContext!;
-        using var intent = new Intent(context, typeof(MainActivity));
+        await CheckAppAsync(context);
+        using var intent = new Intent(context, typeof(FieldCheckActivity));
         intent.AddFlags(ActivityFlags.NewTask);
         var activity = StartActivitySync(intent)!;
         WaitForIdleSync();
@@ -91,6 +94,91 @@ public sealed class DeviceChecks : Instrumentation
         if (File.Exists(manifest)) await Dictate.Checks.SpeechEvaluation.RunAsync(speech, manifest,
             Path.Combine(context.FilesDir.AbsolutePath, "speech-evaluation.json"));
     }
+
+    private async Task CheckAppAsync(Context context)
+    {
+        using var intent = new Intent(context, typeof(MainActivity)).AddFlags(ActivityFlags.NewTask);
+        var activity = (MainActivity)StartActivitySync(intent)!;
+        var session = Session.Get(context);
+        async Task<JsonElement> Evaluate(string script)
+        {
+            var completion = new TaskCompletionSource<string>();
+            RunOnMainSync(() => activity.View.EvaluateJavascript(script, new JavascriptResult(completion)));
+            return JsonSerializer.Deserialize<JsonElement>(await completion.Task.WaitAsync(TimeSpan.FromSeconds(10)));
+        }
+        async Task Wait(string script)
+        {
+            var deadline = DateTime.UtcNow.AddSeconds(20);
+            while (DateTime.UtcNow < deadline)
+            {
+                if ((await Evaluate(script)).ValueKind == JsonValueKind.True) return;
+                await Task.Delay(100);
+            }
+            throw new InvalidOperationException("Android UI did not reach: " + script);
+        }
+        async Task Click(string selector)
+        {
+            await Evaluate($"document.querySelector({JsonSerializer.Serialize(selector)}).click()");
+            await Task.Delay(200);
+        }
+        await Wait("!!document.querySelector('[data-action=dictate-field]')");
+        await Wait("document.fonts.check('13px Inter')");
+        Require((await Evaluate("document.documentElement.scrollWidth <= innerWidth")).GetBoolean(), "Android Home overflowed.");
+        await Evaluate("window.testField=document.querySelector('#dictation-test');testField.value='Before ';testField.focus();testField.setSelectionRange(7,7)");
+        RunOnMainSync(session.Refresh);
+        await Task.Delay(200);
+        Require((await Evaluate("testField===document.querySelector('#dictation-test') && document.activeElement===testField && testField.value==='Before ' && testField.selectionStart===7")).GetBoolean(), "A state update replaced the live dictation field.");
+        await Click("[data-page=settings]");
+        foreach (var engine in new[] { "whisper", "whistle" })
+        {
+            await Click("#engine-button"); await Click($"[data-engine={engine}]");
+            await Wait($"document.querySelector('input[name=speech-engine]:checked').value==='{engine}'");
+            Require(session.Store.LoadSettings().SpeechEngine == AppCommands.ParseEngine(engine), "The Android engine selection was not saved.");
+            await session.PrepareAsync(CancellationToken.None);
+        }
+        await Click("[data-section=cleanup]");
+        var fillers = session.Settings.Rules.Fillers;
+        await Click("#toggle-fillers");
+        Require(session.Settings.Rules.Fillers != fillers, "The cleanup switch did not save.");
+        await Click("#toggle-fillers");
+        await Evaluate("document.querySelector('#api-key').value='test-only-unsaved';document.querySelector('#provider').value='deep_seek';document.querySelector('#provider').dispatchEvent(new Event('change',{bubbles:true}))");
+        await Wait("document.querySelector('#api-key')?.dataset.provider==='deep_seek'");
+        Require((await Evaluate("document.querySelector('#api-key').value==='' ")).GetBoolean(), "An unsaved credential crossed provider identities.");
+        await Click("[data-section=dictionary]");
+        await Evaluate("window.draft=document.querySelector('#heard');draft.value='unfinished phrase';draft.focus();draft.setSelectionRange(4,4)");
+        RunOnMainSync(session.Refresh); await Task.Delay(200);
+        Require((await Evaluate("draft===document.querySelector('#heard') && document.activeElement===draft && draft.selectionStart===4")).GetBoolean(), "An Android state update replaced the active editor.");
+        await Evaluate("document.querySelector('#heard').value='verification phrase';document.querySelector('#written').value='Verification phrase';document.querySelector('#word-form').requestSubmit()");
+        await Wait("document.querySelector('#heard').value==='' && !document.querySelector('#word-form button').disabled");
+        Require(session.Settings.Dictionary.Any(entry => entry.Heard == "verification phrase"), "Android dictionary add failed.");
+        await Click("[data-section=general]");
+        Require((await Evaluate("document.documentElement.scrollWidth <= innerWidth")).GetBoolean(), "Android Settings overflowed.");
+        await session.Store.AppendAsync(new TranscriptRecord { Raw = "sample raw", Rules = "Sample transcript.", Text = "Sample transcript.", Smart = "off", Delivery = DeliveryOutcome.Verified });
+        RunOnMainSync(session.Refresh);
+        await Click("[data-page=history]");
+        await Click("[data-copy][data-original=false]");
+        RunOnMainSync(() => Require(((global::Android.Content.ClipboardManager)context.GetSystemService(Context.ClipboardService)!).PrimaryClip?.GetItemAt(0)?.Text == "Sample transcript.", "Android copy did not reach the native clipboard."));
+        await Evaluate("document.querySelector('#history-search').value='missing-fixture';document.querySelector('#history-search').focus();document.querySelector('#history-search').dispatchEvent(new Event('input',{bubbles:true}))");
+        Require((await Evaluate("document.querySelectorAll('.transcript').length===0")).GetBoolean(), "Android history search failed.");
+        await Evaluate("window.rejected=false;window.dictate.command('unsupported',{}).catch(()=>window.rejected=true)");
+        await Wait("window.rejected");
+        RunOnMainSync(() => { session.ClearNotice(); activity.Finish(); });
+    }
+
+    private sealed class JavascriptResult(TaskCompletionSource<string> completion) : Java.Lang.Object, IValueCallback
+    {
+        public void OnReceiveValue(Java.Lang.Object? value) => completion.TrySetResult(value?.ToString() ?? "null");
+    }
     private static void Require(bool condition, string error) { if (!condition) throw new InvalidOperationException(error); }
+}
+
+[Activity(Exported = false)]
+public sealed class FieldCheckActivity : Activity
+{
+    protected override void OnCreate(Bundle? state)
+    {
+        base.OnCreate(state);
+        SetContentView(new EditText(this));
+    }
 }
 #endif

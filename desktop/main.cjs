@@ -77,9 +77,9 @@ function restrict(window) {
 
 if (ownsInstance) app.whenReady().then(async () => {
   const webPreferences = { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, webgl: false };
-  mainWindow = new BrowserWindow({ width: 580, height: 720, minWidth: 460, minHeight: 520, show: false,
+  mainWindow = new BrowserWindow({ width: 480, height: 600, minWidth: 400, minHeight: 480, show: false,
     backgroundColor: '#F8F9FB', title: 'Dictate', titleBarStyle: 'hidden', icon: path.join(__dirname, 'assets', 'icon.png'),
-    ...(process.platform === 'darwin' ? { trafficLightPosition: { x: 16, y: 13 } } : { titleBarOverlay: { color: '#F8F9FB', symbolColor: '#656B78', height: 38 } }),
+    ...(process.platform === 'darwin' ? { trafficLightPosition: { x: 14, y: 10 } } : { titleBarOverlay: { color: '#F8F9FB', symbolColor: '#656B78', height: 32 } }),
     webPreferences });
   restrict(mainWindow);
   mainWindow.on('close', event => { if (!quitting) { event.preventDefault(); mainWindow.hide(); } });
@@ -135,7 +135,7 @@ if (ownsInstance) app.whenReady().then(async () => {
       await new Promise(resolve => setTimeout(resolve, 150));
     }
     try { return await backend.request(command, args); }
-    catch (error) { if (command === 'start') showWindow(); throw error; }
+    catch (error) { if (command === 'start' && !quitting) showWindow(); throw error; }
   });
   ipcMain.handle('dictate:window', async (event, action) => {
     if (trusted(event) !== mainWindow) throw new Error('The window action is not supported.');
@@ -172,5 +172,6 @@ app.on('activate', () => { if (mainWindow) showWindow(); });
 app.on('before-quit', event => {
   if (quitting) return;
   quitting = true; event.preventDefault(); indicator?.hide();
+  backend?.removeAllListeners();
   Promise.resolve(backend?.stop()).finally(() => { tray?.destroy(); app.exit(0); });
 });

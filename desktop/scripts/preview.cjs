@@ -12,4 +12,4 @@ http.createServer((request, response) => {
     const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.woff2': 'font/woff2' };
     response.writeHead(200, { 'Content-Type': types[path.extname(file)] || 'application/octet-stream', 'Cache-Control': 'no-store' }); response.end(data);
   });
-}).listen(port, '0.0.0.0', () => console.log(`UI preview listening on ${port}`));
+}).listen(port, '127.0.0.1', () => console.log(`UI preview listening on ${port}`));

@@ -91,12 +91,13 @@ Build an ARM64 Debug APK and install it on the ARM64 emulator.
 Open the device in the T3 Device panel before interaction.
 Install the JFK fixture at the app’s internal `files/device-check.wav` path.
 Copy the speech fixtures into `files/evaluation` to enable the audio matrix.
-Grant microphone permission and run the instrumentation.
+Grant microphone permission. Enable and select the Dictate keyboard before you run the instrumentation.
 
 ```sh
 adb shell am instrument -w dev.local.dictate.portable/dev.local.dictate.portable.DeviceChecks
 ```
 
-The instrumentation checks a real EditText, binding changes, correction guards, Keystore, microphone capture, and both selected speech profiles.
+The instrumentation checks the shared WebView, settings, engine persistence, model preparation, clipboard, history search, and live input preservation.
+It also checks a real EditText, binding changes, correction guards, Keystore, microphone capture, and both selected speech profiles.
 Verify both engine menu choices and persistence after restart through the visible Settings page.
 Physical Android microphone, latency, and battery checks remain open.

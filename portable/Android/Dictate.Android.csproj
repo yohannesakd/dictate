@@ -5,6 +5,7 @@
     <OutputType>Exe</OutputType>
     <PublishTrimmed>false</PublishTrimmed>
     <RunAOTCompilation>false</RunAOTCompilation>
+    <AndroidEnableMarshalMethods>false</AndroidEnableMarshalMethods>
     <ApplicationId>dev.local.dictate.portable</ApplicationId>
     <ApplicationVersion>1</ApplicationVersion>
     <ApplicationDisplayVersion>0.1</ApplicationDisplayVersion>
@@ -19,5 +20,9 @@
     <AndroidNativeLibrary Include="../.tools/whistle/arm64-v8a/libdictate_needle.so" Abi="arm64-v8a" />
   </ItemGroup>
   <ItemGroup><AndroidAsset Include="../Speech/Licenses/*" Link="Licenses/%(Filename)%(Extension)" /></ItemGroup>
+  <ItemGroup>
+    <AndroidAsset Include="../../desktop/ui/index.html;../../desktop/ui/styles.css;../../desktop/ui/app.js;../../desktop/ui/android.js" Link="ui/%(Filename)%(Extension)" />
+    <AndroidAsset Include="../../desktop/ui/fonts/*" Link="ui/fonts/%(Filename)%(Extension)" />
+  </ItemGroup>
   <ItemGroup Condition="'$(Configuration)' == 'Debug'"><Compile Include="../Checks/SpeechEvaluation.cs" Link="SpeechEvaluation.cs" /></ItemGroup>
 </Project>

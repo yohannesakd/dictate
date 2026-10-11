@@ -1,0 +1,11 @@
+{
+  "backup": "/tmp/dictate-compact-install.kS6wyV/Dictate.previous.app",
+  "before": {
+    "settings.json": "8228b675b27c1137fe367956ff70096fd8b142c45ca072ed710cdb0cee91f8be",
+    "transcripts.jsonl": "186fec4b510e9b8a3c65097c18d794582487eb1470f8ea3f84de196a0d8f3595"
+  },
+  "after": {
+    "settings.json": "8228b675b27c1137fe367956ff70096fd8b142c45ca072ed710cdb0cee91f8be",
+    "transcripts.jsonl": "186fec4b510e9b8a3c65097c18d794582487eb1470f8ea3f84de196a0d8f3595"
+  }
+}

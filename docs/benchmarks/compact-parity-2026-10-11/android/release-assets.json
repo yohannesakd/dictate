@@ -1,0 +1,13 @@
+{
+  "apk_sha256": "346c21b7cb24e4c1a7b883a8fe2b4484165947c81978982fcf0f94a9bd45fdf4",
+  "assets": {
+    "assets/ui/styles.css": "d783ec32cac3094a912058abd6f41f83578586b4a5159a4d6018f4aa49a8f35b",
+    "assets/ui/android.js": "a57ebed6b9322075436061ceda0a1e9cb4df3c9e459747b3b1696a3ac1a0e5c5",
+    "assets/ui/app.js": "12265ac138cd43e664f82deafcf6c7b5948f615432857799f450205db4b3223f",
+    "assets/ui/index.html": "a37240eb97c25b4a08301c279902ade141c25dc214a7fd61c8245cfb028dcc98",
+    "assets/ui/fonts/inter-400.woff2": "8909904ab6c872eb994093482a88a28eca2cd95912d7b6fecd72103b0dc07edc",
+    "assets/ui/fonts/inter-600.woff2": "f9a06e79cd3a2a20951c0f0e28f66dd0e6d3fda73911d640a2125c8fcb78f21a",
+    "assets/ui/fonts/LICENSE": "3b0a5fca3d17942cde889069889dedbbbd075e9b599968c82a95f4d944e9b345",
+    "assets/ui/fonts/inter-500.woff2": "f3779f1efccc4bdcdf9c0a02ab95bf6bd092ed09c48c08cedc725889edd1d19f"
+  }
+}

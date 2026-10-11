@@ -117,19 +117,19 @@ internal sealed class DesktopHost : IDisposable
                 case "state": result = Snapshot(); break;
                 case "select-engine":
                     if (preparing) throw new InvalidOperationException("Wait for the model to finish loading before changing engines.");
-                    await session.SelectEngineAsync(ParseEngine(args.GetProperty("engine").GetString())); break;
+                    await session.SelectEngineAsync(AppCommands.ParseEngine(args.GetProperty("engine").GetString())); break;
                 case "prepare":
                     if (preparing || session.Controller.Phase != DictationPhase.Idle) throw new InvalidOperationException("Finish the current action before loading a model.");
                     preparing = true; Publish();
                     try { await session.Speech.PrepareAsync(session.Settings.SpeechEngine, session.Settings.SpeechModel, lifetime.Token); }
                     finally { preparing = false; Publish(); }
                     break;
-                case "settings": await session.UpdateSettingsAsync(settings => Patch(settings, args)); break;
+                case "settings": await session.UpdateSettingsAsync(settings => AppCommands.Patch(settings, args)); break;
                 case "add-word":
-                    var heard = Word(args, "heard"); var written = Word(args, "written");
+                    var heard = AppCommands.Word(args, "heard"); var written = AppCommands.Word(args, "written");
                     await session.UpdateSettingsAsync(settings => settings with { Dictionary = [..settings.Dictionary, new(heard, written)] }); break;
                 case "remove-word":
-                    var removed = new DictionaryEntry(Word(args, "heard"), Word(args, "written"));
+                    var removed = new DictionaryEntry(AppCommands.Word(args, "heard"), AppCommands.Word(args, "written"));
                     await session.UpdateSettingsAsync(settings => settings with { Dictionary = settings.Dictionary.Where(entry => entry != removed).ToArray() }); break;
                 case "permissions": if (OperatingSystem.IsMacOS()) MacNative.Permissions(true); Publish(); break;
                 case "enable-shortcuts": session.Hotkeys.Start(); Publish(); break;
@@ -141,12 +141,12 @@ internal sealed class DesktopHost : IDisposable
                 case "dismiss": session.ClearNotice(); break;
                 case "credentials": await ReadCredentialsAsync(); Publish(); break;
                 case "save-key":
-                    var account = KeyAccount(args.GetProperty("provider").GetString());
+                    var account = AppCommands.KeyAccount(args.GetProperty("provider").GetString());
                     var key = args.GetProperty("key").GetString()?.Trim();
                     if (string.IsNullOrEmpty(key) || key.Length > 8192) throw new ArgumentException("Enter a valid API key.");
                     await session.Secrets.WriteAsync(account, key, lifetime.Token); await ReadCredentialsAsync(); Publish(); break;
                 case "remove-key":
-                    await session.Secrets.WriteAsync(KeyAccount(args.GetProperty("provider").GetString()), null, lifetime.Token);
+                    await session.Secrets.WriteAsync(AppCommands.KeyAccount(args.GetProperty("provider").GetString()), null, lifetime.Token);
                     await ReadCredentialsAsync(); Publish(); break;
                 case "sign-in":
                     if (signingIn) throw new InvalidOperationException("Finish the current sign-in first.");
@@ -165,7 +165,7 @@ internal sealed class DesktopHost : IDisposable
     private async Task ReadCredentialsAsync()
     {
         var provider = session.Settings.Provider;
-        var name = ProviderName(provider);
+        var name = AppCommands.ProviderName(provider);
         credentialsErrors.Remove(name);
         var account = provider switch { CleanupProvider.Groq => "groq-api-key", CleanupProvider.DeepSeek => "deepseek-api-key", _ => "chatgpt-token" };
         try { credentials[name] = await session.Secrets.ReadAsync(account, lifetime.Token) is not null; }
@@ -183,7 +183,7 @@ internal sealed class DesktopHost : IDisposable
             settings = session.Settings, phase = session.Controller.Phase, notice = session.Status, preparing, signingIn,
             permissions = OperatingSystem.IsMacOS() ? MacNative.Permissions(false) : (object?)null,
             wayland = OperatingSystem.IsLinux() && LinuxDelivery.IsWayland, credentials,
-            credentialsError = credentialsErrors.GetValueOrDefault(ProviderName(session.Settings.Provider)),
+            credentialsError = credentialsErrors.GetValueOrDefault(AppCommands.ProviderName(session.Settings.Provider)),
             models = new { whistle = File.Exists(whistleModel), whisper = File.Exists(whisperModel), whistleSupported = session.Speech.WhistleSupported },
             directory = session.Store.DirectoryPath, usage = session.Store.Usage(),
             history = session.Store.History().Select(record => new { record.Id, record.Date, record.Text, record.Raw, record.Application, record.Note, record.SpeechEngine, record.Delivery, record.Metrics }).ToArray()
@@ -198,27 +198,5 @@ internal sealed class DesktopHost : IDisposable
         lock (output) Console.WriteLine(line);
     }
 
-    private static SpeechEngineKind ParseEngine(string? engine) => engine switch { "whistle" => SpeechEngineKind.Whistle, "whisper" => SpeechEngineKind.Whisper, _ => throw new ArgumentException("Select Whistle or Whisper.") };
-    private static string ProviderName(CleanupProvider provider) => provider switch { CleanupProvider.Groq => "groq", CleanupProvider.DeepSeek => "deep_seek", _ => "chat_gpt" };
-    private static string KeyAccount(string? provider) => provider switch { "groq" => "groq-api-key", "deep_seek" => "deepseek-api-key", _ => throw new ArgumentException("Select an API-key provider.") };
-    private static string Word(JsonElement args, string field)
-    {
-        var text = args.GetProperty(field).GetString()?.Trim();
-        return string.IsNullOrEmpty(text) || text.Length > 1024 ? throw new ArgumentException("Enter a word or short phrase.") : text;
-    }
-    private static DictationSettings Patch(DictationSettings settings, JsonElement patch)
-    {
-        foreach (var entry in patch.EnumerateObject()) settings = entry.Name switch
-        {
-            "smart_cleanup" => settings with { SmartCleanup = entry.Value.GetBoolean() },
-            "provider" => settings with { Provider = entry.Value.GetString() switch { "groq" => CleanupProvider.Groq, "deep_seek" => CleanupProvider.DeepSeek, "chat_gpt" => CleanupProvider.ChatGPT, _ => throw new ArgumentException("Select a cleanup provider.") } },
-            "open_at_login" => settings with { OpenAtLogin = entry.Value.GetBoolean() },
-            "fillers" => settings with { Rules = settings.Rules with { Fillers = entry.Value.GetBoolean() } },
-            "repeats" => settings with { Rules = settings.Rules with { Repeats = entry.Value.GetBoolean() } },
-            "scratch_that" => settings with { Rules = settings.Rules with { ScratchThat = entry.Value.GetBoolean() } },
-            _ => throw new ArgumentException("The setting is not supported.")
-        };
-        return settings;
-    }
     public void Dispose() { stopped = true; lifetime.Cancel(); lifetime.Dispose(); }
 }

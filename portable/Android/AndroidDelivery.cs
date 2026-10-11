@@ -9,6 +9,7 @@ public sealed class AndroidDelivery : ITextDelivery
     private readonly object sync = new();
     private Binding? binding;
     private long generation;
+    public bool HasTarget { get { lock (sync) return binding is not null; } }
 
     public void Bind(IInputConnection? connection, string? application)
     {

@@ -20,13 +20,14 @@ Warnings use dark amber text on a pale amber surface. Warnings appear inside the
 
 ## Type and space
 
-Inter is bundled so the interface uses the same typeface on each desktop.
+Inter is bundled so the interface uses the same typeface on every platform.
 Body text uses 13 pixels. Page titles use 22 pixels. Supporting text uses 12 pixels.
 Use regular, medium, and semibold weights. Keep text left aligned, except for chart labels and the recording control.
 
-The normal window is 580 pixels wide and 720 pixels tall. Content uses 28-pixel side margins.
-Use an 8-pixel spacing scale, with 4-pixel spacing for related labels.
-Controls use 8-pixel corners. The recording surface uses 16-pixel corners. Avoid repeated boxes around lists.
+The normal desktop window is 480 pixels wide and 600 pixels tall. The minimum window is 400 by 480 pixels.
+Content uses 16-pixel side margins at the default width. Use 12 to 16 pixels between related sections.
+Use 4 to 8 pixels between related labels. Controls use 8-pixel corners. The recording surface uses 12-pixel corners.
+Lists use dividers. Keep space proportional to the content.
 
 ## Layout
 
@@ -66,6 +67,16 @@ It must preserve focus in the destination field. It must never display notices o
 
 History keeps the delivered text, original transcript, and delivery notes. Copy actions stay next to each transcript.
 Settings group speech, cleanup, dictionary, permissions, and general options. Explain cloud cleanup where it is enabled.
+
+## Platform consistency
+
+All four apps package the same HTML, CSS, JavaScript, and fonts.
+Android displays these assets in a local WebView. The native activity owns permissions, clipboard access, export, and credentials.
+The Android voice keyboard uses the same recording control, engine menu, and styles.
+Keep touch controls at least 44 pixels tall. Hide desktop window controls and use the available screen width.
+Android uses the system keyboard picker instead of global desktop shortcuts.
+Keep warnings in the main app. Keep the keyboard recording area free of warnings.
+Preserve the Android input element during state updates so its native input connection remains valid.
 
 ## Accessibility and motion
 

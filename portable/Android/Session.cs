@@ -7,17 +7,19 @@ namespace Dictate.Android;
 public sealed class Session
 {
     private static Session? instance;
+    private readonly SemaphoreSlim settingsGate = new(1);
     public static Session Get(Context context) => instance ??= new(context.ApplicationContext!);
     public FileStore Store { get; }
-    public DictationSettings Settings { get; set; }
+    public DictationSettings Settings { get; private set; }
     public AndroidSecrets Secrets { get; }
     public HttpClient Http { get; } = new() { Timeout = TimeSpan.FromSeconds(30) };
     public AndroidDelivery Delivery { get; } = new();
     public AndroidAudio Audio { get; } = new();
     public SpeechRecognizer Speech { get; }
     public DictationController Controller { get; }
-    public event Action<string>? Notice;
-    public string Status { get; private set; } = "Enable the Dictate voice keyboard to dictate in other apps.";
+    public event Action? Changed;
+    public string? Status { get; private set; }
+    public bool Preparing { get; private set; }
 
     private Session(Context context)
     {
@@ -26,10 +28,43 @@ public sealed class Session
         Secrets = new(context);
         Speech = new(Path.Combine(Store.DirectoryPath, "models"), new AndroidWhistleProcess(),
             Path.Combine(context.ApplicationInfo!.NativeLibraryDir!, "libdictate_needle.so"));
-        Speech.Status += Message;
+        Speech.Status += _ => MainThread.Post(() => Changed?.Invoke());
         Controller = new(Audio, Speech, Delivery, new(new HttpCleanupClient(Http, Secrets)), Store);
         Controller.Notice += Message;
+        Controller.PhaseChanged += _ => MainThread.Post(() => Changed?.Invoke());
+        Controller.Completed += _ => MainThread.Post(() => Changed?.Invoke());
         Audio.Interrupted += message => MainThread.Post(() => { Message(message); _ = Controller.FinishAsync(); });
     }
-    public void Message(string message) { Status = message; Notice?.Invoke(message); }
+    public void Message(string message) => MainThread.Post(() => { Status = message; Changed?.Invoke(); });
+    public void ClearNotice() { Status = null; Changed?.Invoke(); }
+    public void Refresh() => Changed?.Invoke();
+
+    public async Task UpdateSettingsAsync(Func<DictationSettings, DictationSettings> change)
+    {
+        await settingsGate.WaitAsync();
+        try
+        {
+            var next = SpeechProfiles.Normalize(change(Settings));
+            if (next.SpeechEngine != Settings.SpeechEngine)
+            {
+                if (Preparing || Controller.Phase != DictationPhase.Idle)
+                    throw new InvalidOperationException("Finish or cancel dictation before changing the speech engine.");
+                if (next.SpeechEngine == SpeechEngineKind.Whistle && !Speech.WhistleSupported)
+                    throw new InvalidOperationException("Whistle requires the ARM64 Android package. Select Whisper on this device.");
+            }
+            await Store.SaveSettingsAsync(next);
+            Settings = next;
+            MainThread.Post(() => Changed?.Invoke());
+        }
+        finally { settingsGate.Release(); }
+    }
+
+    public async Task PrepareAsync(CancellationToken cancellation)
+    {
+        if (Preparing || Controller.Phase != DictationPhase.Idle)
+            throw new InvalidOperationException("Finish the current action before loading a model.");
+        Preparing = true; Changed?.Invoke();
+        try { await Speech.PrepareAsync(Settings.SpeechEngine, Settings.SpeechModel, cancellation); }
+        finally { Preparing = false; MainThread.Post(() => Changed?.Invoke()); }
+    }
 }

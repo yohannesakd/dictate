@@ -9,10 +9,10 @@ internal sealed class InsetLayout : LinearLayout
     private readonly bool includeStatusBar;
     private readonly int spacing;
 
-    public InsetLayout(Context context, bool includeStatusBar) : base(context)
+    public InsetLayout(Context context, bool includeStatusBar, int padding = 12) : base(context)
     {
         this.includeStatusBar = includeStatusBar;
-        spacing = (int)(12 * context.Resources!.DisplayMetrics!.Density);
+        spacing = (int)(padding * context.Resources!.DisplayMetrics!.Density);
         Orientation = Orientation.Vertical;
         SetPadding(spacing, spacing, spacing, spacing);
         SetLayerType(LayerType.Software, null);
@@ -22,7 +22,9 @@ internal sealed class InsetLayout : LinearLayout
     {
         if (insets is not null && OperatingSystem.IsAndroidVersionAtLeast(30))
         {
-            var bars = insets.GetInsets(WindowInsets.Type.SystemBars());
+            var types = WindowInsets.Type.SystemBars();
+            if (includeStatusBar) types |= WindowInsets.Type.Ime();
+            var bars = insets.GetInsets(types);
             SetPadding(spacing + bars.Left, spacing + (includeStatusBar ? bars.Top : 0), spacing + bars.Right, spacing + bars.Bottom);
         }
         return insets;

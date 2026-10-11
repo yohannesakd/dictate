@@ -1,7 +1,7 @@
 # Build Dictate for other platforms
 
 The desktop apps use the same Electron window, indicator, menus, and shared core.
-Android uses a native activity and voice keyboard with the same English speech choices.
+Android uses the same interface through a local WebView, with a native activity and voice keyboard.
 
 ## Run Windows or Linux
 
@@ -82,7 +82,7 @@ Install the APK from `portable/artifacts/android`.
 Open Dictate and allow microphone access.
 Enable the voice keyboard and download the selected speech model.
 Choose Dictate from Android’s keyboard picker while a text field has focus.
-Tap **Start dictation**, speak, then tap **Stop and insert**.
+Tap **Record**, speak, then tap **Stop**.
 Tap **Keyboard** to return to another keyboard.
 
 The keyboard stops capture when it closes.

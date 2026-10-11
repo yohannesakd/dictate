@@ -1,0 +1,5 @@
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+
+'Whi' !== 'Whistle'
+
+    at Object.verify (/tmp/Dictate/resources/app.asar/verification.cjs:35:14)

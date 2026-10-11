@@ -27,6 +27,7 @@ async function verify({ mainWindow, indicator, backend, getState, showWindow, un
   }
   async function screenshot(name) {
     showWindow(); await evaluate('document.fonts.ready'); await delay(100);
+    assert.equal(await evaluate('document.documentElement.scrollWidth <= innerWidth'), true, 'The shared layout overflowed horizontally.');
     fs.writeFileSync(path.join(output, name + '.png'), (await mainWindow.webContents.capturePage()).toPNG());
   }
   try {
@@ -108,6 +109,9 @@ async function verify({ mainWindow, indicator, backend, getState, showWindow, un
     assert.equal(await evaluate('document.activeElement.selectionStart'), 4);
     await click('[data-section="general"]');
     await screenshot('settings-general');
+    mainWindow.setSize(400, 480); await screenshot('compact-minimum');
+    mainWindow.setSize(480, 600);
+    notes.push('The compact layout fit the default window and minimum 400 by 480 window without horizontal overflow.');
     await assert.rejects(backend.request('settings', { speech_engine: 'unknown' }), /not supported/);
     await assert.rejects(backend.request('select-engine', { engine: 'unknown' }), /Whistle or Whisper/);
     notes.push('Home, History, all Settings sections, copy, search, both engine choices, dictionary, and cleanup controls passed.');

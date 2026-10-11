@@ -4,7 +4,7 @@
 `Speech` owns the two English CPU profiles, asset checks, and native recognition lifetimes.
 `desktop/` owns the Electron windows, tray, clipboard, login settings, and shared HTML interface.
 `portable/Desktop` owns the headless native service and platform adapters.
-`Android` owns the native activity, microphone, input-method service, input connections, and Keystore.
+`Android` owns the local WebView bridge, native activity, microphone, input-method service, input connections, and Keystore.
 
 ## Desktop interface
 
@@ -17,7 +17,7 @@ The service retains the native main loop and owns microphone capture, delivery, 
 Closing the window hides it. Quitting stops the service before Electron exits.
 The floating indicator receives only dictation phase and audio level.
 It preserves destination focus and disappears when idle. Warnings appear in the app.
-The apps use the Inter font, a light theme, and software rendering.
+All four apps use the same HTML interface, Inter font, light theme, and software rendering.
 Only platform shortcut names and setup controls differ.
 The native window frame follows the operating system.
 
@@ -72,6 +72,12 @@ Android snapshots the input connection and binding generation.
 A binding change cancels pending work.
 Native input calls run on Android’s main thread.
 Closing the keyboard stops capture. Password fields disable dictation.
+The activity and voice keyboard embed the shared interface assets in a WebView.
+Only bundled assets from `https://dictate.local` are served. Navigation, file access, and external resources are blocked.
+The JavaScript bridge accepts bounded requests and explicit commands. It never returns credential values.
+`Core/AppCommands.cs` validates settings, engine names, provider names, and dictionary entries for both hosts.
+Both Android views share one session and serialized settings writes.
+Focused Android editors and the permanent dictation test field retain their native input connection during state updates.
 
 Credentials use each operating system’s protected credential service.
 The core does not save credentials as plain text.
