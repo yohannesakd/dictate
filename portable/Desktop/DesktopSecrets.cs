@@ -8,6 +8,24 @@ public sealed class DesktopSecrets : ISecretStore
 {
     public async Task<string?> ReadAsync(string account, CancellationToken cancellation = default)
     {
+        if (OperatingSystem.IsMacOS())
+        {
+            cancellation.ThrowIfCancellationRequested();
+            using var json = System.Text.Json.JsonDocument.Parse(MacNative.TakeString(MacNative.SecretRead(account))!);
+            if (json.RootElement.TryGetProperty("error", out var error)) throw new InvalidOperationException(error.GetString());
+            var stored = json.RootElement.TryGetProperty("value", out var value) ? value.GetString() : null;
+            if (stored is not null && account == "chatgpt-token")
+            {
+                using var token = System.Text.Json.JsonDocument.Parse(stored);
+                if (token.RootElement.TryGetProperty("access", out var access))
+                {
+                    var legacy = token.RootElement;
+                    stored = System.Text.Json.JsonSerializer.Serialize(new ChatGptAuth.Token(access.GetString()!, legacy.GetProperty("refresh").GetString()!,
+                        new DateTimeOffset(2001, 1, 1, 0, 0, 0, TimeSpan.Zero).AddSeconds(legacy.GetProperty("expires").GetDouble()), legacy.GetProperty("accountID").GetString()!));
+                }
+            }
+            return stored;
+        }
         if (OperatingSystem.IsWindows())
         {
             if (!CredRead("Dictate/" + account, 1, 0, out var pointer))
@@ -32,6 +50,12 @@ public sealed class DesktopSecrets : ISecretStore
 
     public async Task WriteAsync(string account, string? value, CancellationToken cancellation = default)
     {
+        if (OperatingSystem.IsMacOS())
+        {
+            cancellation.ThrowIfCancellationRequested();
+            MacNative.Check(MacNative.SecretWrite(account, value));
+            return;
+        }
         if (OperatingSystem.IsWindows())
         {
             if (value is null)

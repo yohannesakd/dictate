@@ -110,7 +110,7 @@ public sealed class DictationController(IAudioCapture recorder, ISpeechEngine sp
                 Model = settings.SmartCleanup ? CleanupPrompt.Model(settings.Provider) : null,
                 Prompt = settings.SmartCleanup ? CleanupPrompt.Version : null, Note = receipt.Error ?? smart.Error,
                 SpeechEngine = settings.SpeechEngine, SpeechModel = settings.SpeechEngine == SpeechEngineKind.Whistle ? "whistle" : settings.SpeechModel,
-                AudioSeconds = pcm.Length / 16000d, Delivery = receipt.Outcome, PostedUtf16Units = receipt.PostedUtf16Units,
+                AudioSeconds = pcm.Length / 16000d, Delivery = receipt.Outcome, PostedUtf16Units = receipt.PostedUtf16Units, DeliveryEvidence = receipt.Evidence,
                 Metrics = new()
                 {
                     ["recording_ms"] = Stopwatch.GetElapsedTime(current.Started, release).TotalMilliseconds,

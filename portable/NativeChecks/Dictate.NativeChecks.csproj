@@ -1,4 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><OutputType>Exe</OutputType></PropertyGroup>
   <ItemGroup><ProjectReference Include="../Desktop/Dictate.Desktop.csproj" /></ItemGroup>
+  <ItemGroup><Compile Include="../Checks/SpeechEvaluation.cs" Link="SpeechEvaluation.cs" /></ItemGroup>
 </Project>

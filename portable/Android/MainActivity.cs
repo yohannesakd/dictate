@@ -81,35 +81,23 @@ public sealed class MainActivity : Activity
     {
         body.AddView(Text("Speech engine"));
         var engines = new Spinner(this) { ContentDescription = "Speech engine" };
-        engines.Adapter = new ArrayAdapter<string>(this, global::Android.Resource.Layout.SimpleSpinnerDropDownItem, Enum.GetNames<SpeechEngineKind>());
-        engines.SetSelection((int)session.Settings.SpeechEngine);
+        engines.Adapter = new ArrayAdapter<string>(this, global::Android.Resource.Layout.SimpleSpinnerDropDownItem, SpeechProfiles.Engines.Select(engine => engine.ToString()).ToArray());
+        engines.SetSelection(Array.IndexOf(SpeechProfiles.Engines, session.Settings.SpeechEngine));
         engines.ItemSelected += async (_, args) =>
         {
-            var choice = (SpeechEngineKind)args.Position;
+            var choice = SpeechProfiles.Engines[args.Position];
             if (choice == session.Settings.SpeechEngine) return;
             if (choice == SpeechEngineKind.Whistle && !session.Speech.WhistleSupported)
             {
                 session.Message("Whistle requires the ARM64 Android package. Select Whisper on this device.");
-                engines.SetSelection((int)session.Settings.SpeechEngine); return;
+                engines.SetSelection(Array.IndexOf(SpeechProfiles.Engines, session.Settings.SpeechEngine)); return;
             }
             await Save(session.Settings with { SpeechEngine = choice }); Render();
         };
         body.AddView(engines);
-        body.AddView(Text(session.Settings.SpeechEngine == SpeechEngineKind.Whisper ? "Whisper model" :
-            "Whistle supports English, German, French, Spanish, Italian, Dutch, and Polish. It runs on your CPU."));
-        var models = new Spinner(this);
-        models.Adapter = new ArrayAdapter<string>(this, global::Android.Resource.Layout.SimpleSpinnerDropDownItem, WhisperEngine.Models);
-        models.SetSelection(Array.IndexOf(WhisperEngine.Models, session.Settings.SpeechModel));
-        models.ItemSelected += async (_, args) => await Save(session.Settings with { SpeechModel = WhisperEngine.Models[args.Position] });
-        if (session.Settings.SpeechEngine == SpeechEngineKind.Whisper)
-        {
-            body.AddView(models);
-            body.AddView(Text("Tiny uses less memory. Base balances speed and accuracy. Small needs more memory and time."));
-        }
+        body.AddView(Text(SpeechProfiles.Description(session.Settings.SpeechEngine)));
+        body.AddView(Text("English speech recognition runs on your CPU."));
         body.AddView(Button("Download and load model", PrepareSpeech));
-        var language = new EditText(this) { Text = session.Settings.Language, Hint = "Language: auto, en, de, ..." };
-        body.AddView(language);
-        body.AddView(Button("Save language", async () => await Save(session.Settings with { Language = language.Text?.Trim() ?? "auto" })));
         body.AddView(Text("Cleanup"));
         body.AddView(Check("Remove filler sounds", session.Settings.Rules.Fillers, value => Save(session.Settings with { Rules = session.Settings.Rules with { Fillers = value } })));
         body.AddView(Check("Remove stutters", session.Settings.Rules.Repeats, value => Save(session.Settings with { Rules = session.Settings.Rules with { Repeats = value } })));

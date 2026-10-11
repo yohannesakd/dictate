@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using Dictate.Core;
 using NAudio.Wave;
@@ -13,6 +14,8 @@ public sealed class DesktopAudio : IAudioCapture
     private Process? linux;
     private Task? reader;
     private bool recording;
+    private MacNative.LevelCallback? macLevel;
+    private MacNative.NoticeCallback? macNotice;
     public event Action<float>? Level;
     public event Action<string>? Interrupted;
 
@@ -24,7 +27,13 @@ public sealed class DesktopAudio : IAudioCapture
             recording = true;
             try
             {
-                if (OperatingSystem.IsWindows()) StartWindows();
+                if (OperatingSystem.IsMacOS())
+                {
+                    macLevel ??= value => Level?.Invoke(value);
+                    macNotice ??= pointer => Interrupted?.Invoke(Marshal.PtrToStringUTF8(pointer)!);
+                    MacNative.Check(MacNative.AudioStart(macLevel, macNotice));
+                }
+                else if (OperatingSystem.IsWindows()) StartWindows();
                 else
                 {
                     linux = ProcessCommand.Start("arecord", "-q", "-D", "default", "-t", "raw", "-f", "S16_LE", "-r", "16000", "-c", "1");
@@ -83,6 +92,14 @@ public sealed class DesktopAudio : IAudioCapture
 
     public float[] Stop()
     {
+        if (OperatingSystem.IsMacOS())
+        {
+            lock (sync) recording = false;
+            var pointer = MacNative.AudioStop(out var count);
+            if (pointer == 0) return [];
+            try { var result = new float[count]; Marshal.Copy(pointer, result, 0, count); return result; }
+            finally { MacNative.Free(pointer); }
+        }
         WaveInEvent? input;
         Process? process;
         lock (sync)

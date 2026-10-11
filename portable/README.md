@@ -1,106 +1,78 @@
-# Portable Dictate
+# Build Dictate for other platforms
 
-This branch adds a portable implementation beside the existing Mac app.
-The Mac keeps Phonon-2 as its default and adds Whistle and Whisper choices.
-The Mac indicator now hides when idle. Mac warnings appear inside the app window.
-The portable apps share cleanup, dictionary matching, request limits, cancellation, history, and delivery contracts.
+The desktop apps use the same Avalonia window, indicator, menus, and shared core.
+Android uses a native activity and voice keyboard with the same English speech choices.
 
-## Run the desktop app
+## Run Windows or Linux
 
 Install the .NET 10 SDK.
 On Linux, install `alsa-utils`, `libsecret-tools`, `at-spi2-core`, and `libgomp1`.
-Use an X11 session for global shortcuts.
-Automatic insertion requires a readable, editable accessibility field.
-Other fields require copying from History.
-On Wayland, use the recording controls.
-
-Run this command from the repository root.
+Use X11 for global shortcuts.
+On Wayland, use the app recording controls.
+Linux insertion requires an accessible, editable field. Other fields require copying from History.
 
 ```sh
 dotnet run --project portable/Desktop/Dictate.Desktop.csproj
 ```
 
-In Settings, choose **Speech engine**, then select **Download and load model**.
-Whisper base remains the portable default.
-Whistle runs its pinned 16.9 MB model on the CPU.
-Whistle supports English, German, French, Spanish, Italian, Dutch, and Polish.
-Android Whistle requires the ARM64 package. The x64 package supports Whisper.
-Both engines work without a GPU.
-See the [audio evaluation](../docs/whistle-whisper-evaluation.md) for measured results and verification limits.
+Choose **Whistle** or **Whisper** in the header menu or tray menu.
+In Settings, select **Download and load model**.
+Both engines recognize English on the CPU.
+The app fixes Whisper to `base.en-q5_1` and does not expose other model sizes.
 
-For Whisper, choose a model size.
-Choose `tiny` for lower memory use, `base` for general use, or `small` for higher accuracy.
-The `.en` models recognize English only.
-Other models support language detection.
+Hold **F8** to speak. Release **F8** to insert text.
+Press **F8** twice or press **F8+Space** for hands-free dictation.
+Press **Esc** to cancel.
+Press **Ctrl+Shift+V** to repeat the last transcript.
+Select a word and press **F8+D** to add a dictionary entry.
+Close the window to keep Dictate in the tray.
+Use the tray menu to quit.
 
-Hold F8 to speak, then release F8 to insert text.
-Press F8 twice for hands-free recording.
-Press F8+Space for hands-free recording.
-Press Esc to cancel.
-Press Ctrl+Shift+V to repeat the last dictation.
-Select a word and press F8+D to add a dictionary entry.
-The app saves each completed transcript and its delivery outcome in History.
-Close the window to keep Dictate in the system tray.
-Use the tray menu or Settings to quit.
+## Publish a desktop package
 
-The interface uses software rendering.
-Speech recognition explicitly uses the CPU.
-The app includes a runtime for x86 processors without AVX instructions.
-CPU speed, memory, and model size determine transcription delay.
-Performance has not been established on all supported devices.
+These commands create independent distributions that include the .NET runtime.
+
+```sh
+dotnet publish portable/Desktop -c Release -r win-x64 --self-contained true -o portable/artifacts/windows/app
+dotnet publish portable/Desktop -c Release -r linux-x64 --self-contained true -o portable/artifacts/linux/app
+```
+
+For framework-dependent packages, use `--self-contained false` and install the .NET 10 runtime on the target machine.
+The publisher retains only the target speech libraries and removes release debug symbols.
+The x64 Whisper runtime includes a no-AVX fallback.
+The selected Whistle binaries support Windows x64, Linux x64, and macOS ARM64.
+Intel Mac Whistle and other desktop architectures need additional verified native binaries.
 
 ## Build the Android keyboard
 
 Install the .NET 10 Android workload, Android SDK, and required Java SDK.
-The setup script installs isolated build tools under `portable/.tools`.
-Run the setup script on Linux.
-It accepts the Android SDK licenses during installation.
+The setup script installs isolated build tools and accepts Android SDK licences.
 
 ```sh
 portable/scripts/setup-android.sh
 portable/scripts/build-android.sh Release android-arm64
 ```
 
-For an x64 emulator, run `portable/scripts/build-android.sh Debug android-x64`.
+For an x64 emulator, use `portable/scripts/build-android.sh Debug android-x64`.
+Whistle requires ARM64. Android x64 supports Whisper only.
 Install the APK from `portable/artifacts/android`.
-Open Dictate, allow microphone access, enable the voice keyboard, and download a speech model.
-Choose Dictate from Android's keyboard picker while a text field has focus.
+Open Dictate and allow microphone access.
+Enable the voice keyboard and download the selected speech model.
+Choose Dictate from Android’s keyboard picker while a text field has focus.
 Tap **Start dictation**, speak, then tap **Stop and insert**.
-Use **Keyboard** to return to another keyboard.
-The keyboard also supports replay, selected-word capture, undo, and raw transcript restoration.
+Tap **Keyboard** to return to another keyboard.
 
-The keyboard stops recording when it closes.
-Changing the input field cancels pending work.
-Dictation is disabled in password fields.
-The project targets Android 8 or later on arm64 devices.
-See the verification plan for tested devices.
-Android x64 builds support emulator verification.
-The generated APK uses a debug signing key until release signing is configured.
+The keyboard stops capture when it closes.
+Changing fields cancels pending work. Password fields disable dictation.
+Android targets version 8 or later.
+Generated packages use a debug signing key until release signing is configured.
+Physical Android microphone, latency, and battery checks remain open.
 
-## Cleanup and credentials
-
-Rule cleanup and dictionary replacement work offline.
-Smart cleanup sends a transcript to Groq, DeepSeek, or ChatGPT when a repeat or dictionary term needs review.
-The app accepts only ordered edits allowed by the Mac cleanup guard.
-It uses the rule result after a three-second timeout or a rejected reply.
-The shared request manager limits requests to 12 per minute, two active requests, and 32 accepted cached results.
-
-Windows stores credentials in Credential Manager.
-Linux uses the desktop Secret Service through `secret-tool`.
-Android encrypts credentials with an Android Keystore key.
-Missing credential services produce setup errors.
-The app does not save credentials as plain text.
-ChatGPT uses the existing app's sign-in flow and non-public cleanup endpoint.
-Changes to that endpoint can break cleanup.
-
-## Verify the core
+## Verify the app
 
 ```sh
-python3 portable/scripts/export-mac-fixtures.py
 dotnet test portable/Tests/Dictate.Tests.csproj
 ```
 
-The fixtures preserve the existing Mac cleanup-guard cases.
-The tests also check dictionary matching and cancelled recognition.
-The Mac implementation remains the reference until platform parity is verified.
-See [the verification plan](docs/verification.md) for platform checks and current gaps.
+The frozen cleanup fixtures preserve the original Mac guard cases.
+See [verification instructions](docs/verification.md) and the [current results](../docs/shared-desktop-verification.md).

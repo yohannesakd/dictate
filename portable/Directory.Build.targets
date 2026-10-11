@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <SpeechRuntime Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('win-')) Or $([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('linux-'))">$(RuntimeIdentifier)</SpeechRuntime>
+    <SpeechRuntime Condition="$([System.String]::Copy('$(RuntimeIdentifier)').StartsWith('osx-'))">$([System.String]::Copy('$(RuntimeIdentifier)').Replace('osx-', 'macos-'))</SpeechRuntime>
+  </PropertyGroup>
+  <!-- Whisper.net includes every desktop runtime. A release needs only its CPU and no-AVX libraries. -->
+  <Target Name="SelectSpeechRuntime" AfterTargets="ComputeFilesToPublish" Condition="'$(SpeechRuntime)' != ''">
+    <ItemGroup>
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+        Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('runtimes/')) And !$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('runtimes/$(SpeechRuntime)/')) And !$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('runtimes/noavx/$(SpeechRuntime)/'))" />
+      <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
+        Condition="'$(Configuration)' == 'Release' And '%(ResolvedFileToPublish.Extension)' == '.pdb'" />
+    </ItemGroup>
+  </Target>
+</Project>

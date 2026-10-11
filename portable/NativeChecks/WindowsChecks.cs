@@ -1,5 +1,4 @@
 using System.Diagnostics;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Versioning;
 using System.Text;
@@ -21,7 +20,7 @@ internal static class WindowsChecks
         var command = Path.Combine(directory, "command");
         var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
         if (string.Equals(Path.GetFileNameWithoutExtension(Environment.ProcessPath), "dotnet", StringComparison.OrdinalIgnoreCase))
-            start.ArgumentList.Add(Assembly.GetExecutingAssembly().Location);
+            start.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "Dictate.NativeChecks.dll"));
         start.ArgumentList.Add("--fixture");
         start.ArgumentList.Add(command);
         using var fixture = Process.Start(start)!;
@@ -78,7 +77,7 @@ internal static class WindowsChecks
                 using var speech = new SpeechRecognizer(Path.Combine(speechFixture, "models"));
                 foreach (var engine in Enum.GetValues<SpeechEngineKind>())
                 {
-                    var text = await speech.TranscribeAsync(WaveAudio.Read(Path.Combine(speechFixture, "jfk.wav")), engine, "base", "en", CancellationToken.None);
+                    var text = await speech.TranscribeAsync(WaveAudio.Read(Path.Combine(speechFixture, "jfk.wav")), engine, SpeechProfiles.WhisperModel, "en", CancellationToken.None);
                     Require(text.Contains("country", StringComparison.OrdinalIgnoreCase), "Unexpected " + engine + " transcript: " + text);
                     await Signal("reset");
                     var insertedSpeech = await delivery.CaptureTarget().InsertAsync(text, text, CancellationToken.None);

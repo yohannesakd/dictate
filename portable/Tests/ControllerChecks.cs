@@ -34,7 +34,8 @@ public class ControllerChecks
         {
             cancellation.ThrowIfCancellationRequested();
             Inserted.Add(text);
-            return Task.FromResult(new DeliveryReceipt(DeliveryOutcome.Sent, text.Length));
+            return Task.FromResult(new DeliveryReceipt(DeliveryOutcome.Sent, text.Length)
+                { Evidence = new() { ["verification_mismatch"] = "selection" } });
         }
     }
     private sealed class Store : IDictationStore
@@ -68,6 +69,7 @@ public class ControllerChecks
         await current;
         Assert.Equal(["I need help."], delivery.Inserted);
         Assert.Equal(DeliveryOutcome.Sent, Assert.Single(store.Records).Delivery);
+        Assert.Equal("selection", store.Records[0].DeliveryEvidence["verification_mismatch"]);
         Assert.Equal(DictationPhase.Idle, controller.Phase);
     }
 

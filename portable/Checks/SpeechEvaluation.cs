@@ -14,7 +14,7 @@ public static class SpeechEvaluation
     public sealed record Measurement(string Sample, SpeechEngineKind Engine, int Pass, double AudioSeconds,
         double PreparationMs, double RecognitionMs, string? Text, string? Error, long ParentRssBytes);
 
-    public static async Task RunAsync(SpeechRecognizer speech, string manifest, string output, string whisperModel = "base")
+    public static async Task RunAsync(SpeechRecognizer speech, string manifest, string output, string whisperModel = SpeechProfiles.WhisperModel)
     {
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, WriteIndented = true };
         var samples = JsonSerializer.Deserialize<Sample[]>(File.ReadAllText(manifest), options)!;
@@ -64,7 +64,7 @@ public static class SpeechEvaluation
         if (rows.Any(row => row.Error is not null)) throw new InvalidOperationException("Speech evaluation contains failed runs. Inspect " + output);
     }
 
-    public static async Task CheckCancellationAsync(SpeechRecognizer speech, float[] reference, string whisperModel = "tiny.en")
+    public static async Task CheckCancellationAsync(SpeechRecognizer speech, float[] reference, string whisperModel = SpeechProfiles.WhisperModel)
     {
         foreach (var engine in Enum.GetValues<SpeechEngineKind>())
         {

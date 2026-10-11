@@ -35,6 +35,14 @@
           "Avalonia.X11": "12.1.4"
         }
       },
+      "Avalonia.Fonts.Inter": {
+        "type": "Transitive",
+        "resolved": "12.1.4",
+        "contentHash": "PqzIALObVJ3ZUpfYDkoNNkijaVBUGVrHqAyWPkE39aJrPukbMv49aGMhS+c5HiW1s+/iuo3fW+ISOk34GOc0iw==",
+        "dependencies": {
+          "Avalonia": "12.1.4"
+        }
+      },
       "Avalonia.FreeDesktop": {
         "type": "Transitive",
         "resolved": "12.1.4",
@@ -273,6 +281,7 @@
         "type": "Project",
         "dependencies": {
           "Avalonia.Desktop": "[12.1.4, )",
+          "Avalonia.Fonts.Inter": "[12.1.4, )",
           "Avalonia.Themes.Fluent": "[12.1.4, )",
           "Dictate.Core": "[1.0.0, )",
           "Dictate.Speech": "[1.0.0, )",

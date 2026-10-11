@@ -1,5 +1,7 @@
 # Whistle and Whisper evaluation
 
+This comparison describes revision `d515489`. The [current app verification](shared-desktop-verification.md) covers the shared desktop interface and selected English profiles.
+
 Both CPU engines completed 280 recognition runs on Mac, Windows, Linux, and an ARM64 Android emulator.
 Each engine received seven recordings, with five alternating passes per recording.
 Phonon-2 remains the Mac default. Whisper base remains the portable default.
@@ -76,6 +78,9 @@ The [German manifest](../portable/fixtures/speech/german-samples.json) records t
 
 Use the built Mac app with this command.
 
+These archived commands require revision `d515489`.
+The current branch uses [shared verification commands](../portable/docs/verification.md).
+
 ```sh
 python3 scripts/evaluate-mac-speech.py "$PWD/build/Dictate.app" "$PWD/portable/fixtures/speech" "$PWD/mac-results.json"
 ```
@@ -89,7 +94,7 @@ dotnet run --project portable/Checks/Dictate.Checks.csproj -c Release -- --evalu
 
 Android Debug instrumentation is `dev.local.dictate.portable.DeviceChecks`.
 Its fixtures and models belong in the app FilesDir. Its JSON output is `speech-evaluation.json`.
-The Windows helper is [check-windows-engines.ps1](../portable/scripts/check-windows-engines.ps1).
+The Windows helper is [`check-windows-engines.ps1` at d515489](https://github.com/yohannesakd/dictate/blob/d515489/portable/scripts/check-windows-engines.ps1).
 
 Dispatch evidence: Linux audio `d1a1a56d`, German audio `ef6df4e6`, native Linux `eb2e6a17`, Linux selector `b4dc9453`.
 Android Debug evidence is `0eef9372`. Android Release evidence is `20a00818`.

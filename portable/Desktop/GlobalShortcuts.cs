@@ -8,6 +8,7 @@ public sealed class GlobalShortcuts(ShortcutController shortcuts, DictationContr
 {
     private readonly CancellationTokenSource stopped = new();
     private Thread? thread;
+    private MacNative.KeyCallback? macCallback;
     private bool down;
     private bool chordHandled;
     private bool replayDown;
@@ -19,6 +20,24 @@ public sealed class GlobalShortcuts(ShortcutController shortcuts, DictationContr
 
     public void Start()
     {
+        if (OperatingSystem.IsMacOS())
+        {
+            macCallback ??= action => Post(() =>
+            {
+                switch (action)
+                {
+                    case 0: shortcuts.Down(); break;
+                    case 1: shortcuts.Up(); break;
+                    case 2: shortcuts.ToggleHandsFree(); break;
+                    case 3: shortcuts.Cancel(); break;
+                    case 4: RepeatLast?.Invoke(); break;
+                    case 5: CaptureWord?.Invoke(); break;
+                    case 6: shortcuts.Cancel(); break;
+                }
+            });
+            if (MacNative.KeyboardStart(macCallback) == 0) Notice?.Invoke("Allow Accessibility access in Settings, then enable shortcuts.");
+            return;
+        }
         thread = new Thread(() =>
         {
             try { if (OperatingSystem.IsWindows()) RunWindows(); else RunX11(); }
@@ -126,7 +145,7 @@ public sealed class GlobalShortcuts(ShortcutController shortcuts, DictationContr
         finally { XUngrabKey(display, f8, 1 << 15, root); foreach (var modifiers in new uint[] { 5, 7, 21, 23 }) XUngrabKey(display, v, modifiers, root); XCloseDisplay(display); }
     }
 
-    public void Dispose() { stopped.Cancel(); thread?.Join(TimeSpan.FromSeconds(1)); stopped.Dispose(); }
+    public void Dispose() { if (OperatingSystem.IsMacOS()) MacNative.KeyboardStop(); stopped.Cancel(); thread?.Join(TimeSpan.FromSeconds(1)); stopped.Dispose(); }
     private delegate int XErrorCallback(nint display, nint error);
     [DllImport("libX11.so.6")] private static extern nint XSetErrorHandler(nint handler);
     [DllImport("libX11.so.6")] private static extern int XSync(nint display, int discard);

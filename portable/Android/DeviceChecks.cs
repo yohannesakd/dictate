@@ -79,14 +79,14 @@ public sealed class DeviceChecks : Instrumentation
             Path.Combine(context.ApplicationInfo!.NativeLibraryDir!, "libdictate_needle.so"));
         foreach (var engine in Enum.GetValues<SpeechEngineKind>())
         {
-            var transcript = await speech.TranscribeAsync(pcm.ToArray(), engine, "base", "en", CancellationToken.None);
+            var transcript = await speech.TranscribeAsync(pcm.ToArray(), engine, SpeechProfiles.WhisperModel, "en", CancellationToken.None);
             Require(transcript.Contains("country", StringComparison.OrdinalIgnoreCase) && transcript.Contains("fellow", StringComparison.OrdinalIgnoreCase), "Unexpected CPU transcript: " + transcript);
             RunOnMainSync(() => { field!.Text = ""; field.SetSelection(0); });
             delivery.Bind(connection, context.PackageName);
             Require((await delivery.CaptureTarget().InsertAsync(transcript, transcript, CancellationToken.None)).Outcome == DeliveryOutcome.Verified,
                 engine + " transcript did not reach the real field.");
         }
-        await Dictate.Checks.SpeechEvaluation.CheckCancellationAsync(speech, pcm.ToArray(), "base");
+        await Dictate.Checks.SpeechEvaluation.CheckCancellationAsync(speech, pcm.ToArray(), SpeechProfiles.WhisperModel);
         var manifest = Path.Combine(context.FilesDir.AbsolutePath, "evaluation", "samples.json");
         if (File.Exists(manifest)) await Dictate.Checks.SpeechEvaluation.RunAsync(speech, manifest,
             Path.Combine(context.FilesDir.AbsolutePath, "speech-evaluation.json"));

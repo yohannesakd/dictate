@@ -5,6 +5,7 @@
     <PackageReference Include="xunit" Version="2.9.3" />
     <PackageReference Include="xunit.runner.visualstudio" Version="3.1.5" />
     <ProjectReference Include="../Core/Dictate.Core.csproj" />
+    <ProjectReference Include="../Speech/Dictate.Speech.csproj" />
     <None Include="../fixtures/*.json" Link="fixtures/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

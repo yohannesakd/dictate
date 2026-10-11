@@ -9,7 +9,8 @@ namespace Dictate.Speech;
 
 public sealed class WhisperEngine(string directory) : IDisposable
 {
-    public static readonly string[] Models = ["tiny", "base", "small", "tiny.en", "base.en", "small.en"];
+    // Older weights remain available to reproduce the recorded quality comparison. Apps select only SpeechProfiles.WhisperModel.
+    public static readonly string[] Models = ["tiny", "base", "small", "tiny.en", "base.en", "small.en", SpeechProfiles.WhisperModel];
     private readonly SemaphoreSlim gate = new(1);
     private WhisperFactory? factory;
     private string? loadedModel;
@@ -57,7 +58,13 @@ public sealed class WhisperEngine(string directory) : IDisposable
         if (loadedModel == model) return;
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, "ggml-" + model + ".bin");
-        if (!File.Exists(path))
+        if (model == SpeechProfiles.WhisperModel)
+        {
+            Status?.Invoke("Preparing English Whisper. Speech recognition stays on this device.");
+            await AssetDownload.Download($"https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-{model}.bin",
+                path, "4baf70dd0d7c4247ba2b81fafd9c01005ac77c2f9ef064e00dcf195d0e2fdd2f", 59721011, cancellation).ConfigureAwait(false);
+        }
+        else if (!File.Exists(path))
         {
             Status?.Invoke("Downloading the speech model. Keep Dictate open.");
             var type = model switch

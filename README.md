@@ -1,84 +1,76 @@
 # Dictate
 
-System-wide dictation for macOS. Hold fn, speak, and release to type into the focused field.
-Phonon-2 remains the default speech engine on the Neural Engine.
-Settings also offers Whistle and Whisper base, which run on the CPU.
-Optional smart cleanup uses Groq, DeepSeek, or GPT-6-Luna.
+Dictate provides local English dictation on macOS, Windows, Linux, and Android.
+The three desktop apps use one Avalonia interface, one core, and software rendering.
+Speech recognition runs on the CPU without a GPU.
 
-The Windows, Linux, and Android implementation is under [portable](portable/README.md).
-It uses a shared core and CPU speech recognition.
-See its verification status before using it for daily work.
+The **Speech engine** menu offers two choices:
 
-## Build
+- **Whistle** uses a 16.9 MB model. It uses less memory and handles short dictation well.
+- **Whisper** uses the 59.7 MB quantized English `base.en-q5_1` model. It handles long dictation faster on the tested Windows and Linux machine.
 
-Requirements: Apple silicon, macOS 15 or later, Xcode.
+The choice survives restart. Engine changes require idle dictation.
+The [English comparison](docs/whistle-whisper-evaluation.md) explains quality and resource differences.
+The [current verification record](docs/shared-desktop-verification.md) identifies tested devices and remaining limits.
 
-1. Get the Phonon-2 runtime (version 1.1.2):
-   `git clone --branch 1.1.2 --depth 1 https://github.com/fermionresearch/phonon-coreml vendor/phonon-coreml`
-2. Download the model folder from https://huggingface.co/FermionResearch/Phonon-2-CoreML into `models/Phonon-2-CoreML`.
-   The build needs `manifest.json`, `decoder.bin`, `Phonon-2.mlpackage`, `NOTICE`, and `LICENSE-WEIGHTS-CC-BY-4.0.txt`.
-3. Run `./make-signing-identity.sh` once. It creates a separate keychain in `signing/` with a local signing certificate. A stable signature keeps the Microphone and Accessibility grants across rebuilds.
-4. Run `scripts/setup-whistle.sh` to download the pinned Whistle runtime, model, and licence.
-5. Run `scripts/setup-whisper-mac.sh` to build the CPU-only Whisper helper and download the base model.
-6. Run `./build.sh`, then open `build/Dictate.app`.
+## Use dictation
 
-To build from another machine, such as a server, keep the repository there. On the Mac, put `models/`, `vendor/`, and `signing/` from the steps above in `~/Library/Application Support/Dictate Build`. Then run `scripts/install-mac.sh <ssh-host>` from the checkout. It builds in a temporary folder on the Mac, installs `/Applications/Dictate.app`, and restarts it.
+On macOS, hold **fn**, speak, and release.
+On Windows and Linux, hold **F8**, speak, and release.
+Press the dictation key twice for hands-free dictation.
+Press **Esc** to cancel.
+Set the Mac globe key action to **Do Nothing** in Keyboard settings.
 
-The first launch prepares the model for the Neural Engine. This takes about one minute, once per Mac.
+The indicator shows recording or processing and disappears when dictation ends.
+Warnings appear inside the app.
+Dictate saves transcripts and delivery results in History.
+Use **Copy original** when a field cannot verify delivery.
+Dictate never repeats uncertain delivery automatically.
 
-The dictation indicator appears while Dictate listens or processes speech. It disappears when dictation ends.
-Warnings appear inside the app window and remain until dismissed.
+The tray menu offers undo and raw restoration after verified insertion.
+The process, field, text, and caret must remain unchanged.
+Corrections expire after five minutes.
+Select a word and press **fn+D** or **F8+D** to add a dictionary entry.
 
-## Use
+## Build the Mac app
 
-Choose **Speech engine** under **Speech recognition** in Settings.
-The selection survives restart. Engine changes require idle dictation.
-Whistle supports English, German, French, Spanish, Italian, Dutch, and Polish.
-Whisper base supports more languages. Both CPU choices work without a GPU.
-See the [audio evaluation](docs/whistle-whisper-evaluation.md) for measured results and verification limits.
+The Mac build requires macOS 15 or later, Xcode tools, and the .NET 10 SDK.
+The tested Mac uses Apple silicon.
+The pinned Whistle helper does not support Intel Macs.
 
-- Hold fn to talk; release to insert the text.
-- Double-tap fn, or press fn + Space, for hands-free mode. Press fn again to finish.
-- Esc cancels pending work and stops further typing. Characters already sent can remain in the field.
-- Control + Command + V inserts the last dictation again. Check uncertain delivery before using this shortcut.
-- The status menu has **Undo Last Dictation** and **Restore Raw Transcript**. These actions require a verified insertion at a collapsed caret.
-  The same process, field, caret, and complete field text must remain unchanged. Corrections expire after five minutes.
-  Fields must support Accessibility range replacement. Unreadable fields and fields larger than one million UTF-16 units have no correction snapshot.
-  **Copy Original** in History remains available for manual recovery.
-- To fix a misheard word, select it in any app and press fn + D. Type what you meant and press Return. Dictate adds it to the dictionary.
+```sh
+./make-signing-identity.sh
+./build.sh
+open build/Dictate.app
+```
 
-Set "Press 🌐 key to" to "Do Nothing" in Keyboard settings, so fn does not also open the emoji picker or Apple Dictation.
+Run the signing script once. Keep the signing identity to retain microphone and Accessibility permissions across builds.
+Models download when selected and loaded in Settings.
+The build no longer requires CoreML model folders or a Phonon runtime.
 
-## Smart cleanup
+For a remote Mac, retain `signing/` in `~/Library/Application Support/Dictate Build`.
+Run `scripts/install-mac.sh mac` from this checkout.
+See [portable build instructions](portable/README.md) for Windows, Linux, and Android.
 
-Cleanup is minimal. The rules remove filler sounds (um, uh, er, hmm), stutters ("I I"), and the clause before "scratch that". Dictate keeps words such as "like", "you know", and "actually", and does not apply spoken corrections.
+Existing Mac settings, dictionary entries, and transcript history import into `~/Library/Application Support/Dictate/Desktop` on first launch.
+The import leaves the original files unchanged.
+Existing Keychain credentials remain in the same service.
+New transcripts contain delivery evidence and stage timings in the shared history file.
+Older detailed metrics remain available for audit with `scripts/latency-report.py`.
 
-Smart cleanup sends a transcript to a language model when it contains a repeat or a restart ("I want to, I want to go") or a dictionary word. The model proposes removed repeats and dictionary replacements. Dictate checks each proposal before insertion. Other dictations use the rules only.
+## Cleanup and privacy
 
-Choose the model in Settings (the gear button, or ⌘,), under Cleanup:
+Rules and dictionary replacement work offline.
+Optional smart cleanup sends transcripts to Groq, DeepSeek, or ChatGPT.
+Speech recognition stays on the device.
+The app checks cleanup proposals and uses the rule result after timeout or rejection.
+These checks reduce mistakes but do not prove meaning preservation.
 
-- Groq (`qwen/qwen3.8-27b`, thinking off): about 0.2 s. This is the default. Save a Groq API key in Dictate. Groq lists this model as a preview, so it can remove it at short notice.
-- DeepSeek (`deepseek-chat`): about 1 s. Save a DeepSeek API key in Dictate. Dictate keeps each API key in the Keychain.
-- ChatGPT (`gpt-6-luna`): about 1.5 s. Click "Sign In with ChatGPT". Dictate uses the same sign-in flow as the Codex CLI and Pi, and keeps its own tokens in the Keychain. The endpoint (`chatgpt.com/backend-api/codex/responses`) is not a public API, so OpenAI can change it. Usage counts against your plan limits.
-
-Dictate uses the rule result when the model exceeds 3 seconds or fails the ordered-edit guard. The guard keeps the rule result's words in order. It permits dictionary replacements, exact repeats ("the new, the new design"), and restarts that begin with the same two or more words after punctuation ("is it like, is it possible"). A repeat that ends at punctuation, such as "no, no, no," or "I know, I know.", stays. So does one word twice without a comma, such as "that that". The guard rejects other omissions, reordered words, and changed numeric notation.
-
-Smart cleanup sends at most 12 requests a minute, below the Groq free tier's 8000 tokens a minute. Requests during recording stop at 8 a minute, so the request at fn release still runs. Above the limit, Dictate uses the rule result. These checks reduce mistakes; they do not prove meaning preservation.
-
-Every dictation is saved in `~/Library/Application Support/Dictate/transcripts.jsonl`: the raw transcript, the rule result, the cleanup outcome and its reason, the model, the prompt version, the model reply, the final text, the delivery outcome, and the app. The `id` field matches the dictation's line in the metrics log.
-
-Each dictation appends one JSON line of timing and resource metrics to `~/Library/Logs/Dictate/metrics.jsonl`.
-The `at_*_ms` fields are a timeline in milliseconds since the fn press: microphone ready, first audio, first and last speech, fn release, transcript, rules, model request start and end, text ready, events posted, and text verified.
-The `llm_*` fields split each model request into connection, network round trip, time to the first byte, download, and tokens.
-
-To graph them, run `scripts/latency-report.py`. It writes `latency.html` (charts by stage) and `latency.csv` next to the log.
-Durations use a monotonic clock. Metrics separate event posting, verified text, request cache hits, and delivery outcomes.
-Dictate checks readable fields against the expected text and caret. Verification has a 150-millisecond polling budget, plus Accessibility call time.
-For dictations with an unexpected delivery result, the logs distinguish text differences from caret differences.
-They record expected and observed lengths and selections, without the target field text.
-Many apps, such as Electron apps, do not expose the field text. Dictate then logs `sent`: every event was posted, but the text was not read back. Dictate never repeats uncertain delivery automatically.
+Credentials use macOS Keychain, Windows Credential Manager, Linux Secret Service, or Android Keystore.
+ChatGPT cleanup uses an unofficial endpoint that can change.
 
 ## Credits
 
-Phonon-2 by Fermion Research, based on NVIDIA Parakeet TDT 0.6B v3. Model weights: CC-BY-4.0. Runtime: Apache-2.0.
-Whistle and Needle by Cactus Compute: Apache-2.0. Whisper by OpenAI and whisper.cpp: MIT.
+Whistle and Needle are from Cactus Compute and use Apache-2.0 licences.
+Whisper is from OpenAI. Whisper and whisper.cpp use MIT licences.
+The desktop interface uses Avalonia and the Inter font.

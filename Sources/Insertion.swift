@@ -267,7 +267,8 @@ enum Insertion {
 
     static func correct(_ snapshot: Snapshot, restoreRaw: Bool, cancellation: OperationCancellation,
                         completion: @escaping (MutationOutcome) -> Void) {
-        queue.async {
+        let correctionQueue = snapshot.target.app?.pid == getpid() ? DispatchQueue.main : queue
+        correctionQueue.async {
             let outcome = mutate(snapshot, restoreRaw: restoreRaw, cancellation: cancellation)
             DispatchQueue.main.async { completion(outcome) }
         }

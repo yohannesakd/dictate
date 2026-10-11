@@ -1,5 +1,19 @@
 using Dictate.Core;
 using Dictate.Desktop;
+using Avalonia;
+
+if (OperatingSystem.IsMacOS())
+{
+    if (args is ["--fixture", var macCommand]) { MacChecks.RunFixture(macCommand); return; }
+    if (args.Length != 3) throw new ArgumentException("Supply output, audio fixture, and model directories.");
+    MacChecks.Output = args[0]; MacChecks.Fixtures = args[1]; MacChecks.Models = args[2];
+    Directory.CreateDirectory(MacChecks.Output);
+    Avalonia.AppBuilder.Configure<MacChecks>().UsePlatformDetect()
+        .With(new Avalonia.AvaloniaNativePlatformOptions { RenderingMode = [Avalonia.AvaloniaNativeRenderingMode.Software] })
+        .StartWithClassicDesktopLifetime(args);
+    return;
+}
+
 
 if (OperatingSystem.IsWindows())
 {

@@ -2,27 +2,37 @@ param(
     [Parameter(Mandatory = $true)][string]$PackageDirectory,
     [Parameter(Mandatory = $true)][string]$OutputDirectory,
     [Parameter(Mandatory = $true)][string]$FixtureAudio,
-    [Parameter(Mandatory = $true)][string]$ModelDirectory
+    [Parameter(Mandatory = $true)][string]$ModelDirectory,
+    [string]$AudioManifest
 )
 $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force $OutputDirectory | Out-Null
+function Find-Executable([string]$name, [string]$legacyDirectory) {
+    $flat = Join-Path $PackageDirectory $name
+    if (Test-Path $flat) { return $flat }
+    return Join-Path $PackageDirectory ($legacyDirectory + '/' + $name)
+}
 $app = $null
 $shortcutFixture = $null
 $result = 1
 Start-Transcript -Path (Join-Path $OutputDirectory 'checks.txt') -Force | Out-Null
 try {
-    & (Join-Path $PackageDirectory 'native/Dictate.NativeChecks.exe')
+    & (Find-Executable 'Dictate.NativeChecks.exe' 'native')
     if ($LASTEXITCODE -ne 0) { throw "Windows native checks failed: $LASTEXITCODE" }
-    & (Join-Path $PackageDirectory 'speech/Dictate.Checks.exe') $FixtureAudio $ModelDirectory
+    & (Find-Executable 'Dictate.Checks.exe' 'speech') $FixtureAudio $ModelDirectory
     if ($LASTEXITCODE -ne 0) { throw "Windows CPU checks failed: $LASTEXITCODE" }
     $previousIntrinsics = [Environment]::GetEnvironmentVariable('DOTNET_EnableHWIntrinsic', 'Process')
     try {
         $env:DOTNET_EnableHWIntrinsic = '0'
-        & (Join-Path $PackageDirectory 'speech/Dictate.Checks.exe') $FixtureAudio $ModelDirectory
+        & (Find-Executable 'Dictate.Checks.exe' 'speech') $FixtureAudio $ModelDirectory
         if ($LASTEXITCODE -ne 0) { throw "Windows no-AVX checks failed: $LASTEXITCODE" }
         Write-Output 'Windows no-AVX CPU recognition, silence, cancellation, and recovery passed.'
     }
     finally { [Environment]::SetEnvironmentVariable('DOTNET_EnableHWIntrinsic', $previousIntrinsics, 'Process') }
+    if ($AudioManifest) {
+        & (Find-Executable 'Dictate.Checks.exe' 'speech') --evaluate $AudioManifest $ModelDirectory (Join-Path $OutputDirectory 'audio.json')
+        if ($LASTEXITCODE -ne 0) { throw 'The English audio evaluation failed.' }
+    }
     Add-Type -AssemblyName UIAutomationClient, UIAutomationTypes, System.Drawing
     Add-Type @'
 using System;
@@ -32,7 +42,8 @@ public static class DictateCheckWindow {
     [DllImport("user32.dll")] public static extern void keybd_event(byte key, byte scan, uint flags, UIntPtr extra);
 }
 '@
-    $app = Start-Process (Join-Path $PackageDirectory 'app/Dictate.Desktop.exe') -PassThru
+    $dataDirectory = Join-Path $OutputDirectory 'app-data'
+    $app = Start-Process (Find-Executable 'Dictate.Desktop.exe' 'app') -ArgumentList ('--data-directory "' + $dataDirectory + '"') -PassThru
     for ($i = 0; $i -lt 100; $i++) {
         Start-Sleep -Milliseconds 100
         $app.Refresh()
@@ -65,6 +76,49 @@ public static class DictateCheckWindow {
         finally { $graphics.Dispose(); $bitmap.Dispose() }
         Write-Output "Windows software-rendered $page page opened."
     }
+    $engineMenu = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants,
+        (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, 'Speech engine')))
+    if ($null -eq $engineMenu) { throw 'The shared speech engine menu is missing.' }
+    foreach ($engine in @('whisper', 'whistle')) {
+        $expand = $engineMenu.GetCurrentPattern([System.Windows.Automation.ExpandCollapsePattern]::Pattern)
+        $expand.Expand()
+        Start-Sleep -Milliseconds 200
+        $item = $null
+        $ownedWindows = [System.Windows.Automation.AutomationElement]::RootElement.FindAll([System.Windows.Automation.TreeScope]::Children,
+            (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ProcessIdProperty, $app.Id)))
+        foreach ($ownedWindow in $ownedWindows) {
+            $condition = New-Object System.Windows.Automation.AndCondition(
+                (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::ControlTypeProperty, [System.Windows.Automation.ControlType]::ListItem)),
+                (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, (Get-Culture).TextInfo.ToTitleCase($engine)))
+            )
+            $item = $ownedWindow.FindFirst([System.Windows.Automation.TreeScope]::Descendants, $condition)
+            if ($null -ne $item) { break }
+        }
+        if ($null -eq $item) { throw "The engine menu did not expose $engine." }
+        $item.GetCurrentPattern([System.Windows.Automation.SelectionItemPattern]::Pattern).Select()
+        $expand.Collapse()
+        Start-Sleep -Milliseconds 500
+        $settings = Get-Content (Join-Path $dataDirectory 'settings.json') -Raw | ConvertFrom-Json
+        if ($settings.speech_engine -ne $engine -or $settings.speech_model -ne 'base.en-q5_1' -or $settings.language -ne 'en') {
+            throw "The shared menu did not save $engine with the English profile."
+        }
+    }
+    Write-Output 'Both Windows menu choices saved the same English CPU profiles.'
+    Stop-Process -Id $app.Id
+    $app.WaitForExit()
+    $app = Start-Process (Find-Executable 'Dictate.Desktop.exe' 'app') -ArgumentList ('--data-directory "' + $dataDirectory + '"') -PassThru
+    for ($i = 0; $i -lt 100; $i++) {
+        Start-Sleep -Milliseconds 100
+        $app.Refresh()
+        if ($app.HasExited) { throw 'The Windows app exited during restart.' }
+        if ($app.MainWindowHandle -ne [IntPtr]::Zero) { break }
+    }
+    $window = [System.Windows.Automation.AutomationElement]::FromHandle($app.MainWindowHandle)
+    $engineMenu = $window.FindFirst([System.Windows.Automation.TreeScope]::Descendants,
+        (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, 'Speech engine')))
+    $selected = $engineMenu.GetCurrentPattern([System.Windows.Automation.SelectionPattern]::Pattern).Current.GetSelection()
+    if ($selected.Count -ne 1 -or $selected[0].Current.Name -ne 'Whistle') { throw 'The Windows engine choice did not survive restart.' }
+    Write-Output 'The Windows engine choice survived restart.'
     $hashes = Get-ChildItem $OutputDirectory -Filter '*.png' | Get-FileHash -Algorithm SHA256
     if (($hashes.Hash | Select-Object -Unique).Count -ne 3) { throw 'The Windows pages produced identical screenshots.' }
     $hashes | Format-Table Hash, Path
@@ -72,7 +126,7 @@ public static class DictateCheckWindow {
         (New-Object System.Windows.Automation.PropertyCondition([System.Windows.Automation.AutomationElement]::NameProperty, 'Home')))
     $homeButton.GetCurrentPattern([System.Windows.Automation.InvokePattern]::Pattern).Invoke()
     $command = Join-Path $OutputDirectory ('shortcut-' + [Guid]::NewGuid().ToString())
-    $shortcutFixture = Start-Process (Join-Path $PackageDirectory 'native/Dictate.NativeChecks.exe') -ArgumentList ('--fixture "' + $command + '"') -PassThru
+    $shortcutFixture = Start-Process (Find-Executable 'Dictate.NativeChecks.exe' 'native') -ArgumentList ('--fixture "' + $command + '"') -PassThru
     for ($i = 0; $i -lt 100 -and -not (Test-Path ($command + '.ready')); $i++) { Start-Sleep -Milliseconds 50 }
     if (-not (Test-Path ($command + '.ready'))) { throw 'The shortcut target did not open.' }
     Set-Content -Path $command -Value 'reset' -NoNewline

@@ -100,7 +100,7 @@ final class Recorder {
         let rms = chunk.isEmpty ? 0 : sqrt(chunk.reduce(0) { $0 + $1 * $1 } / Float(chunk.count))
         lock.lock()
         guard self.session == session else { lock.unlock(); return }
-        samples.append(contentsOf: chunk)
+        samples.append(contentsOf: chunk.prefix(max(0, 300 * 16000 - samples.count)))
         lock.unlock()
         onLevel?(rms)
     }

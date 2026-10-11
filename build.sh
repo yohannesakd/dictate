@@ -5,11 +5,19 @@ cd "$(dirname "$0")"
 export PATH=/opt/homebrew/bin:$PATH
 export MACOSX_DEPLOYMENT_TARGET=15.0
 TARGET="$(uname -m)-apple-macosx15.0"
-PHONON=vendor/phonon-coreml
-PHONON_TDT=$PHONON/Binaries/PhononTDT.xcframework/macos-arm64_x86_64
+APP_NAME=Dictate
+PROJECT=portable/Desktop/Dictate.Desktop.csproj
+EXECUTABLE=Dictate.Desktop
+NATIVE_SOURCES=(Sources/Recorder.swift Sources/Insertion.swift Sources/Keyboard.swift Sources/Operation.swift portable/Desktop/Mac/NativeBridge.swift)
+if [[ "${1:-}" == --checks ]]; then
+  APP_NAME=Dictate.Checks
+  PROJECT=portable/NativeChecks/Dictate.NativeChecks.csproj
+  EXECUTABLE=Dictate.NativeChecks
+  NATIVE_SOURCES+=(portable/NativeChecks/MacFixture.swift)
+fi
 mkdir -p build
 STAGING=$(mktemp -d "$PWD/build/.dictate.XXXXXX")
-APP=$STAGING/Dictate.app
+APP=$STAGING/$APP_NAME.app
 PREVIOUS=$STAGING/previous.app
 KEYCHAINS_CHANGED=0
 ORIGINAL_KEYCHAINS=()
@@ -17,8 +25,8 @@ cleanup() {
   if (( KEYCHAINS_CHANGED )); then
     security list-keychains -d user -s "${ORIGINAL_KEYCHAINS[@]}"
   fi
-  if [[ -d "$PREVIOUS" && ! -e build/Dictate.app ]]; then
-    if ! mv "$PREVIOUS" build/Dictate.app; then
+  if [[ -d "$PREVIOUS" && ! -e build/$APP_NAME.app ]]; then
+    if ! mv "$PREVIOUS" build/$APP_NAME.app; then
       print -u2 "Previous app retained at $PREVIOUS"
       return 1
     fi
@@ -27,29 +35,18 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Always rebuild this small target. Vendor, patch, headers, and compiler changes cannot reuse a stale archive.
-# Apply the repository patch to a source copy. Keep the ignored vendor checkout unchanged.
-cp -R "$PHONON/Sources/PhononCoreML" "$STAGING/PhononCoreML"
-patch -s -d "$STAGING/PhononCoreML" -p1 < patches/phonon-frame-capacity.patch
-mkdir -p "$STAGING/phonon"
-xcrun swiftc -O -swift-version 6 -target "$TARGET" -parse-as-library -module-name PhononCoreML \
-  -I "$PHONON_TDT/Headers" "$STAGING"/PhononCoreML/*.swift \
-  -emit-module -emit-module-path "$STAGING/phonon/PhononCoreML.swiftmodule" \
-  -emit-library -static -o "$STAGING/phonon/libPhononCoreML.a"
-
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/Phonon-2-CoreML"
-mkdir -p "$APP/Contents/Helpers" "$APP/Contents/Resources/Whistle" "$APP/Contents/Resources/Whisper"
-cp vendor/whistle/needle vendor/whisper/whisper-cli "$APP/Contents/Helpers/"
-cp models/Whistle/whistle.cact vendor/whistle/LICENSE-needle "$APP/Contents/Resources/Whistle/"
-cp models/Whisper/ggml-base.bin vendor/whisper/LICENSE-whisper "$APP/Contents/Resources/Whisper/"
+# All desktops publish the same UI and core. Swift supplies only macOS adapters.
+export PATH=/usr/local/share/dotnet:/opt/homebrew/bin:$PATH
+ARCH=$(uname -m)
+RID=osx-arm64
+[[ "$ARCH" == x86_64 ]] && RID=osx-x64
+mkdir -p "$APP/Contents/MacOS"
+dotnet publish "$PROJECT" -c Release -r "$RID" --self-contained true \
+  -p:UseAppHost=true -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -m:2 -o "$APP/Contents/MacOS"
+mv "$APP/Contents/MacOS/$EXECUTABLE" "$APP/Contents/MacOS/Dictate"
+xcrun swiftc -O -swift-version 5 -target "$TARGET" -emit-library \
+  "${NATIVE_SOURCES[@]}" -o "$APP/Contents/MacOS/libdictate-macos.dylib"
 cp Info.plist "$APP/Contents/Info.plist"
-MODEL=models/Phonon-2-CoreML
-cp -c -R "$MODEL/manifest.json" "$MODEL/decoder.bin" "$MODEL/Phonon-2.mlpackage" \
-  "$MODEL/NOTICE" "$MODEL/LICENSE-WEIGHTS-CC-BY-4.0.txt" "$APP/Contents/Resources/Phonon-2-CoreML/"
-xcrun swiftc -O -swift-version 5 -target "$TARGET" \
-  -I "$STAGING/phonon" -I "$PHONON_TDT/Headers" \
-  Sources/*.swift "$STAGING/phonon/libPhononCoreML.a" "$PHONON_TDT/libPhononTDT.a" \
-  -framework Accelerate -framework CoreML -o "$APP/Contents/MacOS/Dictate"
 
 # This is the app's separate signing keychain. Restore the original search list after signing.
 KEYCHAIN=$PWD/signing/dictate-signing.keychain-db
@@ -59,12 +56,13 @@ security list-keychains -d user -s "${ORIGINAL_KEYCHAINS[@]}" "$KEYCHAIN"
 security unlock-keychain -p "$(cat signing/keychain-password)" "$KEYCHAIN"
 IDENTITY=$(security find-identity -p codesigning "$KEYCHAIN" | awk '/Dictate Local Signing/ { print $2; exit }')
 [[ -n "$IDENTITY" ]]
-for helper in "$APP/Contents/Helpers/"*; do codesign --force --sign "$IDENTITY" "$helper"; done
+# macOS requires signatures for every file in Contents/MacOS.
+find "$APP/Contents/MacOS" -type f ! -name Dictate -print0 | while IFS= read -r -d '' library; do
+  codesign --force --sign "$IDENTITY" "$library"
+done
 codesign --force --sign "$IDENTITY" --identifier dev.local.dictate "$APP"
 codesign --verify --strict "$APP"
 
-rm -rf build/phonon
-mv "$STAGING/phonon" build/phonon
-if [[ -e build/Dictate.app ]]; then mv build/Dictate.app "$PREVIOUS"; fi
-mv "$APP" build/Dictate.app
-print 'Built build/Dictate.app'
+if [[ -e build/$APP_NAME.app ]]; then mv build/$APP_NAME.app "$PREVIOUS"; fi
+mv "$APP" build/$APP_NAME.app
+print "Built build/$APP_NAME.app"

@@ -41,6 +41,9 @@ public sealed class SpeechRecognizer : ISpeechEngine, IDisposable
         if (pcm.Length > 300 * 16000) throw new ArgumentException("Record at most five minutes of speech.", nameof(pcm));
         if (engine == SpeechEngineKind.Whistle && !WhistleAssets.Languages.Contains(language))
             throw new ArgumentException("Whistle supports auto, en, de, fr, es, it, nl, and pl.", nameof(language));
+        cancellation.ThrowIfCancellationRequested();
+        // The English Whisper model can emit a word for exact digital silence.
+        if (pcm.All(sample => sample == 0)) return "";
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellation, lifetime.Token);
         await gate.WaitAsync(linked.Token).ConfigureAwait(false);
         try

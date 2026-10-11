@@ -9,7 +9,7 @@ public sealed class AndroidWhistleProcess : IWhistleProcess
     public async Task<string> RunAsync(string executable, string model, string audio, string language, CancellationToken cancellation)
     {
         cancellation.ThrowIfCancellationRequested();
-        var arguments = new List<string> { executable, "--model", model, "--audio", audio };
+        var arguments = new List<string> { executable, "--model", model, "--audio", audio, "--threads", Math.Clamp(Environment.ProcessorCount, 1, 4).ToString(System.Globalization.CultureInfo.InvariantCulture) };
         if (language != "auto") arguments.AddRange(["--audio-language", language]);
         using var builder = new Java.Lang.ProcessBuilder(arguments);
         builder.Environment()!["NEEDLE_TELEMETRY"] = "0";

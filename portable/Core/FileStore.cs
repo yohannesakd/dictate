@@ -14,9 +14,9 @@ public sealed class FileStore(string directory) : IDictationStore
     public string DirectoryPath { get; } = directory;
     public string SettingsPath => Path.Combine(DirectoryPath, "settings.json");
 
-    public DictationSettings LoadSettings() => File.Exists(SettingsPath)
+    public DictationSettings LoadSettings() => SpeechProfiles.Normalize(File.Exists(SettingsPath)
         ? JsonSerializer.Deserialize<DictationSettings>(File.ReadAllText(SettingsPath), Json) ?? throw new InvalidDataException("Settings are empty.")
-        : new();
+        : new());
 
     public async Task SaveSettingsAsync(DictationSettings settings)
     {

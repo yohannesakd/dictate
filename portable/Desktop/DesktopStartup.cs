@@ -7,7 +7,8 @@ public static class DesktopStartup
     public static void Set(bool enabled)
     {
         var executable = Environment.ProcessPath ?? throw new InvalidOperationException("The app executable could not be found.");
-        if (OperatingSystem.IsWindows())
+        if (OperatingSystem.IsMacOS()) MacNative.Check(MacNative.Startup(enabled ? 1 : 0));
+        else if (OperatingSystem.IsWindows())
         {
             using var key = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run");
             if (enabled) key.SetValue("Dictate", '"' + executable + '"');

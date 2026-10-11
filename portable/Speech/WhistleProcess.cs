@@ -16,7 +16,7 @@ public sealed class WhistleProcess : IWhistleProcess
     {
         cancellation.ThrowIfCancellationRequested();
         using var process = new Process { StartInfo = new(executable) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true } };
-        foreach (var argument in new[] { "--model", model, "--audio", audio }) process.StartInfo.ArgumentList.Add(argument);
+        foreach (var argument in new[] { "--model", model, "--audio", audio, "--threads", Math.Clamp(Environment.ProcessorCount, 1, 4).ToString(System.Globalization.CultureInfo.InvariantCulture) }) process.StartInfo.ArgumentList.Add(argument);
         if (language != "auto") { process.StartInfo.ArgumentList.Add("--audio-language"); process.StartInfo.ArgumentList.Add(language); }
         process.StartInfo.Environment["NEEDLE_TELEMETRY"] = "0";
         process.StartInfo.Environment["DO_NOT_TRACK"] = "1";

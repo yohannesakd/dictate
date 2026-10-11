@@ -18,6 +18,7 @@ public sealed class FlowBar : Window
     public FlowBar(DesktopSession session)
     {
         this.session = session;
+        FontFamily = new FontFamily("avares://Avalonia.Fonts.Inter/Assets#Inter");
         Width = 180; Height = 46; WindowDecorations = WindowDecorations.None; CanResize = false;
         ShowActivated = false; ShowInTaskbar = false; Topmost = true; Focusable = false;
         TransparencyLevelHint = [WindowTransparencyLevel.Transparent]; Background = Brushes.Transparent;
@@ -41,7 +42,7 @@ public sealed class FlowBar : Window
     public void Update()
     {
         var phase = session.Controller.Phase;
-        Opacity = phase == DictationPhase.Idle && !session.Settings.ShowIdleBar ? 0 : 1;
+        Opacity = phase == DictationPhase.Idle ? 0 : 1;
         IsHitTestVisible = phase == DictationPhase.Listening;
         ConfigureInput(phase == DictationPhase.Listening);
         wave.IsVisible = phase is DictationPhase.Idle or DictationPhase.Listening;
@@ -58,7 +59,8 @@ public sealed class FlowBar : Window
     {
         var native = TryGetPlatformHandle()?.Handle ?? 0;
         if (native == 0) return;
-        if (OperatingSystem.IsWindows())
+        if (OperatingSystem.IsMacOS()) MacNative.Indicator(native, interactive ? 1 : 0);
+        else if (OperatingSystem.IsWindows())
         {
             var style = GetWindowLongPtr(native, -20) | 0x08000000;
             SetWindowLongPtr(native, -20, interactive ? style & ~0x20 : style | 0x20);
@@ -81,7 +83,8 @@ public sealed class FlowBar : Window
     {
         var native = TryGetPlatformHandle()?.Handle ?? 0;
         if (native == 0) return;
-        if (OperatingSystem.IsWindows()) SetWindowLongPtr(native, -20, GetWindowLongPtr(native, -20) | 0x08000000);
+        if (OperatingSystem.IsMacOS()) MacNative.Indicator(native, 0);
+        else if (OperatingSystem.IsWindows()) SetWindowLongPtr(native, -20, GetWindowLongPtr(native, -20) | 0x08000000);
         else if (OperatingSystem.IsLinux())
         {
             var display = XOpenDisplay(null);

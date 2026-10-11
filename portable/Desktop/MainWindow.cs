@@ -20,10 +20,22 @@ public sealed class MainWindow : Window
     public MainWindow(DesktopSession session)
     {
         this.session = session;
+        FontFamily = new FontFamily("avares://Avalonia.Fonts.Inter/Assets#Inter");
+        Background = Brushes.White; Foreground = new SolidColorBrush(Color.Parse("#1D1D1F"));
         Title = "Dictate"; Width = 500; Height = 640; MinWidth = 460; MinHeight = 520;
         var header = new StackPanel { Spacing = 8 };
         header.Children.Add(new TextBlock { Text = "Dictate", FontSize = 24, FontWeight = FontWeight.SemiBold });
         header.Children.Add(status);
+        var engines = new ComboBox { ItemsSource = SpeechProfiles.Engines, SelectedItem = session.Settings.SpeechEngine, MinWidth = 140 };
+        Avalonia.Automation.AutomationProperties.SetName(engines, "Speech engine");
+        engines.SelectionChanged += async (_, _) =>
+        {
+            if (engines.SelectedItem is not SpeechEngineKind engine || engine == session.Settings.SpeechEngine) return;
+            try { await session.SelectEngineAsync(engine); }
+            catch (Exception error) { session.Message(error.Message); }
+        };
+        session.SettingsChanged += () => Dispatcher.UIThread.Post(() => { engines.SelectedItem = session.Settings.SpeechEngine; Render(); });
+        header.Children.Add(engines);
         var tabs = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         foreach (var tab in new[] { "Home", "History", "Settings" }) tabs.Children.Add(Button(tab, () => { screen = tab; Render(); }));
         header.Children.Add(tabs);
@@ -50,7 +62,8 @@ public sealed class MainWindow : Window
     private void Home()
     {
         body.Children.Add(Text("Put the cursor where the text goes."));
-        body.Children.Add(Text("Hold F8, speak, and release. Press F8 twice for hands-free dictation. Press Esc to cancel."));
+        var shortcut = OperatingSystem.IsMacOS() ? "fn" : "F8";
+        body.Children.Add(Text($"Hold {shortcut}, speak, and release. Press {shortcut} twice for hands-free dictation. Press Esc to cancel."));
         var actions = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 8 };
         actions.Children.Add(Button(session.Controller.Phase == DictationPhase.Listening ? "Stop dictation" : "Start dictation", async () =>
         {
@@ -59,6 +72,12 @@ public sealed class MainWindow : Window
         }));
         actions.Children.Add(Button("Cancel", session.Shortcuts.Cancel));
         body.Children.Add(actions);
+        if (OperatingSystem.IsMacOS())
+        {
+            var permissions = MacNative.Permissions(false);
+            if (!permissions.GetProperty("microphone").GetBoolean() || !permissions.GetProperty("accessibility").GetBoolean())
+                body.Children.Add(Text("Allow microphone and Accessibility access in Settings to dictate in other apps."));
+        }
         if (OperatingSystem.IsLinux() && LinuxDelivery.IsWayland) body.Children.Add(Text("On Wayland, use the recording controls. Global shortcuts are unavailable. If the field does not expose accessible text, copy from History."));
         var history = session.Store.History().ToArray();
         var usage = session.Store.Usage();
@@ -104,22 +123,25 @@ public sealed class MainWindow : Window
     private void Settings()
     {
         body.Children.Add(Heading("Speech recognition"));
-        var engine = new ComboBox { ItemsSource = Enum.GetValues<SpeechEngineKind>(), SelectedItem = session.Settings.SpeechEngine, MinWidth = 180 };
-        Avalonia.Automation.AutomationProperties.SetName(engine, "Speech engine");
-        engine.SelectionChanged += async (_, _) => { await Save(session.Settings with { SpeechEngine = (SpeechEngineKind)engine.SelectedItem! }); Render(); };
-        body.Children.Add(Label("Speech engine", engine));
-        var model = new ComboBox { ItemsSource = WhisperEngine.Models, SelectedItem = session.Settings.SpeechModel, MinWidth = 180 };
-        model.SelectionChanged += async (_, _) => await Save(session.Settings with { SpeechModel = (string)model.SelectedItem! });
-        if (session.Settings.SpeechEngine == SpeechEngineKind.Whisper)
-        {
-            body.Children.Add(model);
-            body.Children.Add(Text("Tiny uses less memory. Base balances speed and accuracy. Small needs more memory and time."));
-        }
-        else body.Children.Add(Text("Whistle supports English, German, French, Spanish, Italian, Dutch, and Polish. It runs on your CPU."));
+        body.Children.Add(Text(SpeechProfiles.Description(session.Settings.SpeechEngine)));
+        body.Children.Add(Text("English speech recognition runs on your CPU. Choose Whistle or Whisper from the menu above."));
         body.Children.Add(Button("Download and load model", PrepareSpeech));
-        var language = new TextBox { Text = session.Settings.Language, PlaceholderText = "auto, en, de, ..." };
-        body.Children.Add(Label("Language", language));
-        body.Children.Add(Button("Save language", async () => await Save(session.Settings with { Language = language.Text?.Trim() ?? "auto" })));
+        if (OperatingSystem.IsMacOS())
+        {
+            body.Children.Add(Heading("Permissions"));
+            body.Children.Add(Button("Allow microphone and Accessibility", () =>
+            {
+                MacNative.Permissions(true);
+                session.Hotkeys.Start();
+                session.Message("Enable Dictate in System Settings → Privacy & Security → Accessibility.");
+            }));
+            body.Children.Add(Button("Enable shortcuts", session.Hotkeys.Start));
+            if (!MacNative.Permissions(false).GetProperty("fn_free").GetBoolean())
+            {
+                body.Children.Add(Text("Set “Press fn key to” to “Do Nothing” in macOS Keyboard Settings."));
+                body.Children.Add(Button("Open Keyboard Settings", () => System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("open", "x-apple.systempreferences:com.apple.Keyboard-Settings.extension") { UseShellExecute = true })));
+            }
+        }
         body.Children.Add(Heading("Cleanup"));
         body.Children.Add(Check("Remove filler sounds", session.Settings.Rules.Fillers, value => Save(session.Settings with { Rules = session.Settings.Rules with { Fillers = value } })));
         body.Children.Add(Check("Remove stutters", session.Settings.Rules.Repeats, value => Save(session.Settings with { Rules = session.Settings.Rules with { Repeats = value } })));
@@ -158,7 +180,6 @@ public sealed class MainWindow : Window
             await Save(session.Settings with { Dictionary = [..session.Settings.Dictionary, new(heard.Text.Trim(), written.Text.Trim())] }); Render();
         }));
         body.Children.Add(Heading("General"));
-        body.Children.Add(Check("Show idle indicator", session.Settings.ShowIdleBar, value => Save(session.Settings with { ShowIdleBar = value })));
         body.Children.Add(Check("Open at login", session.Settings.OpenAtLogin, async value => { DesktopStartup.Set(value); await Save(session.Settings with { OpenAtLogin = value }); }));
         body.Children.Add(Button("Undo last dictation", async () => session.Message(await session.Controller.CorrectLastAsync(false) ? "Dictation removed." : "The field cannot be corrected safely.")));
         body.Children.Add(Button("Restore raw transcript", async () => session.Message(await session.Controller.CorrectLastAsync(true) ? "Original transcript restored." : "The field cannot be corrected safely.")));
@@ -170,8 +191,8 @@ public sealed class MainWindow : Window
         session.Shortcuts.Cancel();
         try
         {
-            var selected = OperatingSystem.IsWindows() ? WindowsDelivery.SelectedText() : LinuxDelivery.SelectedText();
-            if (string.IsNullOrWhiteSpace(selected)) { session.Message("Select the word to add, then press F8+D."); return; }
+            var selected = OperatingSystem.IsMacOS() ? MacDelivery.SelectedText() : OperatingSystem.IsWindows() ? WindowsDelivery.SelectedText() : LinuxDelivery.SelectedText();
+            if (string.IsNullOrWhiteSpace(selected)) { session.Message("Select the word to add, then use the dictionary shortcut."); return; }
             var heard = new TextBox { PlaceholderText = "Heard as" };
             var written = new TextBox { Text = selected.Trim(), PlaceholderText = "Write as" };
             var dialog = new Window { Title = "Add dictionary word", Width = 360, Height = 250, CanResize = false };
@@ -215,5 +236,5 @@ public sealed class MainWindow : Window
         check.IsCheckedChanged += async (_, _) => { try { await changed(check.IsChecked == true); } catch (Exception error) { session.Message(error.Message); check.IsChecked = value; } };
         return check;
     }
-    private static void OpenFolder(string path) => System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(OperatingSystem.IsWindows() ? "explorer" : "xdg-open", path) { UseShellExecute = true });
+    private static void OpenFolder(string path) => System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(OperatingSystem.IsMacOS() ? "open" : OperatingSystem.IsWindows() ? "explorer" : "xdg-open", path) { UseShellExecute = true });
 }

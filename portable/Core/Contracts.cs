@@ -11,10 +11,9 @@ public sealed record DictationSettings
     public DictionaryEntry[] Dictionary { get; init; } = [];
     public bool SmartCleanup { get; init; } = true;
     public CleanupProvider Provider { get; init; } = CleanupProvider.Groq;
-    public string SpeechModel { get; init; } = "base";
-    public SpeechEngineKind SpeechEngine { get; init; } = SpeechEngineKind.Whisper;
-    public string Language { get; init; } = "auto";
-    public bool ShowIdleBar { get; init; } = true;
+    public string SpeechModel { get; init; } = SpeechProfiles.WhisperModel;
+    public SpeechEngineKind SpeechEngine { get; init; } = SpeechEngineKind.Whistle;
+    public string Language { get; init; } = "en";
     public bool OpenAtLogin { get; init; }
 }
 
@@ -47,7 +46,10 @@ public interface ITextCorrection
     Task<bool> ReplaceAsync(string text, CancellationToken cancellation);
 }
 
-public sealed record DeliveryReceipt(DeliveryOutcome Outcome, int PostedUtf16Units = 0, ITextCorrection? Correction = null, string? Error = null);
+public sealed record DeliveryReceipt(DeliveryOutcome Outcome, int PostedUtf16Units = 0, ITextCorrection? Correction = null, string? Error = null)
+{
+    public Dictionary<string, string> Evidence { get; init; } = [];
+}
 public sealed record CleanupResult(string? Text, string? Reply, string Outcome, string? Error = null);
 
 public interface ICleanupClient
@@ -80,10 +82,12 @@ public sealed record TranscriptRecord
     public string? Provider { get; init; }
     public string? Model { get; init; }
     public string? Prompt { get; init; }
-    public SpeechEngineKind SpeechEngine { get; init; }
+    public SpeechEngineKind? SpeechEngine { get; init; }
+    public string? LegacySpeechEngine { get; init; }
     public string? SpeechModel { get; init; }
     public double AudioSeconds { get; init; }
     public required DeliveryOutcome Delivery { get; init; }
+    public Dictionary<string, string> DeliveryEvidence { get; init; } = [];
     public int PostedUtf16Units { get; init; }
     public Dictionary<string, double> Metrics { get; init; } = [];
 }
