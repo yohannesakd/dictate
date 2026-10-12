@@ -122,7 +122,12 @@ function settings() {
   return `<div class="page-title"><div><h2>Settings</h2><p>Make Dictate work the way you speak.</p></div></div><nav class="subnav" aria-label="Settings sections">${[['speech', 'Speech'], ['cleanup', 'Cleanup'], ['dictionary', 'Dictionary'], ['general', 'General']].map(([key, label]) => `<button data-section="${key}" aria-current="${settingPage === key ? 'page' : 'false'}">${label}</button>`).join('')}</nav>${settingPage === 'speech' ? speechSettings() : settingPage === 'cleanup' ? cleanupSettings() : settingPage === 'dictionary' ? dictionarySettings() : generalSettings()}`;
 }
 function speechSettings() {
-  return `<h3>Speech recognition</h3><p class="section-description">Whisper recognizes English on your CPU. No GPU or Neural Engine is required.</p><div class="setting-row"><span>English model · 60 MB</span><span id="model-status" class="model-status">${state.models.whisper ? 'Downloaded' : 'Not downloaded'}</span></div><div class="inline-actions">${button(state.preparing ? 'Preparing model…' : 'Download and load model', 'prepare', 'primary', state.phase !== 'idle' || state.preparing || !!unavailable || busy.has('prepare'))}</div>${shortcutsSettings()}`;
+  const modeApplied = state.speech?.compute === state.settings.speech_compute;
+  const hardwareStatus = modeApplied && state.speech?.hardware
+    ? `Using ${state.speech.hardware}. ${state.speech.fallback || ''}`
+    : android() ? 'This Android build uses CPU.' : modeApplied
+      ? 'Ready. Dictate to detect acceleration.' : 'Load the model or dictate to apply this mode.';
+  return `<h3>Speech recognition</h3><p class="section-description">Whisper recognizes English on this device. Automatic uses a supported accelerator and falls back to CPU.</p><div class="setting-row"><span>English model · 60 MB</span><span id="model-status" class="model-status">${state.models.whisper ? 'Downloaded' : 'Not downloaded'}</span></div><div class="setting-row"><label for="speech-compute">Hardware</label><select id="speech-compute" class="select" ${state.phase !== 'idle' || state.preparing || busy.has('settings') || !!unavailable ? 'disabled' : ''}><option value="automatic" ${state.settings.speech_compute !== 'cpu_only' ? 'selected' : ''}>Automatic</option><option value="cpu_only" ${state.settings.speech_compute === 'cpu_only' ? 'selected' : ''}>CPU only</option></select></div><p id="hardware-status" class="section-description">${escape(hardwareStatus)}</p><div class="inline-actions">${button(state.preparing ? 'Preparing model…' : 'Download and load model', 'prepare', 'primary', state.phase !== 'idle' || state.preparing || !!unavailable || busy.has('prepare'))}</div>${shortcutsSettings()}`;
 }
 function shortcutsSettings() {
   if (android()) return `<div class="group">${setup()}<h3>Voice keyboard</h3><p class="section-description">Choose Dictate in a text field. Tap Record to speak, then Stop to insert. The keyboard also offers undo, original text, repeat, and selected-word capture.</p><div class="inline-actions">${button('Enable keyboard', 'keyboard-settings')}${button('Choose keyboard', 'choose-keyboard')}</div></div>`;
@@ -175,6 +180,7 @@ document.addEventListener('click', event => {
 document.addEventListener('change', event => {
   const target = event.target;
   if (target.dataset.setting) command('settings', { [target.dataset.setting]: target.checked });
+  if (target.id === 'speech-compute') { if (android()) document.activeElement.blur(); command('settings', { speech_compute: target.value }); }
   if (target.id === 'provider') { if (android()) document.activeElement.blur(); const key = $('#api-key'); if (key) key.value = ''; command('settings', { provider: target.value }, () => command('credentials')); }
 });
 document.addEventListener('input', event => {

@@ -3,7 +3,7 @@
 The [Whisper-only record](../../docs/whisper-only.md) lists the current change and verification limits.
 The [October 10 archive](verification-2026-10-10.md) retains the original warning investigation and earlier platform results.
 
-## Core and CPU checks
+## Core and speech checks
 
 ```sh
 dotnet test portable/Tests/Dictate.Tests.csproj
@@ -38,7 +38,7 @@ powershell -NoProfile -File portable/scripts/check-windows.ps1 `
   -FixtureDirectory portable/fixtures/speech
 ```
 
-The runner checks real Edit controls, correction guards, microphone restart, and CPU Whisper.
+The runner checks real Edit controls, correction guards, microphone restart, and Whisper.
 It checks Electron pages, controls, clipboard, recording, indicator isolation, and the Whisper profile after process restart.
 Other applications must not take focus during native delivery checks.
 An observed focus change must stop insertion.
@@ -70,7 +70,8 @@ The signed check bundle uses the app’s stable identifier.
 The launcher activates the separate verification field after its ready file appears.
 Leave the keyboard and mouse idle during delivery checks.
 It checks AppKit fields, correction guards, Keychain, and microphone restart.
-It verifies CPU recognition, field delivery, and the six-fixture audio matrix.
+It verifies recognition, field delivery, and the six-fixture audio matrix.
+For hardware switching and CPU-only isolation, use the [hardware check](../../docs/benchmarks/acceleration-2026-10-12/README.md).
 
 ## Electron interface checks
 

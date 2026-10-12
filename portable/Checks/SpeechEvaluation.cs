@@ -32,7 +32,7 @@ public static class SpeechEvaluation
             host = Environment.MachineName, platform = RuntimeInformation.OSDescription,
             architecture = RuntimeInformation.ProcessArchitecture.ToString(), logicalCores = Environment.ProcessorCount,
             whisperModel, passes = 5, samples, measurements = rows,
-            timing = "Preparation includes model verification and loading. Recognition includes CPU decoding and transcript assembly. Cleanup and field delivery are excluded.",
+            timing = "Preparation includes model verification and loading. Recognition includes Whisper decoding and transcript assembly. Cleanup and field delivery are excluded.",
             memory = "Parent RSS after recognition includes the managed process and cached Whisper model."
         }, options));
         for (var pass = 0; pass < 5; pass++)

@@ -99,7 +99,7 @@ internal static class MacChecks
         await Signal(0);
         receipt = await delivery.CaptureTarget().InsertAsync(transcript, transcript, CancellationToken.None);
         Require(receipt.Outcome == DeliveryOutcome.Verified && await Text() == transcript, "Whisper text did not reach the native field.");
-        notes.Add("Whisper English CPU recognition and native field delivery passed.");
+        notes.Add($"Whisper English recognition and native field delivery passed. Using {speech.ActiveHardware}.");
         await SpeechEvaluation.RunAsync(speech, Path.Combine(Fixtures, "samples.json"), Path.Combine(Output, "audio.json"));
         await SpeechEvaluation.CheckCancellationAsync(speech, WaveAudio.Read(Path.Combine(Fixtures, "jfk.wav")));
         notes.Add("English Whisper completed six audio fixtures, five passes, cancellation, and recovery.");

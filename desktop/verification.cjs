@@ -68,6 +68,17 @@ async function verify({ mainWindow, indicator, backend, getState, showWindow, un
     await backend.request('prepare');
     assert.equal(getState().models.whisper, true);
     assert.equal(await evaluate('document.querySelector("#model-status").textContent'), 'Downloaded');
+    for (const compute of ['cpu_only', 'automatic']) {
+      await evaluate(`document.querySelector('#speech-compute').value = ${JSON.stringify(compute)}; document.querySelector('#speech-compute').dispatchEvent(new Event('change', { bubbles: true }))`);
+      await wait(() => getState().settings.speech_compute === compute, 'hardware setting');
+      await backend.request('prepare');
+      assert.equal(getState().speech.compute, compute);
+      if (compute === 'cpu_only') assert.equal(getState().speech.hardware, 'CPU');
+      if (getState().speech.hardware)
+        await wait(() => evaluate(`document.querySelector('#hardware-status').textContent.includes(${JSON.stringify('Using ')} + ${JSON.stringify(getState().speech.hardware)})`), 'active hardware status');
+      else assert.match(await evaluate('document.querySelector("#hardware-status").textContent'), /dictate/i);
+    }
+    notes.push('Hardware controls changed the native mode. CPU-only displayed CPU; Automatic deferred detection until recognition.');
     await screenshot('speech-whisper');
     await assert.rejects(backend.request('select-engine', { engine: 'whistle' }), /not supported/);
     assert.equal(await evaluate('window.dictate.command("select-engine", {engine:"whistle"}).then(() => "accepted", error => error.message)'), 'The app command is not supported.');

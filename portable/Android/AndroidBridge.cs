@@ -141,6 +141,7 @@ internal sealed class AndroidBridge : Java.Lang.Object
         return new
         {
             sequence = ++sequence, platform = "android", keyboard, canRecord = session.Delivery.HasTarget,
+            speech = new { hardware = session.Speech.ActiveHardware, compute = session.Speech.LoadedCompute, fallback = session.Speech.FallbackReason },
             settings = session.Settings, phase = session.Controller.Phase, notice = keyboard ? null : session.Status,
             preparing = session.Preparing, signingIn,
             permissions = new { microphone = MicrophoneAllowed(), keyboard = enabled },

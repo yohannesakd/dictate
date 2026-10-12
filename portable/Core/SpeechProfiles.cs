@@ -1,6 +1,6 @@
 namespace Dictate.Core;
 
-/// <summary>The English CPU profile used by every app.</summary>
+/// <summary>The English Whisper profile used by every app.</summary>
 public static class SpeechProfiles
 {
     public const string WhisperModel = "base.en-q5_1";

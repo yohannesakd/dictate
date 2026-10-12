@@ -63,7 +63,8 @@ Windows and Linux use the same five-bar mark on the app's blue background in the
 Use custom segmented navigation, switches, fields, and menus. Keep native window controls and system menus.
 Use one primary action per section. Show supporting actions as quiet buttons.
 
-Every platform uses English Whisper on the CPU. There is no engine menu or model selector.
+Every platform uses English Whisper. There is no engine menu or model selector.
+Settings offers Automatic and CPU only hardware modes. It shows the active backend after recognition.
 Settings show the model's 60 MB download size and availability. Disable model preparation during dictation.
 
 The floating indicator displays only nine waveform bars. Its visible surface is 76 by 24 pixels.

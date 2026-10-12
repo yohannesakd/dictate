@@ -56,7 +56,7 @@ public sealed class Session
         if (Preparing || Controller.Phase != DictationPhase.Idle)
             throw new InvalidOperationException("Finish the current action before loading a model.");
         Preparing = true; Changed?.Invoke();
-        try { await Speech.PrepareAsync(Settings.SpeechModel, cancellation); }
+        try { await Speech.PrepareAsync(Settings.SpeechModel, cancellation, Settings.SpeechCompute); }
         finally { Preparing = false; MainThread.Post(() => Changed?.Invoke()); }
     }
 }

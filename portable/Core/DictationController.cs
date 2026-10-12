@@ -78,7 +78,8 @@ public sealed class DictationController(IAudioCapture recorder, ISpeechEngine sp
         try
         {
             if (pcm.Length < 8000) { Notice?.Invoke("No speech detected."); return; }
-            var raw = (await speech.TranscribeAsync(pcm, current.Settings.SpeechModel, current.Settings.Language, cancellation).ConfigureAwait(false)).Trim();
+            var raw = (await speech.TranscribeAsync(pcm, current.Settings.SpeechModel, current.Settings.Language,
+                cancellation, current.Settings.SpeechCompute).ConfigureAwait(false)).Trim();
             cancellation.ThrowIfCancellationRequested();
             var transcriptAt = Stopwatch.GetTimestamp();
             var settings = current.Settings;

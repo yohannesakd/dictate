@@ -2,5 +2,5 @@ Whisper speech recognition: OpenAI, MIT.
 Source and license: https://github.com/openai/whisper/blob/main/LICENSE
 whisper.cpp native runtime: ggml contributors, MIT.
 Source and license: https://github.com/ggml-org/whisper.cpp/blob/master/LICENSE
-Whisper.net bindings and CPU runtimes: Sandro Hanea, MIT.
+Whisper.net bindings and native runtimes: Sandro Hanea, MIT.
 Source and license: https://github.com/sandrohanea/whisper.net/blob/main/LICENSE

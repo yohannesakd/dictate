@@ -17,8 +17,25 @@ public class SpeechProfileChecks
             await File.WriteAllTextAsync(store.SettingsPath, "{\"smart_cleanup\":false,\"provider\":\"deep_seek\"}");
             var loaded = store.LoadSettings();
             Assert.Equal(SpeechEngineKind.Whisper, loaded.SpeechEngine);
+            Assert.Equal(SpeechComputeMode.Automatic, loaded.SpeechCompute);
             Assert.False(loaded.SmartCleanup);
             Assert.Equal(CleanupProvider.DeepSeek, loaded.Provider);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
+    public async Task CpuOnlySurvivesSettingsPatchAndRestart()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "dictate-compute-" + Guid.NewGuid());
+        try
+        {
+            var store = new FileStore(directory);
+            using var patch = System.Text.Json.JsonDocument.Parse("{\"speech_compute\":\"cpu_only\"}");
+            await store.SaveSettingsAsync(AppCommands.Patch(store.LoadSettings(), patch.RootElement));
+            Assert.Equal(SpeechComputeMode.CpuOnly, new FileStore(directory).LoadSettings().SpeechCompute);
+            using var invalid = System.Text.Json.JsonDocument.Parse("{\"speech_compute\":\"unsupported\"}");
+            Assert.Throws<ArgumentException>(() => AppCommands.Patch(store.LoadSettings(), invalid.RootElement));
         }
         finally { Directory.Delete(directory, true); }
     }

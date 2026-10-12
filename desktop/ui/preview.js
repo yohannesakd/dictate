@@ -8,7 +8,7 @@ export function createPreview() {
   const state = {
     sequence: 1, platform: 'mac', phase: 'idle', notice: null, preparing: false, signing_in: false, wayland: false,
     permissions: { microphone: true, accessibility: true, keyboard: true, fn_free: true },
-    settings: { speech_engine: 'whisper', smart_cleanup: false, provider: 'groq', rules: { fillers: true, repeats: true, scratch_that: true }, dictionary: [{ heard: 'yohannes', written: 'Yohannes' }], open_at_login: false },
+    settings: { speech_engine: 'whisper', speech_compute: 'automatic', smart_cleanup: false, provider: 'groq', rules: { fillers: true, repeats: true, scratch_that: true }, dictionary: [{ heard: 'yohannes', written: 'Yohannes' }], open_at_login: false },
     credentials: { groq: false, deep_seek: false, chat_gpt: false }, credentials_error: null,
     models: { whisper: true },
     usage: { week, median_latency: 780, words_per_minute: 132 },

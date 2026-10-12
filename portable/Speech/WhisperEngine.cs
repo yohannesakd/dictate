@@ -4,6 +4,7 @@ using Dictate.Core;
 using Whisper.net;
 using Whisper.net.Ggml;
 using Whisper.net.LibraryLoader;
+using Whisper.net.Logger;
 
 namespace Dictate.Speech;
 
@@ -14,21 +15,28 @@ public sealed class WhisperEngine(string directory) : ISpeechEngine, IDisposable
     private readonly SemaphoreSlim gate = new(1);
     private WhisperFactory? factory;
     private string? loadedModel;
+    private SpeechComputeMode? loadedCompute;
+    private static readonly Lazy<bool> runtimeConfigured = new(ConfigureRuntime);
     private readonly CancellationTokenSource lifetime = new();
     private bool disposed;
     public event Action<string>? Status;
+    public string? ActiveHardware { get; private set; }
+    public string? FallbackReason { get; private set; }
+    public SpeechComputeMode? LoadedCompute => loadedCompute;
 
-    public async Task PrepareAsync(string model, CancellationToken cancellation = default)
+    public async Task PrepareAsync(string model, CancellationToken cancellation = default,
+        SpeechComputeMode compute = SpeechComputeMode.Automatic)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellation, lifetime.Token);
         cancellation = linked.Token;
         await gate.WaitAsync(cancellation).ConfigureAwait(false);
-        try { await LoadAsync(model, cancellation).ConfigureAwait(false); }
+        try { await LoadAsync(model, compute, cancellation).ConfigureAwait(false); }
         finally { gate.Release(); }
     }
 
-    public async Task<string> TranscribeAsync(float[] pcm, string model, string language, CancellationToken cancellation)
+    public async Task<string> TranscribeAsync(float[] pcm, string model, string language, CancellationToken cancellation,
+        SpeechComputeMode compute = SpeechComputeMode.Automatic)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
         if (pcm.Length > 300 * 16000) throw new ArgumentException("Record at most five minutes of speech.", nameof(pcm));
@@ -40,7 +48,15 @@ public sealed class WhisperEngine(string directory) : ISpeechEngine, IDisposable
         await gate.WaitAsync(cancellation).ConfigureAwait(false);
         try
         {
-            await LoadAsync(model, cancellation).ConfigureAwait(false);
+            await LoadAsync(model, compute, cancellation).ConfigureAwait(false);
+            string? hardware = null;
+            using var logger = LogProvider.AddLogger((_, message) =>
+            {
+                if (message?.StartsWith("whisper_backend_init_gpu: using ", StringComparison.Ordinal) == true)
+                    hardware = OperatingSystem.IsMacOS() ? "Metal GPU" : "Vulkan GPU";
+                if (message?.Contains("failed to initialize", StringComparison.Ordinal) == true)
+                    hardware = null;
+            });
             var builder = factory!.CreateBuilder().WithThreads(Math.Max(1, Math.Min(4, Environment.ProcessorCount))).WithNoContext();
             if (language == "auto") builder.WithLanguageDetection();
             else builder.WithLanguage(language);
@@ -51,15 +67,20 @@ public sealed class WhisperEngine(string directory) : ISpeechEngine, IDisposable
                 var text = segment.Text.Replace("[BLANK_AUDIO]", "", StringComparison.Ordinal).Trim();
                 if (text.Length > 0) parts.Add(text);
             }
+            ActiveHardware = hardware ?? "CPU";
+            if (hardware is not null) FallbackReason = null;
+            else if (compute == SpeechComputeMode.Automatic && FallbackReason is null)
+                FallbackReason = "No usable accelerator was found. Using CPU.";
             return string.Join(' ', parts);
         }
         finally { gate.Release(); }
     }
 
-    private async Task LoadAsync(string model, CancellationToken cancellation)
+    private async Task LoadAsync(string model, SpeechComputeMode compute, CancellationToken cancellation)
     {
         if (!Models.Contains(model)) throw new ArgumentException("Select a supported speech model.", nameof(model));
-        if (loadedModel == model) return;
+        if (!Enum.IsDefined(compute)) throw new ArgumentException("Select a supported hardware mode.", nameof(compute));
+        if (loadedModel == model && loadedCompute == compute) return;
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, "ggml-" + model + ".bin");
         if (model == SpeechProfiles.WhisperModel)
@@ -88,15 +109,51 @@ public sealed class WhisperEngine(string directory) : ISpeechEngine, IDisposable
             finally { if (File.Exists(staging)) File.Delete(staging); }
         }
         Status?.Invoke("Loading the speech model.");
-        var x86 = RuntimeInformation.ProcessArchitecture is Architecture.X64 or Architecture.X86;
-        var vectorCpu = Avx.IsSupported && Avx2.IsSupported && Fma.IsSupported && (X86Base.CpuId(1, 0).Ecx & (1 << 29)) != 0;
-        RuntimeOptions.RuntimeLibraryOrder = x86 && !OperatingSystem.IsAndroid() && !vectorCpu ? [RuntimeLibrary.CpuNoAvx] : [RuntimeLibrary.Cpu];
-        var next = await Task.Run(() => WhisperFactory.FromPath(path, new WhisperFactoryOptions { UseGpu = false }), cancellation).ConfigureAwait(false);
-        if (cancellation.IsCancellationRequested) { next.Dispose(); cancellation.ThrowIfCancellationRequested(); }
+        _ = runtimeConfigured.Value;
+        // Whisper.net loads one native runtime per process. Keep its GPU-capable runtime loaded and disable GPU use per context.
         factory?.Dispose();
+        factory = null;
+        loadedModel = null;
+        loadedCompute = null;
+        ActiveHardware = null;
+        FallbackReason = null;
+        var useGpu = compute == SpeechComputeMode.Automatic && !OperatingSystem.IsAndroid();
+        string? fallback = null;
+        var next = await Task.Run(() =>
+        {
+            WhisperFactory Create(bool gpu)
+            {
+                var created = WhisperFactory.FromPath(path, new WhisperFactoryOptions { UseGpu = gpu });
+                try { _ = created.CreateBuilder(); return created; }
+                catch { created.Dispose(); throw; }
+            }
+            try { return Create(useGpu); }
+            catch (WhisperModelLoadException) when (useGpu && !cancellation.IsCancellationRequested)
+            {
+                fallback = "The accelerator could not load the model. Using CPU.";
+                return Create(false);
+            }
+        }, cancellation).ConfigureAwait(false);
+        if (cancellation.IsCancellationRequested) { next.Dispose(); cancellation.ThrowIfCancellationRequested(); }
         factory = next;
         loadedModel = model;
+        loadedCompute = compute;
+        ActiveHardware = !useGpu || fallback is not null || RuntimeOptions.LoadedLibrary == RuntimeLibrary.CpuNoAvx ? "CPU" : null;
+        FallbackReason = fallback ?? (compute == SpeechComputeMode.Automatic && OperatingSystem.IsAndroid()
+            ? "Acceleration is unavailable in this Android build." : null);
         Status?.Invoke("Ready. Speech recognition stays on this device.");
+    }
+
+    private static bool ConfigureRuntime()
+    {
+        var x86 = RuntimeInformation.ProcessArchitecture is Architecture.X64 or Architecture.X86;
+        var vectorCpu = Avx.IsSupported && Avx2.IsSupported && Fma.IsSupported && (X86Base.CpuId(1, 0).Ecx & (1 << 29)) != 0;
+        RuntimeOptions.RuntimeLibraryOrder = x86 && !OperatingSystem.IsAndroid() && !vectorCpu
+            ? [RuntimeLibrary.CpuNoAvx]
+            : OperatingSystem.IsWindows() || OperatingSystem.IsLinux()
+                ? [RuntimeLibrary.Vulkan, RuntimeLibrary.Cpu, RuntimeLibrary.CpuNoAvx]
+                : [RuntimeLibrary.Cpu];
+        return true;
     }
 
     public void Dispose()

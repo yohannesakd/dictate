@@ -39,7 +39,12 @@ Release captures the target field.
 Cancellation stops capture and retires the operation.
 A late result cannot insert text or reset a newer operation.
 Whisper owns one cached native model and serializes preparation and recognition through one gate.
-Its lifetime and operation cancellation tokens stop pending recognition. It uses the CPU and at most four threads.
+Its lifetime and operation cancellation tokens stop pending recognition. It uses at most four CPU threads alongside any supported GPU.
+Each recording captures Automatic or CPU-only mode with its settings.
+A changed mode reloads the native context before recognition. CPU-only sets `UseGpu = false`.
+Whisper.net loads one native library per process. The runtime order stays GPU-capable even if CPU-only runs first.
+Metal is part of the Apple silicon runtime. Windows and Linux x64 prefer Vulkan, then CPU.
+Android remains CPU-only because the packaged native runtime has no accelerator backend.
 The x64 runtime falls back to the bundled no-AVX library when required CPU instructions are unavailable.
 Whistle executables, model downloads, process runners, and Android native libraries are removed.
 Stored engine names remain readable for old settings and history. Settings normalize to Whisper without rewriting historical records.

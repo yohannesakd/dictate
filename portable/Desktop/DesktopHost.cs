@@ -118,7 +118,7 @@ internal sealed class DesktopHost : IDisposable
                 case "prepare":
                     if (preparing || session.Controller.Phase != DictationPhase.Idle) throw new InvalidOperationException("Finish the current action before loading a model.");
                     preparing = true; Publish();
-                    try { await session.Speech.PrepareAsync(session.Settings.SpeechModel, lifetime.Token); }
+                    try { await session.Speech.PrepareAsync(session.Settings.SpeechModel, lifetime.Token, session.Settings.SpeechCompute); }
                     finally { preparing = false; Publish(); }
                     break;
                 case "settings": await session.UpdateSettingsAsync(settings => AppCommands.Patch(settings, args)); break;
@@ -176,6 +176,7 @@ internal sealed class DesktopHost : IDisposable
         return new
         {
             sequence = ++sequence, platform = OperatingSystem.IsMacOS() ? "mac" : OperatingSystem.IsWindows() ? "windows" : "linux",
+            speech = new { hardware = session.Speech.ActiveHardware, compute = session.Speech.LoadedCompute, fallback = session.Speech.FallbackReason },
             settings = session.Settings, phase = session.Controller.Phase, notice = session.Status, preparing, signingIn,
             permissions = OperatingSystem.IsMacOS() ? MacNative.Permissions(false) : (object?)null,
             wayland = OperatingSystem.IsLinux() && LinuxDelivery.IsWayland, credentials,

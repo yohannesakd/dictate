@@ -2,10 +2,14 @@
 
 Dictate provides local English dictation on macOS, Windows, Linux, and Android.
 The three desktop apps use one Electron interface, one core, and software rendering.
-Speech recognition runs on the CPU without a GPU.
+Speech recognition uses available acceleration, with a CPU fallback.
 
 All platforms use the 59.7 MB quantized English Whisper model, `base.en-q5_1`.
+In Settings, choose Automatic or CPU only.
+Apple silicon Macs use Metal GPU acceleration. Windows and Linux x64 use Vulkan when the driver supports it.
+Android uses CPU because the packaged runtime has no Android accelerator backend.
 No GPU or Neural Engine is required. Older supported x64 CPUs use the bundled no-AVX runtime.
+See [hardware modes](docs/acceleration.md) for support and verification limits.
 Whistle is removed from recognition, downloads, menus, and Android packaging.
 Older Whistle settings load as Whisper. Transcript history retains the engine that originally produced each record.
 The [Whisper-only decision](docs/whisper-only.md) explains the change and verification limits.

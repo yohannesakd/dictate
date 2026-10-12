@@ -16,6 +16,11 @@ public static class AppCommands
         foreach (var entry in patch.EnumerateObject()) settings = entry.Name switch
         {
             "smart_cleanup" => settings with { SmartCleanup = entry.Value.GetBoolean() },
+            "speech_compute" => settings with { SpeechCompute = entry.Value.GetString() switch
+            {
+                "automatic" => SpeechComputeMode.Automatic, "cpu_only" => SpeechComputeMode.CpuOnly,
+                _ => throw new ArgumentException("Select automatic or CPU-only speech recognition.")
+            } },
             "provider" => settings with { Provider = entry.Value.GetString() switch { "groq" => CleanupProvider.Groq, "deep_seek" => CleanupProvider.DeepSeek, "chat_gpt" => CleanupProvider.ChatGPT, _ => throw new ArgumentException("Select a cleanup provider.") } },
             "open_at_login" => settings with { OpenAtLogin = entry.Value.GetBoolean() },
             "fillers" => settings with { Rules = settings.Rules with { Fillers = entry.Value.GetBoolean() } },

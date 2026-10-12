@@ -1,9 +1,10 @@
 # English Whisper on every platform
 
 Dictate uses the same 59.7 MB English Whisper model, `base.en-q5_1`, on Mac, Windows, Linux, and Android.
-Recognition runs on the CPU. A GPU or Apple Neural Engine is not required.
+The verification below records the earlier CPU-only release.
+The current app adds [automatic acceleration and a CPU-only option](acceleration.md). A GPU or Apple Neural Engine is not required.
 The [Whisper.net CPU runtime](https://github.com/sandrohanea/whisper.net#whispernetruntime) supports these platforms and supplies a no-AVX alternative for older supported CPUs.
-The app explicitly selects CPU libraries and sets `UseGpu = false` in [WhisperEngine](../portable/Speech/WhisperEngine.cs).
+That release explicitly selected CPU libraries and set `UseGpu = false` in `WhisperEngine`.
 
 Whistle is removed from recognition, downloading, menus, settings controls, and Android native packaging.
 The core calls Whisper directly. One gate owns model loading and recognition instead of a routing wrapper plus a recognizer gate.
