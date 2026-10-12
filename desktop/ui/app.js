@@ -28,7 +28,7 @@ function apply(next) {
   document.body.dataset.platform = state.platform; document.body.dataset.surface = keyboard() ? 'keyboard' : 'app';
   render();
 }
-function notify(message) { localNotice = message; renderNotice(); }
+function notify(message, command) { localNotice = { message, command }; renderNotice(); }
 function toast(message) {
   document.querySelector('.toast')?.remove(); clearTimeout(toastTimer);
   const element = document.createElement('div'); element.className = 'toast'; element.textContent = message; element.role = 'status';
@@ -37,8 +37,12 @@ function toast(message) {
 async function command(name, args = {}, success) {
   if (busy.has(name)) return;
   busy.add(name); render();
-  try { const result = await api.command(name, args); if (success) success(result); }
-  catch (error) { notify(error.message); }
+  try {
+    const result = await api.command(name, args);
+    if (localNotice?.command === name) localNotice = null;
+    if (success) success(result);
+  }
+  catch (error) { notify(error.message, name); }
   finally { busy.delete(name); render(); }
 }
 async function windowAction(action, success) {
@@ -50,7 +54,7 @@ function button(label, action, style = 'secondary', disabled = false, symbol = '
 }
 function renderNotice() {
   if (keyboard()) { $('#notice').hidden = true; return; }
-  const message = unavailable || localNotice || state?.notice;
+  const message = unavailable || localNotice?.message || state?.notice;
   $('#notice').hidden = !message;
   $('#notice').innerHTML = message ? `${icon('alert')}<p>${escape(message)}</p><button data-action="dismiss" aria-label="Dismiss message">${icon('close')}</button>` : '';
 }

@@ -8,6 +8,8 @@ async function verify({ mainWindow, indicator, backend, getState, showWindow, un
   fs.mkdirSync(output, { recursive: true });
   const notes = [];
   const errors = [];
+  const nativeRequest = backend.request.bind(backend);
+  backend.request = (command, args) => command === 'credentials' ? Promise.resolve(null) : nativeRequest(command, args);
   mainWindow.webContents.on('render-process-gone', (_, details) => errors.push(details.reason));
   const evaluate = async code => {
     try { return await mainWindow.webContents.executeJavaScript(code, true); }
@@ -87,6 +89,24 @@ async function verify({ mainWindow, indicator, backend, getState, showWindow, un
     await wait(() => getState().settings.provider === 'chat_gpt', 'ChatGPT provider');
     assert.equal(await evaluate('!!document.querySelector("[data-action=sign-in]")'), true);
     await backend.request('settings', { provider });
+    const verificationRequest = backend.request;
+    const timeoutMessage = 'The action did not respond in time. Check its status before trying again.';
+    try {
+      backend.request = (command, args) => command === 'credentials' ? Promise.reject(new Error(timeoutMessage)) : verificationRequest(command, args);
+      await click('[data-section="cleanup"]');
+      await wait(() => evaluate(`document.querySelector('#notice p')?.textContent === ${JSON.stringify(timeoutMessage)}`), 'plain credential timeout');
+      await evaluate('document.querySelector("#toggle-fillers").click()');
+      await wait(() => getState().settings.rules.fillers !== previous, 'unrelated successful action');
+      assert.equal(await evaluate('document.querySelector("#notice p").textContent'), timeoutMessage);
+    } finally { backend.request = verificationRequest; }
+    await click('[data-section="cleanup"]');
+    await wait(() => evaluate('document.querySelector("#notice").hidden'), 'successful credential retry clears its timeout');
+    mainWindow.webContents.send('dictate:event', { type: 'notice', message: 'Keep this delivery warning.' });
+    await click('[data-section="cleanup"]');
+    assert.equal(await evaluate('document.querySelector("#notice p").textContent'), 'Keep this delivery warning.');
+    await click('[data-action="dismiss"]');
+    await backend.request('settings', { fillers: previous });
+    notes.push('Credential timeouts used plain messages. A successful retry cleared its own notice and preserved unrelated warnings.');
     await click('[data-section="dictionary"]');
     backend.process.stdout.pause();
     await evaluate('document.querySelector("#heard").value="verify heard";document.querySelector("#written").value="Verify written";document.querySelector("#word-form").requestSubmit()');
@@ -156,7 +176,7 @@ async function verify({ mainWindow, indicator, backend, getState, showWindow, un
   } catch (error) {
     fs.writeFileSync(path.join(output, 'error.txt'), String(error.stack || error));
     fs.writeFileSync(path.join(output, 'exit-code.txt'), '1'); throw error;
-  }
+  } finally { backend.request = nativeRequest; }
 }
 
 module.exports = { verify };

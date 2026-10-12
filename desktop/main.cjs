@@ -74,6 +74,10 @@ function restrict(window) {
   window.webContents.on('will-navigate', event => event.preventDefault());
   window.webContents.session.setPermissionRequestHandler((_, __, callback) => callback(false));
 }
+async function reply(action) {
+  try { return { ok: true, result: await action() }; }
+  catch (error) { return { ok: false, error: error.message }; }
+}
 
 if (ownsInstance) app.whenReady().then(async () => {
   const webPreferences = { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, sandbox: true, nodeIntegration: false, webgl: false };
@@ -108,12 +112,12 @@ if (ownsInstance) app.whenReady().then(async () => {
     { role: 'editMenu' }, { role: 'windowMenu' }
   ];
   Menu.setApplicationMenu(Menu.buildFromTemplate(menu));
-  ipcMain.handle('dictate:state', event => {
+  ipcMain.handle('dictate:state', event => reply(() => {
     const window = trusted(event);
     if (window === indicator) return { phase: state?.phase || 'idle' };
     return { state, unavailable };
-  });
-  ipcMain.handle('dictate:command', async (event, command, args = {}) => {
+  }));
+  ipcMain.handle('dictate:command', (event, command, args = {}) => reply(async () => {
     const window = trusted(event);
     if (window !== mainWindow || typeof command !== 'string' || !commands.has(command)) throw new Error('The app command is not supported.');
     if (command === 'settings' && Object.hasOwn(args, 'open_at_login')) {
@@ -136,8 +140,8 @@ if (ownsInstance) app.whenReady().then(async () => {
     }
     try { return await backend.request(command, args); }
     catch (error) { if (command === 'start' && !quitting) showWindow(); throw error; }
-  });
-  ipcMain.handle('dictate:window', async (event, action) => {
+  }));
+  ipcMain.handle('dictate:window', (event, action) => reply(async () => {
     if (trusted(event) !== mainWindow) throw new Error('The window action is not supported.');
     if (action === 'quit') app.quit();
     else if (action === 'open-log' && state) { const error = await shell.openPath(state.directory); if (error) throw new Error(error); }
@@ -147,7 +151,7 @@ if (ownsInstance) app.whenReady().then(async () => {
       if (!record) throw new Error('This transcript is no longer available.');
       await clipboard.writeText(action.original ? record.raw : record.text);
     } else throw new Error('The window action is not supported.');
-  });
+  }));
   await Promise.all([mainWindow.loadFile(rendererPath), indicator.loadFile(indicatorPath)]);
   if (verifyFlag >= 0) {
     require('./verification.cjs').verify({ mainWindow, indicator, backend, getState: () => state,

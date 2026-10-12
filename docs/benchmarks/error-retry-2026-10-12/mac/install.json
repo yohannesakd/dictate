@@ -1,0 +1,13 @@
+{
+  "installed": "/Applications/Dictate.app",
+  "backup": "/var/folders/fz/47q_0_ks5wv2ltwj55zglvhm0000gn/T/dictate-error-retry-install-edrkg7n4/Dictate.previous.app",
+  "data_before": {
+    "settings.json": "673bbc6625203fa94514fa1835999185f510816aebc3e4dd764f529efb9bb8c7",
+    "transcripts.jsonl": "e8c8d04f6f6edd9d7b6f53020466c3e9b9e410018a3543d097cfe137c84a9883"
+  },
+  "data_after": {
+    "settings.json": "673bbc6625203fa94514fa1835999185f510816aebc3e4dd764f529efb9bb8c7",
+    "transcripts.jsonl": "e8c8d04f6f6edd9d7b6f53020466c3e9b9e410018a3543d097cfe137c84a9883"
+  },
+  "engine": "whisper"
+}
