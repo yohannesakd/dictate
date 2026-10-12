@@ -49,7 +49,7 @@ function updateIndicator() {
   indicator.webContents.send('dictate:event', { type: 'phase', phase });
   if (phase === 'idle' || unavailable) { indicator.hide(); return; }
   const { workArea } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
-  indicator.setPosition(Math.round(workArea.x + (workArea.width - 200) / 2), workArea.y + workArea.height - 72);
+  indicator.setPosition(Math.round(workArea.x + (workArea.width - 84) / 2), workArea.y + workArea.height - 64);
   indicator.showInactive();
 }
 async function run(command, args) {
@@ -84,7 +84,7 @@ if (ownsInstance) app.whenReady().then(async () => {
   restrict(mainWindow);
   mainWindow.on('close', event => { if (!quitting) { event.preventDefault(); mainWindow.hide(); } });
   mainWindow.once('ready-to-show', () => mainWindow.show());
-  indicator = new BrowserWindow({ width: 200, height: 48, frame: false, transparent: true, show: false,
+  indicator = new BrowserWindow({ width: 84, height: 40, frame: false, transparent: true, show: false,
     focusable: false, skipTaskbar: true, alwaysOnTop: true, resizable: false,
     ...(process.platform === 'darwin' ? { type: 'panel' } : {}), webPreferences });
   restrict(indicator);

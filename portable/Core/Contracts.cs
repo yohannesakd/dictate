@@ -12,7 +12,7 @@ public sealed record DictationSettings
     public bool SmartCleanup { get; init; } = true;
     public CleanupProvider Provider { get; init; } = CleanupProvider.Groq;
     public string SpeechModel { get; init; } = SpeechProfiles.WhisperModel;
-    public SpeechEngineKind SpeechEngine { get; init; } = SpeechEngineKind.Whistle;
+    public SpeechEngineKind SpeechEngine { get; init; } = SpeechEngineKind.Whisper;
     public string Language { get; init; } = "en";
     public bool OpenAtLogin { get; init; }
 }

@@ -60,9 +60,13 @@ Use custom segmented navigation, switches, fields, and menus. Keep native window
 Use one primary action per section. Show supporting actions as quiet buttons.
 
 The engine menu always offers Whistle and Whisper. Both run English recognition on the CPU.
+Whisper is the default for new settings. Keep existing engine choices.
 Show model download size and availability in Settings. Disable engine changes during dictation.
 
-The floating indicator shows only recording, processing, or insertion. It disappears when dictation ends.
+The floating indicator displays only nine waveform bars. Its visible surface is 76 by 24 pixels.
+Audio levels control the bars during recording. The waveform pulses during processing and insertion.
+The transparent window is 84 by 40 pixels. This size also fits Windows' native minimum height.
+Keep phase labels and shortcut hints in the main app. The indicator disappears when dictation ends.
 It must preserve focus in the destination field. It must never display notices or warnings.
 
 History keeps the delivered text, original transcript, and delivery notes. Copy actions stay next to each transcript.

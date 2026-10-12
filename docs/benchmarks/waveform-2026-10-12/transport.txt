@@ -1,0 +1,11 @@
+✔ The transport matches concurrent replies by identity and accepts fragmented state events. (99.349766ms)
+✔ Service exit rejects pending work and does not replay it. (39.196688ms)
+✔ The transport bounds outstanding commands and payload size. (82.141326ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 253.990664

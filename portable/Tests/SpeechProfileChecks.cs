@@ -7,6 +7,23 @@ namespace Dictate.Tests;
 public class SpeechProfileChecks
 {
     [Fact]
+    public async Task MissingEngineUsesWhisperWithoutReplacingSavedCleanup()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "dictate-default-" + Guid.NewGuid());
+        try
+        {
+            Directory.CreateDirectory(directory);
+            var store = new FileStore(directory);
+            await File.WriteAllTextAsync(store.SettingsPath, "{\"smart_cleanup\":false,\"provider\":\"deep_seek\"}");
+            var loaded = store.LoadSettings();
+            Assert.Equal(SpeechEngineKind.Whisper, loaded.SpeechEngine);
+            Assert.False(loaded.SmartCleanup);
+            Assert.Equal(CleanupProvider.DeepSeek, loaded.Provider);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
     public async Task DigitalSilenceCannotProduceTextOrLoadEitherModel()
     {
         var directory = Path.Combine(Path.GetTempPath(), "dictate-silence-" + Guid.NewGuid());

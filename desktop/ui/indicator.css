@@ -1,1 +1,10 @@
-@font-face{font-family:Inter;src:url('fonts/inter-400.woff2');font-weight:400}*{box-sizing:border-box}body{margin:0;background:transparent;color:#fff;font:12px Inter,sans-serif}.indicator{height:40px;margin:4px 7px;border-radius:22px;background:#20232BEF;display:flex;align-items:center;justify-content:center;gap:14px}#wave{height:26px;display:flex;gap:3px;align-items:center}#wave i{width:3px;height:4px;border-radius:2px;background:#fff}#phase{font-size:11px}kbd{font:10px Inter,sans-serif;color:#C0C5D0;border:1px solid #626774;border-radius:4px;padding:3px 5px}[hidden]{display:none!important}
+* { box-sizing: border-box; }
+body { margin: 0; background: transparent; }
+.indicator { height: 24px; margin: 8px 4px; border-radius: 14px; background: #20232BEF; display: flex; align-items: center; justify-content: center; }
+#wave { height: 20px; display: flex; gap: 3px; align-items: center; }
+#wave i { width: 3px; border-radius: 2px; background: #fff; }
+.indicator[data-phase=processing] i, .indicator[data-phase=delivering] i { animation: pulse 1.2s ease-in-out infinite; }
+.indicator i:nth-child(2n) { animation-delay: .15s; }
+.indicator i:nth-child(3n) { animation-delay: .3s; }
+@keyframes pulse { 50% { opacity: .35; transform: scaleY(.55); } }
+@media (prefers-reduced-motion: reduce) { .indicator i { animation: none; } }

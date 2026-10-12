@@ -1,0 +1,41 @@
+﻿**********************
+Windows PowerShell transcript start
+Start time: 20261012075736
+Username: Saibot\Yohannes
+RunAs User: Saibot\Yohannes
+Configuration Name: 
+Machine: SAIBOT (Microsoft Windows NT 10.0.26200.0)
+Host Application: powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\Yohannes\dictate-electron-check-windows.ps1 -PackageDirectory C:\Users\Yohannes\dictate-waveform-20261012\Dictate-win32-x64 -NativeChecksDirectory C:\Users\Yohannes\dictate-electron-20261011\native -OutputDirectory C:\Users\Yohannes\dictate-waveform-20261012\results -FixtureDirectory C:\Users\Yohannes\dictate-shared-ui-20261011\fixtures -SeedScript C:\Users\Yohannes\dictate-electron-seed-checks.cjs
+Process ID: 20892
+PSVersion: 5.1.26100.7920
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.7920
+BuildVersion: 10.0.26100.7920
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Whisper recognition and native field delivery passed.
+Whistle recognition and native field delivery passed.
+Windows native Unicode insertion, selection replacement, selected-word capture, raw restoration, undo, focus changes, ed
+it guards, caret guards, and cancellation passed.
+Windows microphone devices: 1
+Windows microphone capture 1: 10240 samples at 16 kHz.
+Windows microphone capture 2: 10240 samples at 16 kHz.
+
+The renderer is sandboxed, isolated, and rendered without hardware acceleration.
+The compact layout fit the default window and minimum 400 by 480 window without horizontal overflow.
+Home, History, all Settings sections, copy, search, both engine choices, dictionary, and cleanup controls passed.
+Engine selections persisted. Late state updates preserved active input text, focus, and caret.
+Changing cleanup providers cleared the other provider's unsaved credential field.
+Microphone start and cancellation passed. Engine changes were refused during recording.
+The 84 by 40 transparent indicator displayed only a 24-pixel waveform surface in every active phase, preserved focus, hid when idle, and excluded warnings.
+CPU model choice and local cleanup remained available through the native service.
+Both selected CPU profiles prepared through the packaged native service.
+whistle remained selected in the app and native service after process restart.
+whisper remained selected in the app and native service after process restart.
+**********************
+Windows PowerShell transcript end
+End time: 20261012075748
+**********************

@@ -125,6 +125,16 @@ async function verify({ mainWindow, indicator, backend, getState, showWindow, un
     await assert.rejects(backend.request('select-engine', { engine: 'whisper' }), /Finish or cancel/);
     assert.equal(indicator.isVisible(), true);
     assert.equal(indicator.isFocusable(), false);
+    assert.deepEqual(indicator.getSize(), [84, 40]);
+    assert.equal(await indicator.webContents.executeJavaScript('document.querySelector(".indicator").getBoundingClientRect().height'), 24);
+    assert.equal(await indicator.webContents.executeJavaScript('document.body.textContent.trim()'), '');
+    assert.equal(await indicator.webContents.executeJavaScript('document.querySelectorAll("#wave i").length'), 9);
+    fs.writeFileSync(path.join(output, 'indicator-listening.png'), (await indicator.webContents.capturePage()).toPNG());
+    for (const phase of ['processing', 'delivering']) {
+      indicator.webContents.send('dictate:event', { type: 'phase', phase }); await delay(50);
+      assert.equal(await indicator.webContents.executeJavaScript('document.querySelector(".indicator").dataset.phase'), phase);
+      assert.equal(await indicator.webContents.executeJavaScript('document.body.textContent.trim()'), '');
+    }
     mainWindow.webContents.send('dictate:event', { type: 'notice', message: 'Verification warning stays in the app.' });
     await delay(100);
     assert.equal(await indicator.webContents.executeJavaScript('document.body.textContent.includes("warning")'), false);
@@ -132,7 +142,7 @@ async function verify({ mainWindow, indicator, backend, getState, showWindow, un
     await backend.request('cancel');
     await wait(() => getState().phase === 'idle' && !indicator.isVisible(), 'cancel and hide indicator');
     notes.push('Microphone start and cancellation passed. Engine changes were refused during recording.');
-    notes.push('The indicator was nonfocusable, hid when idle, and excluded the app warning.');
+    notes.push('The 84 by 40 transparent indicator displayed only a 24-pixel waveform surface in every active phase, preserved focus, hid when idle, and excluded warnings.');
     await backend.request('settings', { smart_cleanup: false });
     await backend.request('select-engine', { engine: 'whisper' });
     await backend.request('select-engine', { engine: 'whistle' });

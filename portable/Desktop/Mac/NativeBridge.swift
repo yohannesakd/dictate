@@ -158,7 +158,7 @@ private func accountQuery(_ account: String) -> [String: Any] {
     var settings: [String: Any] = [
         "rules": ["fillers": flag("removeFillers", true), "repeats": flag("removeRepeats", true), "scratch_that": flag("scratchThat", true)],
         "smart_cleanup": flag("smartCleanup", true), "provider": defaults.string(forKey: "cleanupProvider") ?? "groq",
-        "speech_engine": defaults.string(forKey: "speechModel") == "whisper" ? "whisper" : "whistle",
+        "speech_engine": (defaults.string(forKey: "speechModel") ?? "whisper") == "whisper" ? "whisper" : "whistle",
         "open_at_login": SMAppService.mainApp.status == .enabled
     ]
     if let dictionary = defaults.data(forKey: "dictionary"), let entries = try? JSONSerialization.jsonObject(with: dictionary) { settings["dictionary"] = entries }

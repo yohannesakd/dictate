@@ -154,7 +154,7 @@ document.addEventListener('click', event => {
   if (!target || target.disabled) return;
   if (target.id === 'engine-button') { menuOpen = !menuOpen; renderMenu(); if (menuOpen) $('#engine-menu button:not(:disabled)')?.focus(); return; }
   if (target.dataset.engine) { menuOpen = false; command('select-engine', { engine: target.dataset.engine }); $('#engine-button').focus(); return; }
-  if (target.dataset.page) { if (android()) document.activeElement.blur(); page = target.dataset.page; menuOpen = false; render(); $('#content').scrollTop = 0; return; }
+  if (target.dataset.page) { if (android()) document.activeElement.blur(); page = target.dataset.page; menuOpen = false; render(); $('#content').scrollTop = 0; if (page === 'settings' && settingPage === 'cleanup') command('credentials'); return; }
   if (target.dataset.section) { if (android()) document.activeElement.blur(); settingPage = target.dataset.section; render(); $('#content').scrollTop = 0; if (settingPage === 'cleanup') command('credentials'); return; }
   if (target.dataset.copy) { windowAction({ type: 'copy', id: target.dataset.copy, original: target.dataset.original === 'true' }, () => toast(target.dataset.original === 'true' ? 'Original copied' : 'Transcript copied')); return; }
   if (target.dataset.removeWord !== undefined) { const entry = state.settings.dictionary[Number(target.dataset.removeWord)]; if (entry) command('remove-word', entry); return; }
@@ -215,7 +215,7 @@ if (api) {
     if (event.type === 'state') apply(event.state);
     else if (event.type === 'notice') notify(event.message);
     else if (event.type === 'unavailable') { unavailable = event.message; render(); }
-    else if (event.type === 'navigate') { page = event.page; if (event.section) settingPage = event.section; if (android()) document.activeElement.blur(); render(); }
+    else if (event.type === 'navigate') { page = event.page; if (event.section) settingPage = event.section; if (android()) document.activeElement.blur(); render(); if (page === 'settings' && settingPage === 'cleanup') command('credentials'); }
     else if (event.type === 'capture-word') { page = 'settings'; settingPage = 'dictionary'; render(); $('#written').value = event.word; $('#heard').focus(); }
   });
   try { const initial = await api.state(); unavailable = initial.unavailable; if (initial.section) { page = 'settings'; settingPage = ['speech', 'cleanup', 'dictionary', 'general'].includes(initial.section) ? initial.section : 'speech'; }

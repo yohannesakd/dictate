@@ -21,7 +21,7 @@ Press the dictation key twice for hands-free dictation.
 Press **Esc** to cancel.
 Set the Mac globe key action to **Do Nothing** in Keyboard settings.
 
-The indicator shows recording or processing and disappears when dictation ends.
+The indicator shows only a small waveform and disappears when dictation ends.
 Warnings appear inside the app.
 Dictate saves transcripts and delivery results in History.
 Use **Copy original** when a field cannot verify delivery.
