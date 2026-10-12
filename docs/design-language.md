@@ -56,6 +56,10 @@ A permanent sidebar would reduce the space for transcripts. A dashboard grid wou
 ## Components and behavior
 
 The waveform is the distinctive element. Keep other icons small and use consistent strokes.
+The Mac menu bar uses five rounded waveform bars in an 18-point monochrome template.
+Provide 18-pixel and 36-pixel assets for standard and Retina displays. macOS sets the foreground color.
+Template and Retina assets follow [Electron's nativeImage conventions](https://www.electronjs.org/docs/latest/api/native-image#template-image-macos).
+Windows and Linux use the same five-bar mark on the app's blue background in their system trays.
 Use custom segmented navigation, switches, fields, and menus. Keep native window controls and system menus.
 Use one primary action per section. Show supporting actions as quiet buttons.
 

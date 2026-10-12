@@ -22,6 +22,22 @@ func number(_ value: UInt32) -> Data {
     var value = value.bigEndian
     return withUnsafeBytes(of: &value) { Data($0) }
 }
+func menuImage(_ scale: Int) -> Data {
+    let size = 18 * scale
+    let bitmap = NSBitmapImageRep(bitmapDataPlanes: nil, pixelsWide: size, pixelsHigh: size, bitsPerSample: 8,
+                                 samplesPerPixel: 4, hasAlpha: true, isPlanar: false, colorSpaceName: .deviceRGB,
+                                 bytesPerRow: 0, bitsPerPixel: 0)!
+    NSGraphicsContext.saveGraphicsState()
+    NSGraphicsContext.current = NSGraphicsContext(bitmapImageRep: bitmap)
+    let transform = NSAffineTransform(); transform.scale(by: CGFloat(scale)); transform.concat()
+    NSColor.black.setFill()
+    for (index, height) in [6, 10, 16, 10, 6].enumerated() {
+        NSBezierPath(roundedRect: NSRect(x: index * 4, y: (18 - height) / 2, width: 2, height: height),
+                     xRadius: 1, yRadius: 1).fill()
+    }
+    NSGraphicsContext.restoreGraphicsState()
+    return bitmap.representation(using: .png, properties: [:])!
+}
 let root = URL(fileURLWithPath: CommandLine.arguments[1])
 try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
 let png = image(1024)
@@ -41,3 +57,6 @@ withUnsafeBytes(of: &size) { ico.append(contentsOf: $0) }
 withUnsafeBytes(of: &offset) { ico.append(contentsOf: $0) }
 ico.append(small)
 try ico.write(to: root.appendingPathComponent("icon.ico"))
+try menuImage(1).write(to: root.appendingPathComponent("trayTemplate.png"))
+try menuImage(2).write(to: root.appendingPathComponent("trayTemplate@2x.png"))
+try image(32).write(to: root.appendingPathComponent("tray.png"))
