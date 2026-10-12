@@ -21,7 +21,9 @@ npm start
 
 In Settings, select **Download and load model**.
 Whisper recognizes English on this device. Choose Automatic or CPU only in Settings.
-Automatic uses Metal on Apple silicon Macs and Vulkan on supported Windows and Linux x64 devices.
+Automatic prefers the Neural Engine on Apple silicon Macs, with Metal decoding and fallback.
+The Neural Engine encoder adds a 38 MB download. CPU only skips this download and disables both accelerators.
+Windows and Linux x64 use Vulkan when supported.
 If no supported accelerator is available, Whisper uses CPU. Android currently uses CPU.
 See [hardware modes](../docs/acceleration.md) for limits and verification.
 The app fixes Whisper to `base.en-q5_1` and does not expose other model sizes.

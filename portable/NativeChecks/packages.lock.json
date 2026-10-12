@@ -72,6 +72,14 @@
           "Whisper.net.Runtime.Metal": "1.9.1"
         }
       },
+      "Whisper.net.Runtime.CoreML": {
+        "type": "Transitive",
+        "resolved": "1.9.1",
+        "contentHash": "DALf8ZocgBIz5zEeUYcan46e8IDaMCXmkUmVyt10lSRjXgY8OV190FfQ39uvkklP93l4+AkKPkF1wVGMAC93fA==",
+        "dependencies": {
+          "Whisper.net.Runtime.Metal": "1.9.1"
+        }
+      },
       "Whisper.net.Runtime.Metal": {
         "type": "Transitive",
         "resolved": "1.9.1",
@@ -104,6 +112,7 @@
           "Dictate.Core": "[1.0.0, )",
           "Whisper.net": "[1.9.1, )",
           "Whisper.net.Runtime": "[1.9.1, )",
+          "Whisper.net.Runtime.CoreML": "[1.9.1, )",
           "Whisper.net.Runtime.NoAvx": "[1.9.1, )",
           "Whisper.net.Runtime.Vulkan": "[1.9.1, )"
         }

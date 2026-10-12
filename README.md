@@ -6,7 +6,8 @@ Speech recognition uses available acceleration, with a CPU fallback.
 
 All platforms use the 59.7 MB quantized English Whisper model, `base.en-q5_1`.
 In Settings, choose Automatic or CPU only.
-Apple silicon Macs use Metal GPU acceleration. Windows and Linux x64 use Vulkan when the driver supports it.
+Apple silicon Macs prefer the Neural Engine for the encoder and use Metal for decoding.
+Automatic falls back to Metal, then CPU. Windows and Linux x64 use Vulkan when the driver supports it.
 Android uses CPU because the packaged runtime has no Android accelerator backend.
 No GPU or Neural Engine is required. Older supported x64 CPUs use the bundled no-AVX runtime.
 See [hardware modes](docs/acceleration.md) for support and verification limits.
@@ -47,7 +48,8 @@ open build/Dictate.app
 
 Run the signing script once. Keep the signing identity to retain microphone and Accessibility permissions across builds.
 The English model downloads when loaded in Settings.
-The build no longer requires CoreML model folders or a Phonon runtime.
+The Mac build compiles the Core ML encoder bridge with Xcode tools.
+Automatic downloads an additional 38 MB encoder model on Macs with an available Neural Engine.
 
 For a remote Mac, retain `signing/` in `~/Library/Application Support/Dictate Build`.
 Run `scripts/install-mac.sh mac` from this checkout.

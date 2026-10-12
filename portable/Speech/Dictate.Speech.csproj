@@ -5,5 +5,7 @@
     <PackageReference Include="Whisper.net.Runtime" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime.NoAvx" Version="1.9.1" />
     <PackageReference Include="Whisper.net.Runtime.Vulkan" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime.CoreML" Version="1.9.1" />
   </ItemGroup>
+  <Import Project="Mac/CoreMlBridge.targets" />
 </Project>

@@ -43,7 +43,17 @@ Its lifetime and operation cancellation tokens stop pending recognition. It uses
 Each recording captures Automatic or CPU-only mode with its settings.
 A changed mode reloads the native context before recognition. CPU-only sets `UseGpu = false`.
 Whisper.net loads one native library per process. The runtime order stays GPU-capable even if CPU-only runs first.
-Metal is part of the Apple silicon runtime. Windows and Linux x64 prefer Vulkan, then CPU.
+Apple silicon Macs prefer the Core ML runtime, then the standard runtime.
+The Core ML bridge checks Apple's available compute devices before enabling Neural Engine support.
+Its encoder uses `CPUAndNeuralEngine`, which excludes GPU execution for that model. The decoder can still use Metal.
+Each native service owns one active recognizer. Its gate serializes Core ML configuration, preparation, and recognition.
+CPU-only disables Core ML through the bridge and sets `UseGpu = false`. Installed encoder files cannot bypass this choice.
+The bridge checks output type and count before copying into the native tensor. The fixed base encoder produces 1500 frames with 512 features.
+A prediction failure sets an explicit flag. The recognizer discards the first result and retries once with Core ML disabled.
+No text reaches the controller before that decision. Other recognition failures retain their existing error behavior.
+The checksum-verified 38 MB encoder archive installs through an isolated extraction folder and an atomic directory move.
+The compiled model's output description has a dynamic shape. Validation uses the actual prediction shape, not that empty description.
+Windows and Linux x64 prefer Vulkan, then CPU.
 Android remains CPU-only because the packaged native runtime has no accelerator backend.
 The x64 runtime falls back to the bundled no-AVX library when required CPU instructions are unavailable.
 Whistle executables, model downloads, process runners, and Android native libraries are removed.

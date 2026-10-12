@@ -29,7 +29,8 @@ if (args is ["--hardware", var audio, var directory, var report])
             if (!text.Contains("country", StringComparison.OrdinalIgnoreCase) || !text.Contains("fellow", StringComparison.OrdinalIgnoreCase))
                 throw new InvalidOperationException("Unexpected transcript: " + text);
         }
-        if (mode == SpeechComputeMode.CpuOnly && (speech.ActiveHardware != "CPU" || logs.Any(line => line.Contains("whisper_backend_init_gpu: using ", StringComparison.Ordinal))))
+        if (mode == SpeechComputeMode.CpuOnly && (speech.ActiveHardware != "CPU" || logs.Any(line => line.Contains("whisper_backend_init_gpu: using ", StringComparison.Ordinal)
+            || line.Contains("Core ML model loaded", StringComparison.Ordinal))))
             throw new InvalidOperationException("CPU-only mode used an accelerator.");
         if (logs.Any(line => line.Contains("whisper_backend_init_gpu: using ", StringComparison.Ordinal)) && speech.ActiveHardware == "CPU")
             throw new InvalidOperationException("An active GPU was reported as CPU.");
@@ -37,11 +38,37 @@ if (args is ["--hardware", var audio, var directory, var report])
             throw new InvalidOperationException("Missing native context evidence for " + mode);
         results.Add(new { mode, speech.ActiveHardware, speech.FallbackReason, runtime = RuntimeOptions.LoadedLibrary,
             preparationMs, recognitionMs = timings, text, nativeContext = logs.Where(line => line.Contains("use gpu", StringComparison.Ordinal)
-                || line.Contains("whisper_backend_init_gpu:", StringComparison.Ordinal)).ToArray() });
+                || line.Contains("whisper_backend_init_gpu:", StringComparison.Ordinal) || line.Contains("Core ML", StringComparison.Ordinal)).ToArray() });
     }
     await SpeechEvaluation.CheckCancellationAsync(speech, hardwarePcm);
     File.WriteAllText(report, JsonSerializer.Serialize(new { results, cancellation = "passed" }, new JsonSerializerOptions { WriteIndented = true }));
     Console.WriteLine("Hardware switching, CPU isolation, recognition, and cancellation passed.");
+    return;
+}
+
+if (args is ["--neural-fallback", var reference, var modelDirectory, var evidence])
+{
+    using var speech = new WhisperEngine(modelDirectory);
+    var samples = WaveAudio.Read(reference);
+    await speech.PrepareAsync(SpeechProfiles.WhisperModel);
+    var encoder = Path.Combine(modelDirectory, "ggml-base.en-encoder.mlmodelc");
+    var hidden = encoder + ".check";
+    var rows = new List<object>();
+    Directory.Move(encoder, hidden);
+    try
+    {
+        var text = await speech.TranscribeAsync(samples, SpeechProfiles.WhisperModel, "en", CancellationToken.None);
+        if (speech.ActiveHardware != "Metal GPU" || !text.Contains("country", StringComparison.OrdinalIgnoreCase))
+            throw new InvalidOperationException("Missing encoder did not fall back to Metal.");
+        rows.Add(new { stage = "missing_encoder", speech.ActiveHardware, speech.FallbackReason, text });
+    }
+    finally { Directory.Move(hidden, encoder); }
+    var recovered = await speech.TranscribeAsync(samples, SpeechProfiles.WhisperModel, "en", CancellationToken.None);
+    if (speech.ActiveHardware?.StartsWith("Neural Engine", StringComparison.Ordinal) != true || !recovered.Contains("country", StringComparison.OrdinalIgnoreCase))
+        throw new InvalidOperationException("Restored encoder did not recover Neural Engine preference.");
+    rows.Add(new { stage = "restored_encoder", speech.ActiveHardware, speech.FallbackReason, text = recovered });
+    File.WriteAllText(evidence, JsonSerializer.Serialize(rows, new JsonSerializerOptions { WriteIndented = true }));
+    Console.WriteLine("Missing encoder fallback and Neural Engine recovery passed.");
     return;
 }
 

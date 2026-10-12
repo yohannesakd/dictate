@@ -4,3 +4,5 @@ whisper.cpp native runtime: ggml contributors, MIT.
 Source and license: https://github.com/ggml-org/whisper.cpp/blob/master/LICENSE
 Whisper.net bindings and native runtimes: Sandro Hanea, MIT.
 Source and license: https://github.com/sandrohanea/whisper.net/blob/main/LICENSE
+Dictate Core ML bridge uses the whisper.cpp encoder ABI with Apple Core ML.
+Source: portable/Speech/Mac/CoreMlBridge.mm

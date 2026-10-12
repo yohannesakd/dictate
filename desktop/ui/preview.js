@@ -10,7 +10,8 @@ export function createPreview() {
     permissions: { microphone: true, accessibility: true, keyboard: true, fn_free: true },
     settings: { speech_engine: 'whisper', speech_compute: 'automatic', smart_cleanup: false, provider: 'groq', rules: { fillers: true, repeats: true, scratch_that: true }, dictionary: [{ heard: 'yohannes', written: 'Yohannes' }], open_at_login: false },
     credentials: { groq: false, deep_seek: false, chat_gpt: false }, credentials_error: null,
-    models: { whisper: true },
+    models: { whisper: true, neural: true },
+    speech: { neural_supported: true, hardware: null, compute: null, fallback: null },
     usage: { week, median_latency: 780, words_per_minute: 132 },
     history: [
       { id: 'one', text: 'Let’s keep the interface simple. The important controls should be easy to find, and everything else can stay out of the way.', raw: 'lets keep the interface simple', date: new Date(now.getTime() - 900000).toISOString(), speech_engine: 'whisper', delivery: 'verified' },

@@ -7,7 +7,7 @@
   <Target Name="SelectSpeechRuntime" AfterTargets="ComputeFilesToPublish" Condition="'$(SpeechRuntime)' != ''">
     <ItemGroup>
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
-        Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('runtimes/')) And !$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('runtimes/$(SpeechRuntime)/')) And !$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('runtimes/noavx/$(SpeechRuntime)/')) And !$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('runtimes/vulkan/$(SpeechRuntime)/'))" />
+        Condition="$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('runtimes/')) And !$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('runtimes/$(SpeechRuntime)/')) And !$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('runtimes/noavx/$(SpeechRuntime)/')) And !$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('runtimes/vulkan/$(SpeechRuntime)/')) And !$([System.String]::Copy('%(ResolvedFileToPublish.RelativePath)').StartsWith('runtimes/coreml/$(SpeechRuntime)/'))" />
       <ResolvedFileToPublish Remove="@(ResolvedFileToPublish)"
         Condition="'$(Configuration)' == 'Release' And '%(ResolvedFileToPublish.Extension)' == '.pdb'" />
     </ItemGroup>

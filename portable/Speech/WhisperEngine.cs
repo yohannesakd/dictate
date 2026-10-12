@@ -16,6 +16,7 @@ public sealed class WhisperEngine(string directory) : ISpeechEngine, IDisposable
     private WhisperFactory? factory;
     private string? loadedModel;
     private SpeechComputeMode? loadedCompute;
+    private bool neuralRequested;
     private static readonly Lazy<bool> runtimeConfigured = new(ConfigureRuntime);
     private readonly CancellationTokenSource lifetime = new();
     private bool disposed;
@@ -23,6 +24,8 @@ public sealed class WhisperEngine(string directory) : ISpeechEngine, IDisposable
     public string? ActiveHardware { get; private set; }
     public string? FallbackReason { get; private set; }
     public SpeechComputeMode? LoadedCompute => loadedCompute;
+    public bool SupportsNeuralEngine => CoreMlBridge.Available;
+    public bool NeuralModelReady => Directory.Exists(Path.Combine(directory, "ggml-base.en-encoder.mlmodelc"));
 
     public async Task PrepareAsync(string model, CancellationToken cancellation = default,
         SpeechComputeMode compute = SpeechComputeMode.Automatic)
@@ -31,7 +34,7 @@ public sealed class WhisperEngine(string directory) : ISpeechEngine, IDisposable
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellation, lifetime.Token);
         cancellation = linked.Token;
         await gate.WaitAsync(cancellation).ConfigureAwait(false);
-        try { await LoadAsync(model, compute, cancellation).ConfigureAwait(false); }
+        try { await LoadAsync(model, compute, cancellation, compute == SpeechComputeMode.Automatic && CoreMlBridge.Available && !neuralRequested).ConfigureAwait(false); }
         finally { gate.Release(); }
     }
 
@@ -49,38 +52,62 @@ public sealed class WhisperEngine(string directory) : ISpeechEngine, IDisposable
         try
         {
             await LoadAsync(model, compute, cancellation).ConfigureAwait(false);
-            string? hardware = null;
-            using var logger = LogProvider.AddLogger((_, message) =>
+            try
             {
-                if (message?.StartsWith("whisper_backend_init_gpu: using ", StringComparison.Ordinal) == true)
-                    hardware = OperatingSystem.IsMacOS() ? "Metal GPU" : "Vulkan GPU";
-                if (message?.Contains("failed to initialize", StringComparison.Ordinal) == true)
-                    hardware = null;
-            });
-            var builder = factory!.CreateBuilder().WithThreads(Math.Max(1, Math.Min(4, Environment.ProcessorCount))).WithNoContext();
-            if (language == "auto") builder.WithLanguageDetection();
-            else builder.WithLanguage(language);
-            await using var processor = builder.Build();
-            var parts = new List<string>();
-            await foreach (var segment in processor.ProcessAsync(pcm, cancellation).ConfigureAwait(false))
-            {
-                var text = segment.Text.Replace("[BLANK_AUDIO]", "", StringComparison.Ordinal).Trim();
-                if (text.Length > 0) parts.Add(text);
+                var text = await RecognizeAsync(pcm, language, compute, cancellation).ConfigureAwait(false);
+                if (!CoreMlBridge.PredictionFailed) return text;
             }
-            ActiveHardware = hardware ?? "CPU";
-            if (hardware is not null) FallbackReason = null;
-            else if (compute == SpeechComputeMode.Automatic && FallbackReason is null)
-                FallbackReason = "No usable accelerator was found. Using CPU.";
-            return string.Join(' ', parts);
+            catch (WhisperProcessingException) when (CoreMlBridge.PredictionFailed && !cancellation.IsCancellationRequested)
+            {
+                // Retry the observed encoder failure before any transcript can reach the caller.
+            }
+            cancellation.ThrowIfCancellationRequested();
+            neuralRequested = false;
+            FallbackReason = "Neural Engine recognition failed. Using the next available processor.";
+            return await RecognizeAsync(pcm, language, compute, cancellation).ConfigureAwait(false);
         }
         finally { gate.Release(); }
     }
 
-    private async Task LoadAsync(string model, SpeechComputeMode compute, CancellationToken cancellation)
+    private async Task<string> RecognizeAsync(float[] pcm, string language, SpeechComputeMode compute, CancellationToken cancellation)
+    {
+        CoreMlBridge.Configure(neuralRequested);
+        string? hardware = null;
+        var coreMlLoaded = false;
+        using var logger = LogProvider.AddLogger((_, message) =>
+        {
+            if (message?.StartsWith("whisper_backend_init_gpu: using ", StringComparison.Ordinal) == true)
+                hardware = OperatingSystem.IsMacOS() ? "Metal GPU" : "Vulkan GPU";
+            if (message?.Contains("failed to initialize", StringComparison.Ordinal) == true) hardware = null;
+            if (message?.Contains("Core ML model loaded", StringComparison.Ordinal) == true) coreMlLoaded = true;
+        });
+        var builder = factory!.CreateBuilder().WithThreads(Math.Max(1, Math.Min(4, Environment.ProcessorCount))).WithNoContext();
+        if (language == "auto") builder.WithLanguageDetection();
+        else builder.WithLanguage(language);
+        await using var processor = builder.Build();
+        var parts = new List<string>();
+        await foreach (var segment in processor.ProcessAsync(pcm, cancellation).ConfigureAwait(false))
+        {
+            var text = segment.Text.Replace("[BLANK_AUDIO]", "", StringComparison.Ordinal).Trim();
+            if (text.Length > 0) parts.Add(text);
+        }
+        if (!CoreMlBridge.PredictionFailed)
+        {
+            var neural = coreMlLoaded && CoreMlBridge.NeuralConfiguration;
+            ActiveHardware = neural ? hardware is null ? "Neural Engine" : "Neural Engine + " + hardware : hardware ?? "CPU";
+            if (neural) FallbackReason = null;
+            else if (neuralRequested) FallbackReason = "Neural Engine is unavailable. Using " + ActiveHardware + ".";
+            else if (compute == SpeechComputeMode.Automatic && hardware is null && FallbackReason is null)
+                FallbackReason = "No usable accelerator was found. Using CPU.";
+        }
+        return string.Join(' ', parts);
+    }
+
+    private async Task LoadAsync(string model, SpeechComputeMode compute, CancellationToken cancellation, bool retryNeural = false)
     {
         if (!Models.Contains(model)) throw new ArgumentException("Select a supported speech model.", nameof(model));
         if (!Enum.IsDefined(compute)) throw new ArgumentException("Select a supported hardware mode.", nameof(compute));
-        if (loadedModel == model && loadedCompute == compute) return;
+        if (loadedModel == model && loadedCompute == compute && !retryNeural) return;
         Directory.CreateDirectory(directory);
         var path = Path.Combine(directory, "ggml-" + model + ".bin");
         if (model == SpeechProfiles.WhisperModel)
@@ -108,6 +135,22 @@ public sealed class WhisperEngine(string directory) : ISpeechEngine, IDisposable
             }
             finally { if (File.Exists(staging)) File.Delete(staging); }
         }
+        string? neuralPreparationError = null;
+        var requestNeural = compute == SpeechComputeMode.Automatic && model == SpeechProfiles.WhisperModel && CoreMlBridge.Available;
+        if (requestNeural)
+        {
+            try
+            {
+                Status?.Invoke("Preparing the Neural Engine model.");
+                await CoreMlEncoder.PrepareAsync(directory, cancellation).ConfigureAwait(false);
+            }
+            catch (Exception error) when (!cancellation.IsCancellationRequested
+                && error is HttpRequestException or IOException or UnauthorizedAccessException or OperationCanceledException)
+            {
+                requestNeural = false;
+                neuralPreparationError = "The Neural Engine model could not be prepared. Using the next available processor.";
+            }
+        }
         Status?.Invoke("Loading the speech model.");
         _ = runtimeConfigured.Value;
         // Whisper.net loads one native runtime per process. Keep its GPU-capable runtime loaded and disable GPU use per context.
@@ -117,6 +160,8 @@ public sealed class WhisperEngine(string directory) : ISpeechEngine, IDisposable
         loadedCompute = null;
         ActiveHardware = null;
         FallbackReason = null;
+        neuralRequested = requestNeural;
+        CoreMlBridge.Configure(neuralRequested);
         var useGpu = compute == SpeechComputeMode.Automatic && !OperatingSystem.IsAndroid();
         string? fallback = null;
         var next = await Task.Run(() =>
@@ -139,7 +184,7 @@ public sealed class WhisperEngine(string directory) : ISpeechEngine, IDisposable
         loadedModel = model;
         loadedCompute = compute;
         ActiveHardware = !useGpu || fallback is not null || RuntimeOptions.LoadedLibrary == RuntimeLibrary.CpuNoAvx ? "CPU" : null;
-        FallbackReason = fallback ?? (compute == SpeechComputeMode.Automatic && OperatingSystem.IsAndroid()
+        FallbackReason = fallback ?? neuralPreparationError ?? (compute == SpeechComputeMode.Automatic && OperatingSystem.IsAndroid()
             ? "Acceleration is unavailable in this Android build." : null);
         Status?.Invoke("Ready. Speech recognition stays on this device.");
     }
@@ -152,7 +197,7 @@ public sealed class WhisperEngine(string directory) : ISpeechEngine, IDisposable
             ? [RuntimeLibrary.CpuNoAvx]
             : OperatingSystem.IsWindows() || OperatingSystem.IsLinux()
                 ? [RuntimeLibrary.Vulkan, RuntimeLibrary.Cpu, RuntimeLibrary.CpuNoAvx]
-                : [RuntimeLibrary.Cpu];
+                : CoreMlBridge.Available ? [RuntimeLibrary.CoreML, RuntimeLibrary.Cpu] : [RuntimeLibrary.Cpu];
         return true;
     }
 
