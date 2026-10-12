@@ -21,7 +21,10 @@ The six checksum-verified audio fixtures completed five passes each without erro
 
 The signed packaged Mac app passed its settings, hardware controls, compact layout, microphone start, and cancellation checks.
 The final signed Mac build passed its packaged interface check with exit code zero.
-Installation remains pending because Mac SSH access stopped responding again.
+The update is installed at `/Applications/Dictate.app` and opened successfully.
+Strict signature verification passed. Settings and transcript history remained unchanged.
+The installed interface matches the source. The installed Core ML bridge matches the signed build.
+All five encoder files match the checksum-verified archive.
 
 `core.txt` records 27 passing core tests.
 The first test-host connection timed out. The retry passed with `VSTEST_CONNECTION_TIMEOUT=180`.
@@ -34,6 +37,7 @@ Native Windows and Android checks remain unavailable while Saibot is offline.
 `mac-hardware.json` records hardware switching, native logs, recognition timings, and cancellation.
 `mac-fallback.json` records missing-encoder fallback and restoration.
 `mac-audio.json` records 30 audio runs. `mac-compute-plan.json` records the preferred device for all encoder layers.
+`mac-ui.txt` records the final packaged interface check. `mac-install.json` records installation checks.
 `checks-build.txt` records successful compilation after the optional-encoder timeout handling change.
 
 Run the hardware checks on an Apple silicon Mac with a 16 kHz mono PCM16 reference:

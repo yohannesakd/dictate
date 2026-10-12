@@ -5,11 +5,11 @@
       "ActiveHardware": "CPU",
       "FallbackReason": null,
       "runtime": 4,
-      "preparationMs": 150.9787,
+      "preparationMs": 10473.0775,
       "recognitionMs": [
-        313.8539,
-        307.859,
-        306.0299
+        318.6235,
+        293.9405,
+        290.9023
       ],
       "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
       "nativeContext": [
@@ -30,11 +30,11 @@
       "ActiveHardware": "Neural Engine \u002B Metal GPU",
       "FallbackReason": null,
       "runtime": 4,
-      "preparationMs": 97.2269,
+      "preparationMs": 98.0474,
       "recognitionMs": [
-        149.2393,
-        129.1569,
-        127.7475
+        1756.8768,
+        150.7952,
+        137.0406
       ],
       "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
       "nativeContext": [
@@ -61,11 +61,11 @@
       "ActiveHardware": "CPU",
       "FallbackReason": null,
       "runtime": 4,
-      "preparationMs": 97.0205,
+      "preparationMs": 98.6565,
       "recognitionMs": [
-        306.6053,
-        304.4735,
-        295.9716
+        300.8082,
+        291.6661,
+        295.31
       ],
       "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
       "nativeContext": [
@@ -86,11 +86,11 @@
       "ActiveHardware": "Neural Engine \u002B Metal GPU",
       "FallbackReason": null,
       "runtime": 4,
-      "preparationMs": 89.1092,
+      "preparationMs": 95.9354,
       "recognitionMs": [
-        141.6387,
-        121.9031,
-        127.7516
+        132.9411,
+        127.9746,
+        130.7654
       ],
       "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
       "nativeContext": [

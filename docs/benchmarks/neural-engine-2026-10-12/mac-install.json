@@ -1,0 +1,10 @@
+{
+  "signature_verified": true,
+  "settings_unchanged": true,
+  "history_unchanged": true,
+  "encoder_sha256": "8cf860309e2449e2bdc8be834cf838ab2565747ecc8c0ef914ef5975115e192b",
+  "encoder_files_verified": 5,
+  "installed": "/Applications/Dictate.app",
+  "interface_sha256": "75338a47dd2ab5bc46de3fa0d2f95799b41a74bba9ad78f0fa57986fff0d53e2",
+  "bridge_matches_signed_build": true
+}
