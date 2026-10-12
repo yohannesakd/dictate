@@ -44,12 +44,14 @@ No key was copied to the server, another device, a screenshot, or a log.
 After installation, the actual app displayed `Checking connection…` for Groq.
 System Events identified this macOS prompt: `Dictate.Desktop wants to access key “Dictate” in your keychain.`
 The prompt includes an authentication field and the `Always Allow`, `Deny`, and `Allow` buttons.
-Actual app credential verification remains pending until the user completes that local prompt.
-Unlocking Keychain alone did not complete this approval. The user has been asked to complete the identified prompt.
+The user completed the local prompt with `Always Allow`.
+The installed app then displayed `Connected` for both Groq and DeepSeek.
+System Events read those labels from the actual Cleanup interface. See [mac/credentials-after-install.json](mac/credentials-after-install.json).
+Unlocking Keychain alone did not complete this approval.
 
 An SSH credential read returned `-25308`. That remote security session does not establish whether the GUI Keychain is locked.
-A standalone GUI probe also timed out. The actual app prompt provides the direct evidence for the remaining check.
-The old and new backend signing requirements match. This task did not modify Keychain entries or access rules.
+A standalone GUI probe also timed out. The actual app prompt identified the required local approval.
+The old and new backend signing requirements match. The user approved access through macOS. The agent did not copy or replace Keychain entries.
 
 ## Limits
 
