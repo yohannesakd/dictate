@@ -42,12 +42,9 @@ internal static class MacChecks
         Require(permissions.GetProperty("microphone").GetBoolean(), "Microphone permission is required for the signed verification bundle.");
         session.Hotkeys.Start();
         Require(MacNative.Permissions(false).GetProperty("keyboard").GetBoolean(), "The native fn shortcut did not start.");
-        foreach (var engine in SpeechProfiles.Engines)
-        {
-            await session.SelectEngineAsync(engine);
-            Require(session.Store.LoadSettings().SpeechEngine == engine, "The engine choice did not persist.");
-        }
-        notes.Add("Both engine choices persisted in the native service.");
+        Require(session.Settings.SpeechEngine == SpeechEngineKind.Whisper && session.Store.LoadSettings().SpeechEngine == SpeechEngineKind.Whisper,
+            "The English Whisper profile was not selected.");
+        notes.Add("The native service uses the English Whisper profile.");
         var delivery = new MacDelivery();
         var command = Path.Combine(Output, "fixture-command");
         using var fixture = new ExternalFixture(command);
@@ -96,19 +93,16 @@ internal static class MacChecks
         Require(await session.Secrets.ReadAsync(account) is null, "Keychain deletion failed.");
         for (var i = 0; i < 2; i++) { session.Audio.Start(); await Task.Delay(700); Require(session.Audio.Stop().Length > 0, "Microphone returned no audio."); }
         notes.Add("Keychain and microphone restart passed.");
-        using var speech = new SpeechRecognizer(Models);
-        foreach (var engine in SpeechProfiles.Engines)
-        {
-            var transcript = await speech.TranscribeAsync(WaveAudio.Read(Path.Combine(Fixtures, "jfk.wav")), engine, SpeechProfiles.WhisperModel, "en", CancellationToken.None);
-            Require(transcript.Contains("country", StringComparison.OrdinalIgnoreCase), engine + " recognition failed: " + transcript);
-            await Signal(0);
-            receipt = await delivery.CaptureTarget().InsertAsync(transcript, transcript, CancellationToken.None);
-            Require(receipt.Outcome == DeliveryOutcome.Verified && await Text() == transcript, engine + " text did not reach the native field.");
-            notes.Add(engine + " English CPU recognition and native field delivery passed.");
-        }
+        using var speech = new WhisperEngine(Models);
+        var transcript = await speech.TranscribeAsync(WaveAudio.Read(Path.Combine(Fixtures, "jfk.wav")), SpeechProfiles.WhisperModel, "en", CancellationToken.None);
+        Require(transcript.Contains("country", StringComparison.OrdinalIgnoreCase), "Whisper recognition failed: " + transcript);
+        await Signal(0);
+        receipt = await delivery.CaptureTarget().InsertAsync(transcript, transcript, CancellationToken.None);
+        Require(receipt.Outcome == DeliveryOutcome.Verified && await Text() == transcript, "Whisper text did not reach the native field.");
+        notes.Add("Whisper English CPU recognition and native field delivery passed.");
         await SpeechEvaluation.RunAsync(speech, Path.Combine(Fixtures, "samples.json"), Path.Combine(Output, "audio.json"));
         await SpeechEvaluation.CheckCancellationAsync(speech, WaveAudio.Read(Path.Combine(Fixtures, "jfk.wav")));
-        notes.Add("Both English profiles completed six audio fixtures, five passes, cancellation, and recovery.");
+        notes.Add("English Whisper completed six audio fixtures, five passes, cancellation, and recovery.");
         File.WriteAllLines(Path.Combine(Output, "checks.txt"), notes);
     }
     [DllImport("dictate-macos", EntryPoint = "dictate_fixture_run")] internal static extern void RunFixture([MarshalAs(UnmanagedType.LPUTF8Str)] string command);

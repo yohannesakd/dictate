@@ -1,7 +1,7 @@
 {
   "name": "dictate-desktop",
   "version": "0.2.0",
-  "description": "Private English dictation with two CPU speech engines.",
+  "description": "Private English dictation with CPU speech recognition.",
   "author": "Yohannes",
   "license": "UNLICENSED",
   "private": true,

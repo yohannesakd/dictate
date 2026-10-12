@@ -71,7 +71,6 @@ internal sealed class AndroidBridge : Java.Lang.Object
         var args = request.GetProperty("args");
         switch (request.GetProperty("command").GetString())
         {
-            case "select-engine": await session.UpdateSettingsAsync(settings => settings with { SpeechEngine = AppCommands.ParseEngine(args.GetProperty("engine").GetString()) }); break;
             case "prepare": await session.PrepareAsync(cancellation); break;
             case "settings":
                 if (args.TryGetProperty("open_at_login", out _)) throw new ArgumentException("Android keeps the voice keyboard available without opening the app at login.");
@@ -146,7 +145,7 @@ internal sealed class AndroidBridge : Java.Lang.Object
             preparing = session.Preparing, signingIn,
             permissions = new { microphone = MicrophoneAllowed(), keyboard = enabled },
             wayland = false, credentials, credentialsError = credentialErrors.GetValueOrDefault(AppCommands.ProviderName(session.Settings.Provider)),
-            models = new { whistle = File.Exists(Path.Combine(directory, "Whistle", "whistle.cact")), whisper = File.Exists(Path.Combine(directory, "ggml-" + SpeechProfiles.WhisperModel + ".bin")), whistleSupported = session.Speech.WhistleSupported },
+            models = new { whisper = File.Exists(Path.Combine(directory, "ggml-" + SpeechProfiles.WhisperModel + ".bin")) },
             directory = session.Store.DirectoryPath, usage = session.Store.Usage(),
             history = session.Store.History().Select(record => new { record.Id, record.Date, record.Text, record.Raw, record.Application, record.Note, record.SpeechEngine, record.Delivery, record.Metrics }).ToArray()
         };

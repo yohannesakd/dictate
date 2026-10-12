@@ -1,22 +1,8 @@
-using System.Text;
-
 namespace Dictate.Speech;
 
-/// <summary>Reads and writes the 16 kHz mono PCM16 boundary used by native speech processes and evaluation fixtures.</summary>
+/// <summary>Reads 16 kHz mono PCM16 evaluation fixtures.</summary>
 public static class WaveAudio
 {
-    public static async Task WriteAsync(string path, float[] pcm, CancellationToken cancellation)
-    {
-        await using var file = new FileStream(path, FileMode.CreateNew, FileAccess.Write);
-        using var writer = new BinaryWriter(file, Encoding.ASCII, leaveOpen: true);
-        writer.Write("RIFF"u8); writer.Write(36 + pcm.Length * 2); writer.Write("WAVEfmt "u8);
-        writer.Write(16); writer.Write((short)1); writer.Write((short)1); writer.Write(16000); writer.Write(32000);
-        writer.Write((short)2); writer.Write((short)16); writer.Write("data"u8); writer.Write(pcm.Length * 2);
-        var bytes = new byte[pcm.Length * 2];
-        for (var i = 0; i < pcm.Length; i++) System.Buffers.Binary.BinaryPrimitives.WriteInt16LittleEndian(bytes.AsSpan(i * 2), (short)Math.Clamp(Math.Round(pcm[i] * 32768), short.MinValue, short.MaxValue));
-        await file.WriteAsync(bytes, cancellation).ConfigureAwait(false);
-    }
-
     public static float[] Read(string path)
     {
         using var file = File.OpenRead(path);

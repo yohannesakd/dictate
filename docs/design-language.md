@@ -36,7 +36,7 @@ The compact layout keeps the original Mac app's header, weekly usage, and recent
 ```text
 ┌──────────────────────────────────┐
 │ Native window controls           │
-│ Wave icon  Dictate   Engine menu  │
+│ Wave icon  Dictate                │
 │ Home       History     Settings  │
 │                                  │
 │ Ready to dictate                 │
@@ -63,9 +63,8 @@ Windows and Linux use the same five-bar mark on the app's blue background in the
 Use custom segmented navigation, switches, fields, and menus. Keep native window controls and system menus.
 Use one primary action per section. Show supporting actions as quiet buttons.
 
-The engine menu always offers Whistle and Whisper. Both run English recognition on the CPU.
-Whisper is the default for new settings. Keep existing engine choices.
-Show model download size and availability in Settings. Disable engine changes during dictation.
+Every platform uses English Whisper on the CPU. There is no engine menu or model selector.
+Settings show the model's 60 MB download size and availability. Disable model preparation during dictation.
 
 The floating indicator displays only nine waveform bars. Its visible surface is 76 by 24 pixels.
 Audio levels control the bars during recording. The waveform pulses during processing and insertion.
@@ -80,7 +79,7 @@ Settings group speech, cleanup, dictionary, permissions, and general options. Ex
 
 All four apps package the same HTML, CSS, JavaScript, and fonts.
 Android displays these assets in a local WebView. The native activity owns permissions, clipboard access, export, and credentials.
-The Android voice keyboard uses the same recording control, engine menu, and styles.
+The Android voice keyboard uses the same recording control and styles.
 Keep touch controls at least 44 pixels tall. Hide desktop window controls and use the available screen width.
 Android uses the system keyboard picker instead of global desktop shortcuts.
 Keep warnings in the main app. Keep the keyboard recording area free of warnings.

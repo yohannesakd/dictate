@@ -11,7 +11,7 @@ public sealed class DesktopSession : IDisposable
     public DictationSettings Settings { get; private set; }
     public DesktopSecrets Secrets { get; } = new();
     public HttpClient Http { get; } = new() { Timeout = TimeSpan.FromSeconds(30) };
-    public SpeechRecognizer Speech { get; }
+    public WhisperEngine Speech { get; }
     public DictationController Controller { get; }
     public ShortcutController Shortcuts { get; }
     public GlobalShortcuts Hotkeys { get; }
@@ -50,8 +50,6 @@ public sealed class DesktopSession : IDisposable
         try
         {
             var next = SpeechProfiles.Normalize(change(Settings));
-            if (next.SpeechEngine != Settings.SpeechEngine && Controller.Phase != DictationPhase.Idle)
-                throw new InvalidOperationException("Finish or cancel dictation before changing the speech engine.");
             await Store.SaveSettingsAsync(next);
             Settings = next;
             SettingsChanged?.Invoke();
@@ -59,7 +57,6 @@ public sealed class DesktopSession : IDisposable
         finally { settingsGate.Release(); }
     }
 
-    public Task SelectEngineAsync(SpeechEngineKind engine) => UpdateSettingsAsync(settings => settings with { SpeechEngine = engine });
     public void Message(string message) => Post(() => { Status = message; Notice?.Invoke(message); });
     public void ClearNotice() { Status = null; SettingsChanged?.Invoke(); }
     public void Dispose() { Hotkeys.Dispose(); Shortcuts.Dispose(); Controller.Dispose(); Speech.Dispose(); Http.Dispose(); settingsGate.Dispose(); }

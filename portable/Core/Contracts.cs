@@ -3,6 +3,7 @@ namespace Dictate.Core;
 public enum CleanupProvider { Groq, DeepSeek, ChatGPT }
 public enum DictationPhase { Idle, Listening, Processing, Delivering }
 public enum DeliveryOutcome { Verified, Sent, FocusChanged, Cancelled, Failed, Unsupported }
+// Retain stored engine identities so old settings and transcript histories remain readable.
 public enum SpeechEngineKind { Whisper, Whistle }
 
 public sealed record DictationSettings
@@ -27,7 +28,7 @@ public interface IAudioCapture : IDisposable
 
 public interface ISpeechEngine
 {
-    Task<string> TranscribeAsync(float[] pcm, SpeechEngineKind engine, string model, string language, CancellationToken cancellation);
+    Task<string> TranscribeAsync(float[] pcm, string model, string language, CancellationToken cancellation);
 }
 
 public interface ITextTarget

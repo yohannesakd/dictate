@@ -19,9 +19,8 @@ npm run prepare-ui
 npm start
 ```
 
-Choose **Whistle** or **Whisper** in the header menu or tray menu.
 In Settings, select **Download and load model**.
-Both engines recognize English on the CPU.
+Whisper recognizes English on the CPU without a GPU or Neural Engine.
 The app fixes Whisper to `base.en-q5_1` and does not expose other model sizes.
 
 Hold **F8** to speak. Release **F8** to insert text.
@@ -63,8 +62,6 @@ If Linux restricts user namespaces, install the bundled Chromium sandbox with ro
 The packaged app does not require Node.js or the .NET SDK.
 The publisher retains only the target speech libraries and removes release debug symbols.
 The x64 Whisper runtime includes a no-AVX fallback.
-The selected Whistle binaries support Windows x64, Linux x64, and macOS ARM64.
-Intel Mac Whistle and other desktop architectures need additional verified native binaries.
 
 ## Build the Android keyboard
 
@@ -77,10 +74,9 @@ portable/scripts/build-android.sh Release android-arm64
 ```
 
 For an x64 emulator, use `portable/scripts/build-android.sh Debug android-x64`.
-Whistle requires ARM64. Android x64 supports Whisper only.
 Install the APK from `portable/artifacts/android`.
 Open Dictate and allow microphone access.
-Enable the voice keyboard and download the selected speech model.
+Enable the voice keyboard and download the English speech model.
 Choose Dictate from Android’s keyboard picker while a text field has focus.
 Tap **Record**, speak, then tap **Stop**.
 Tap **Keyboard** to return to another keyboard.
@@ -98,4 +94,4 @@ dotnet test portable/Tests/Dictate.Tests.csproj
 ```
 
 The frozen cleanup fixtures preserve the original Mac guard cases.
-See [verification instructions](docs/verification.md) and the [current results](../docs/electron-desktop-verification.md).
+See [verification instructions](docs/verification.md) and the [Whisper-only record](../docs/whisper-only.md).

@@ -15,7 +15,7 @@ public class DeliveryChecks
     }
     private sealed class Speech : ISpeechEngine
     {
-        public Task<string> TranscribeAsync(float[] pcm, SpeechEngineKind engine, string model, string language, CancellationToken cancellation) => Task.FromResult("");
+        public Task<string> TranscribeAsync(float[] pcm, string model, string language, CancellationToken cancellation) => Task.FromResult("");
     }
     private sealed class Store : IDictationStore
     {

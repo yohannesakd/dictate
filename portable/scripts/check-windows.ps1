@@ -20,7 +20,7 @@ try {
     # Native recognition checks and the Electron service use the same CPU models.
     Copy-Item (Join-Path $FixtureDirectory 'models') (Join-Path $data 'models') -Recurse -Force
     $executable = Join-Path $PackageDirectory 'Dictate.exe'
-    foreach ($engine in @('', 'whistle', 'whisper')) {
+    foreach ($engine in @('', 'whisper')) {
         $name = if ($engine) { "restart-$engine" } else { 'ui' }
         $destination = Join-Path $OutputDirectory $name
         $arguments = '--data-directory "' + $data + '" --verify-desktop "' + $destination + '"'

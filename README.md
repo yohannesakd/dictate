@@ -4,14 +4,12 @@ Dictate provides local English dictation on macOS, Windows, Linux, and Android.
 The three desktop apps use one Electron interface, one core, and software rendering.
 Speech recognition runs on the CPU without a GPU.
 
-The **Speech engine** menu offers two choices:
-
-- **Whistle** uses a 16.9 MB model. It uses less memory and handles short dictation well.
-- **Whisper** uses the 59.7 MB quantized English `base.en-q5_1` model. It handles long dictation faster on the tested Windows and Linux machine.
-
-The choice survives restart. Engine changes require idle dictation.
-The [English comparison](docs/whistle-whisper-evaluation.md) explains quality and resource differences.
-The [current verification record](docs/electron-desktop-verification.md) identifies tested devices and remaining limits.
+All platforms use the 59.7 MB quantized English Whisper model, `base.en-q5_1`.
+No GPU or Neural Engine is required. Older supported x64 CPUs use the bundled no-AVX runtime.
+Whistle is removed from recognition, downloads, menus, and Android packaging.
+Older Whistle settings load as Whisper. Transcript history retains the engine that originally produced each record.
+The [Whisper-only decision](docs/whisper-only.md) explains the change and verification limits.
+The [archived comparison](docs/whistle-whisper-evaluation.md) retains earlier quality and resource measurements.
 
 ## Use dictation
 
@@ -36,7 +34,6 @@ Select a word and press **fn+D** or **F8+D** to add a dictionary entry.
 
 The Mac build requires macOS 15 or later, Xcode tools, Node.js 22 or later, and the .NET 10 SDK.
 The tested Mac uses Apple silicon.
-The pinned Whistle helper does not support Intel Macs.
 
 ```sh
 ./make-signing-identity.sh
@@ -45,7 +42,7 @@ open build/Dictate.app
 ```
 
 Run the signing script once. Keep the signing identity to retain microphone and Accessibility permissions across builds.
-Models download when selected and loaded in Settings.
+The English model downloads when loaded in Settings.
 The build no longer requires CoreML model folders or a Phonon runtime.
 
 For a remote Mac, retain `signing/` in `~/Library/Application Support/Dictate Build`.
@@ -71,7 +68,6 @@ ChatGPT cleanup uses an unofficial endpoint that can change.
 
 ## Credits
 
-Whistle and Needle are from Cactus Compute and use Apache-2.0 licences.
 Whisper is from OpenAI. Whisper and whisper.cpp use MIT licences.
 The desktop interface uses Electron and the Inter font.
 The [design language](docs/design-language.md) defines its shared colors, spacing, controls, and indicator behavior.

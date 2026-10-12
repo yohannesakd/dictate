@@ -1,0 +1,20 @@
+[
+  {
+    "configuration": "debug",
+    "bytes": 23559866,
+    "sha256": "c4755fd281fb48028c9228eeb5cdde1a54c84f8f3bdba3484d8a722e8802e7ca",
+    "retired_files": [],
+    "whisper_libraries": [
+      "lib/arm64-v8a/libwhisper.so"
+    ]
+  },
+  {
+    "configuration": "release",
+    "bytes": 22477036,
+    "sha256": "5d84947d72a1cadfe003ec60897bfe58aaf4a2537672b4c96888c0d7cb360b54",
+    "retired_files": [],
+    "whisper_libraries": [
+      "lib/arm64-v8a/libwhisper.so"
+    ]
+  }
+]

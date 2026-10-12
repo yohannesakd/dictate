@@ -1,0 +1,11 @@
+  Determining projects to restore...
+  Restored /home/sai/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/Dictate.Core.csproj (in 369 ms).
+  Restored /home/sai/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/Dictate.Speech.csproj (in 1.19 sec).
+  Restored /home/sai/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Tests/Dictate.Tests.csproj (in 2.64 sec).
+  Dictate.Core -> /home/sai/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/bin/Release/net10.0/Dictate.Core.dll
+  Dictate.Speech -> /home/sai/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/bin/Release/net10.0/Dictate.Speech.dll
+  Dictate.Tests -> /home/sai/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Tests/bin/Release/net10.0/Dictate.Tests.dll
+Test run for /home/sai/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Tests/bin/Release/net10.0/Dictate.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    26, Skipped:     0, Total:    26, Duration: 3 s - Dictate.Tests.dll (net10.0)

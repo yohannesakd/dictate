@@ -74,17 +74,14 @@ internal static class WindowsChecks
             var speechFixture = Environment.GetEnvironmentVariable("DICTATE_SPEECH_FIXTURES");
             if (speechFixture is not null)
             {
-                using var speech = new SpeechRecognizer(Path.Combine(speechFixture, "models"));
-                foreach (var engine in Enum.GetValues<SpeechEngineKind>())
-                {
-                    var text = await speech.TranscribeAsync(WaveAudio.Read(Path.Combine(speechFixture, "jfk.wav")), engine, SpeechProfiles.WhisperModel, "en", CancellationToken.None);
-                    Require(text.Contains("country", StringComparison.OrdinalIgnoreCase), "Unexpected " + engine + " transcript: " + text);
-                    await Signal("reset");
-                    var insertedSpeech = await delivery.CaptureTarget().InsertAsync(text, text, CancellationToken.None);
-                    Require(insertedSpeech.Outcome == DeliveryOutcome.Verified && Read((nint)fields.First) == text,
-                        engine + " speech did not reach the native Windows field: " + insertedSpeech + "; actual=" + Read((nint)fields.First) + "; expected=" + text);
-                    Console.WriteLine(engine + " recognition and native field delivery passed.");
-                }
+                using var speech = new WhisperEngine(Path.Combine(speechFixture, "models"));
+                var text = await speech.TranscribeAsync(WaveAudio.Read(Path.Combine(speechFixture, "jfk.wav")), SpeechProfiles.WhisperModel, "en", CancellationToken.None);
+                Require(text.Contains("country", StringComparison.OrdinalIgnoreCase), "Unexpected " + "Whisper transcript: " + text);
+                await Signal("reset");
+                var insertedSpeech = await delivery.CaptureTarget().InsertAsync(text, text, CancellationToken.None);
+                Require(insertedSpeech.Outcome == DeliveryOutcome.Verified && Read((nint)fields.First) == text,
+                    "Whisper speech did not reach the native Windows field: " + insertedSpeech + "; actual=" + Read((nint)fields.First) + "; expected=" + text);
+                Console.WriteLine("Whisper recognition and native field delivery passed.");
             }
             Console.WriteLine("Windows native Unicode insertion, selection replacement, selected-word capture, raw restoration, undo, focus changes, edit guards, caret guards, and cancellation passed.");
             Console.WriteLine("Windows microphone devices: " + WaveInEvent.DeviceCount);

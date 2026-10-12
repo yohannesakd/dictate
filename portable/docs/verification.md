@@ -1,6 +1,6 @@
 # Verify the shared app
 
-The [current result record](../../docs/electron-desktop-verification.md) lists tested machines and remaining limits.
+The [Whisper-only record](../../docs/whisper-only.md) lists the current change and verification limits.
 The [October 10 archive](verification-2026-10-10.md) retains the original warning investigation and earlier platform results.
 
 ## Core and CPU checks
@@ -10,18 +10,17 @@ dotnet test portable/Tests/Dictate.Tests.csproj
 dotnet run --project portable/Checks -- --evaluate portable/fixtures/speech/samples.json portable/models portable/artifacts/audio.json
 ```
 
-The speech check uses six checksum-verified English fixtures, five passes, and both selected profiles.
+The speech check uses six checksum-verified English fixtures and five passes through Whisper.
 It checks cancellation and recovery after the audio runs.
 Output records model preparation and recognition separately.
-Parent memory after Whistle exits does not include the child’s peak memory.
-Use the dedicated comparison harness for resource comparisons.
+Parent memory includes the managed app and its cached Whisper model. Earlier comparisons retain their original measurement limits.
 
 ## Linux checks
 
 Build the Linux Electron package and `portable/NativeChecks` in Release mode.
 Run `portable/scripts/check-native.sh` on a Linux worker with Docker.
 The check opens GTK fields and the shared app in an isolated X11 display.
-It verifies Unicode readback, undo, stale-focus refusal, edited-text refusal, all pages, copy, dictionary, cleanup, recording, and both engine choices after process restart.
+It verifies Unicode readback, undo, stale-focus refusal, edited-text refusal, all pages, copy, dictionary, cleanup, recording, and the Whisper profile after process restart.
 The isolated display does not verify a physical microphone or Wayland shortcuts.
 
 ## Windows checks
@@ -39,8 +38,8 @@ powershell -NoProfile -File portable/scripts/check-windows.ps1 `
   -FixtureDirectory portable/fixtures/speech
 ```
 
-The runner checks real Edit controls, correction guards, microphone restart, and both CPU engines.
-It checks Electron pages, controls, clipboard, recording, indicator isolation, and both engine choices after process restart.
+The runner checks real Edit controls, correction guards, microphone restart, and CPU Whisper.
+It checks Electron pages, controls, clipboard, recording, indicator isolation, and the Whisper profile after process restart.
 Other applications must not take focus during native delivery checks.
 An observed focus change must stop insertion.
 
@@ -55,7 +54,8 @@ open -n -W build/Dictate.Checks.app --args "$check_output" "$PWD/portable/fixtur
 check_launcher=$!
 for attempt in {1..100}; do
   if test -f "$check_output/fixture-command.ready"; then
-    open build/Dictate.Fixture.app
+    osascript -e 'tell application "System Events" to tell first application process whose bundle identifier is "dev.local.dictate.fixture"' \
+      -e 'set frontmost to true' -e 'perform action "AXRaise" of window "Dictate verification field"' -e 'end tell'
     break
   fi
   sleep 0.05
@@ -80,14 +80,16 @@ The check uses the real renderer, native service, clipboard, and microphone adap
 It saves screenshots and exits with a result code.
 The normal recording button must hide the main window before capture starts.
 Warnings stay in the main window, and the indicator remains unfocused.
-Run twice more with `--verify-restart whistle` and `--verify-restart whisper` to check persistence across complete process restarts.
+Run once more with `--verify-restart whisper` to check the profile after a complete process restart.
 On macOS, launch the signed package through `open -n -W` with absolute argument paths.
 Keep the Mac unlocked and the desktop active.
 The Linux runner supplies synthetic silence to test capture lifecycle.
 
 ## Android checks
 
-Build an ARM64 Debug APK and install it on the ARM64 emulator.
+Use the Dispatch-managed Android emulator or a physical Android device with wireless debugging.
+Follow the Dispatch skill's Android-on-Saibot workflow. Keep local Mac emulators stopped during routine checks.
+Build a Debug APK for the device's architecture and install it on that device.
 Open the device in the T3 Device panel before interaction.
 Install the JFK fixture at the app’s internal `files/device-check.wav` path.
 Copy the speech fixtures into `files/evaluation` to enable the audio matrix.
@@ -97,7 +99,7 @@ Grant microphone permission. Enable and select the Dictate keyboard before you r
 adb shell am instrument -w dev.local.dictate.portable/dev.local.dictate.portable.DeviceChecks
 ```
 
-The instrumentation checks the shared WebView, settings, engine persistence, model preparation, clipboard, history search, and live input preservation.
-It also checks a real EditText, binding changes, correction guards, Keystore, microphone capture, and both selected speech profiles.
-Verify both engine menu choices and persistence after restart through the visible Settings page.
+The instrumentation checks the shared WebView, settings, the Whisper profile, model preparation, clipboard, history search, and live input preservation.
+It also checks a real EditText, binding changes, correction guards, Keystore, microphone capture, and CPU Whisper recognition.
+Verify the English Whisper profile and persistence after restart through the visible Settings page.
 Physical Android microphone, latency, and battery checks remain open.

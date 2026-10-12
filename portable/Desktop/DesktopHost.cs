@@ -115,13 +115,10 @@ internal sealed class DesktopHost : IDisposable
             switch (command)
             {
                 case "state": result = Snapshot(); break;
-                case "select-engine":
-                    if (preparing) throw new InvalidOperationException("Wait for the model to finish loading before changing engines.");
-                    await session.SelectEngineAsync(AppCommands.ParseEngine(args.GetProperty("engine").GetString())); break;
                 case "prepare":
                     if (preparing || session.Controller.Phase != DictationPhase.Idle) throw new InvalidOperationException("Finish the current action before loading a model.");
                     preparing = true; Publish();
-                    try { await session.Speech.PrepareAsync(session.Settings.SpeechEngine, session.Settings.SpeechModel, lifetime.Token); }
+                    try { await session.Speech.PrepareAsync(session.Settings.SpeechModel, lifetime.Token); }
                     finally { preparing = false; Publish(); }
                     break;
                 case "settings": await session.UpdateSettingsAsync(settings => AppCommands.Patch(settings, args)); break;
@@ -175,7 +172,6 @@ internal sealed class DesktopHost : IDisposable
     private object Snapshot()
     {
         var directory = Path.Combine(session.Store.DirectoryPath, "models");
-        var whistleModel = Path.Combine(directory, "Whistle", "whistle.cact");
         var whisperModel = Path.Combine(directory, "ggml-" + SpeechProfiles.WhisperModel + ".bin");
         return new
         {
@@ -184,7 +180,7 @@ internal sealed class DesktopHost : IDisposable
             permissions = OperatingSystem.IsMacOS() ? MacNative.Permissions(false) : (object?)null,
             wayland = OperatingSystem.IsLinux() && LinuxDelivery.IsWayland, credentials,
             credentialsError = credentialsErrors.GetValueOrDefault(AppCommands.ProviderName(session.Settings.Provider)),
-            models = new { whistle = File.Exists(whistleModel), whisper = File.Exists(whisperModel), whistleSupported = session.Speech.WhistleSupported },
+            models = new { whisper = File.Exists(whisperModel) },
             directory = session.Store.DirectoryPath, usage = session.Store.Usage(),
             history = session.Store.History().Select(record => new { record.Id, record.Date, record.Text, record.Raw, record.Application, record.Note, record.SpeechEngine, record.Delivery, record.Metrics }).ToArray()
         };

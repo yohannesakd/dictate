@@ -24,7 +24,7 @@ public sealed class DeviceChecks : Instrumentation
         try
         {
             CheckAsync().GetAwaiter().GetResult();
-            result.PutString("stream", "Android shared UI, engine selection, model preparation, clipboard, draft preservation, native insertion, correction, binding changes, Keystore, microphone, and CPU speech passed.\n");
+            result.PutString("stream", "Android shared UI, English profile, model preparation, clipboard, draft preservation, native insertion, correction, binding changes, Keystore, microphone, and CPU speech passed.\n");
             Finish(Result.Ok, result);
         }
         catch (Exception error) { result.PutString("stream", error + "\n"); Finish(Result.Canceled, result); }
@@ -78,17 +78,13 @@ public sealed class DeviceChecks : Instrumentation
         reader.BaseStream.Position = 44;
         var pcm = new List<float>();
         while (reader.BaseStream.Position + 2 <= reader.BaseStream.Length) pcm.Add(reader.ReadInt16() / 32768f);
-        using var speech = new SpeechRecognizer(Path.Combine(context.FilesDir.AbsolutePath, "models"), new AndroidWhistleProcess(),
-            Path.Combine(context.ApplicationInfo!.NativeLibraryDir!, "libdictate_needle.so"));
-        foreach (var engine in Enum.GetValues<SpeechEngineKind>())
-        {
-            var transcript = await speech.TranscribeAsync(pcm.ToArray(), engine, SpeechProfiles.WhisperModel, "en", CancellationToken.None);
-            Require(transcript.Contains("country", StringComparison.OrdinalIgnoreCase) && transcript.Contains("fellow", StringComparison.OrdinalIgnoreCase), "Unexpected CPU transcript: " + transcript);
-            RunOnMainSync(() => { field!.Text = ""; field.SetSelection(0); });
-            delivery.Bind(connection, context.PackageName);
-            Require((await delivery.CaptureTarget().InsertAsync(transcript, transcript, CancellationToken.None)).Outcome == DeliveryOutcome.Verified,
-                engine + " transcript did not reach the real field.");
-        }
+        using var speech = new WhisperEngine(Path.Combine(context.FilesDir.AbsolutePath, "models"));
+        var transcript = await speech.TranscribeAsync(pcm.ToArray(), SpeechProfiles.WhisperModel, "en", CancellationToken.None);
+        Require(transcript.Contains("country", StringComparison.OrdinalIgnoreCase) && transcript.Contains("fellow", StringComparison.OrdinalIgnoreCase), "Unexpected CPU transcript: " + transcript);
+        RunOnMainSync(() => { field!.Text = ""; field.SetSelection(0); });
+        delivery.Bind(connection, context.PackageName);
+        Require((await delivery.CaptureTarget().InsertAsync(transcript, transcript, CancellationToken.None)).Outcome == DeliveryOutcome.Verified,
+            "Whisper transcript did not reach the real field.");
         await Dictate.Checks.SpeechEvaluation.CheckCancellationAsync(speech, pcm.ToArray(), SpeechProfiles.WhisperModel);
         var manifest = Path.Combine(context.FilesDir.AbsolutePath, "evaluation", "samples.json");
         if (File.Exists(manifest)) await Dictate.Checks.SpeechEvaluation.RunAsync(speech, manifest,
@@ -129,13 +125,10 @@ public sealed class DeviceChecks : Instrumentation
         await Task.Delay(200);
         Require((await Evaluate("testField===document.querySelector('#dictation-test') && document.activeElement===testField && testField.value==='Before ' && testField.selectionStart===7")).GetBoolean(), "A state update replaced the live dictation field.");
         await Click("[data-page=settings]");
-        foreach (var engine in new[] { "whisper", "whistle" })
-        {
-            await Click("#engine-button"); await Click($"[data-engine={engine}]");
-            await Wait($"document.querySelector('input[name=speech-engine]:checked').value==='{engine}'");
-            Require(session.Store.LoadSettings().SpeechEngine == AppCommands.ParseEngine(engine), "The Android engine selection was not saved.");
-            await session.PrepareAsync(CancellationToken.None);
-        }
+        Require((await Evaluate("!document.querySelector('#engine-button') && !document.querySelector('input[name=speech-engine]')")).GetBoolean(), "The removed engine selector remains visible.");
+        Require(session.Store.LoadSettings().SpeechEngine == SpeechEngineKind.Whisper, "The Android profile is not Whisper.");
+        await session.PrepareAsync(CancellationToken.None);
+        await Wait("document.querySelector('#model-status').textContent==='Downloaded'");
         await Click("[data-section=cleanup]");
         var fillers = session.Settings.Rules.Fillers;
         await Click("#toggle-fillers");

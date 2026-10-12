@@ -36,12 +36,11 @@ async function verify({ mainWindow, indicator, backend, getState, showWindow, un
     await wait(() => !!getState(), 'native service startup');
     await wait(() => evaluate('!!document.querySelector(".recording")'), 'renderer startup');
     if (restartEngine) {
-      assert.ok(['whisper', 'whistle'].includes(restartEngine));
-      assert.equal(getState().settings.speech_engine, restartEngine);
-      assert.equal(await evaluate('document.querySelector("#engine-button").firstChild.textContent.trim()'), restartEngine === 'whisper' ? 'Whisper' : 'Whistle');
-      await screenshot('restart-' + restartEngine);
-      await backend.request('select-engine', { engine: restartEngine === 'whisper' ? 'whistle' : 'whisper' });
-      fs.writeFileSync(path.join(output, 'checks.txt'), restartEngine + ' remained selected in the app and native service after process restart.\n');
+      assert.equal(restartEngine, 'whisper');
+      assert.equal(getState().settings.speech_engine, 'whisper');
+      assert.equal(await evaluate('!!document.querySelector("#engine-button")'), false);
+      await screenshot('restart-whisper');
+      fs.writeFileSync(path.join(output, 'checks.txt'), 'English Whisper remained selected in the app and native service after process restart.\n');
       fs.writeFileSync(path.join(output, 'exit-code.txt'), '0'); return;
     }
     assert.equal(await evaluate('typeof window.require'), 'undefined');
@@ -64,16 +63,14 @@ async function verify({ mainWindow, indicator, backend, getState, showWindow, un
     }
     await click('[data-page="settings"]');
     await screenshot('settings-speech');
-    for (const engine of ['whisper', 'whistle']) {
-      await click('#engine-button'); await click(`[data-engine="${engine}"]`);
-      await wait(() => getState().settings.speech_engine === engine, engine + ' selection');
-      assert.equal(JSON.parse(fs.readFileSync(path.join(getState().directory, 'settings.json'), 'utf8')).speech_engine, engine);
-      const snapshot = await backend.request('state');
-      assert.equal(snapshot.settings.speech_engine, engine);
-      await backend.request('prepare');
-      assert.equal(getState().models[engine], true);
-      await screenshot('engine-' + engine);
-    }
+    assert.equal(getState().settings.speech_engine, 'whisper');
+    assert.equal(await evaluate('!!document.querySelector("#engine-button") || !!document.querySelector("input[name=speech-engine]")'), false);
+    await backend.request('prepare');
+    assert.equal(getState().models.whisper, true);
+    assert.equal(await evaluate('document.querySelector("#model-status").textContent'), 'Downloaded');
+    await screenshot('speech-whisper');
+    await assert.rejects(backend.request('select-engine', { engine: 'whistle' }), /not supported/);
+    assert.equal(await evaluate('window.dictate.command("select-engine", {engine:"whistle"}).then(() => "accepted", error => error.message)'), 'The app command is not supported.');
     await click('[data-section="cleanup"]');
     await screenshot('settings-cleanup');
     const previous = getState().settings.rules.fillers;
@@ -133,16 +130,15 @@ async function verify({ mainWindow, indicator, backend, getState, showWindow, un
     mainWindow.setSize(480, 600);
     notes.push('The compact layout fit the default window and minimum 400 by 480 window without horizontal overflow.');
     await assert.rejects(backend.request('settings', { speech_engine: 'unknown' }), /not supported/);
-    await assert.rejects(backend.request('select-engine', { engine: 'unknown' }), /Whistle or Whisper/);
-    notes.push('Home, History, all Settings sections, copy, search, both engine choices, dictionary, and cleanup controls passed.');
-    notes.push('Engine selections persisted. Late state updates preserved active input text, focus, and caret.');
+    notes.push('Home, History, all Settings sections, copy, search, the English Whisper profile, dictionary, and cleanup controls passed.');
+    notes.push('The English Whisper profile persisted. Late state updates preserved active input text, focus, and caret.');
     notes.push('Changing cleanup providers cleared the other provider\'s unsaved credential field.');
     await click('[data-page="home"]');
-    if (!getState().models.whistle) await backend.request('prepare');
+    if (!getState().models.whisper) await backend.request('prepare');
     await click('[data-action="start"]');
     await wait(() => getState().phase === 'listening', 'microphone startup');
     assert.equal(mainWindow.isVisible(), false);
-    await assert.rejects(backend.request('select-engine', { engine: 'whisper' }), /Finish or cancel/);
+    await assert.rejects(backend.request('prepare'), /Finish the current action/);
     assert.equal(indicator.isVisible(), true);
     assert.equal(indicator.isFocusable(), false);
     assert.deepEqual(indicator.getSize(), [84, 40]);
@@ -161,13 +157,11 @@ async function verify({ mainWindow, indicator, backend, getState, showWindow, un
     assert.equal(await evaluate('document.querySelector("#notice").textContent.includes("Verification warning")'), true);
     await backend.request('cancel');
     await wait(() => getState().phase === 'idle' && !indicator.isVisible(), 'cancel and hide indicator');
-    notes.push('Microphone start and cancellation passed. Engine changes were refused during recording.');
+    notes.push('Microphone start and cancellation passed. Model preparation was refused during recording.');
     notes.push('The 84 by 40 transparent indicator displayed only a 24-pixel waveform surface in every active phase, preserved focus, hid when idle, and excluded warnings.');
     await backend.request('settings', { smart_cleanup: false });
-    await backend.request('select-engine', { engine: 'whisper' });
-    await backend.request('select-engine', { engine: 'whistle' });
-    notes.push('CPU model choice and local cleanup remained available through the native service.');
-    notes.push('Both selected CPU profiles prepared through the packaged native service.');
+    notes.push('CPU recognition and local cleanup remained available through the native service.');
+    notes.push('English Whisper prepared through the packaged native service.');
     assert.deepEqual(errors, []);
     const metrics = await Promise.all(app.getAppMetrics().map(async metric => ({ type: metric.type, pid: metric.pid, memory: metric.memory, cpu: metric.cpu })));
     fs.writeFileSync(path.join(output, 'metrics.json'), JSON.stringify({ platform: process.platform, metrics, backendPid: backend.process.pid }, null, 2));

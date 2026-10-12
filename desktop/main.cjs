@@ -15,7 +15,7 @@ let mainWindow, indicator, tray, backend, state, unavailable, quitting = false;
 const verifyFlag = process.argv.indexOf('--verify-desktop');
 const restartFlag = process.argv.indexOf('--verify-restart');
 if (verifyFlag >= 0 && (!dataDirectory || !process.argv[verifyFlag + 1])) throw new Error('Verification requires isolated data and output directories.');
-const commands = new Set(['select-engine', 'prepare', 'settings', 'add-word', 'remove-word', 'permissions', 'enable-shortcuts',
+const commands = new Set(['prepare', 'settings', 'add-word', 'remove-word', 'permissions', 'enable-shortcuts',
   'start', 'finish', 'cancel', 'dismiss', 'credentials', 'save-key', 'remove-key', 'sign-in', 'sign-out']);
 const rendererPath = path.join(__dirname, 'ui', 'index.html');
 const indicatorPath = path.join(__dirname, 'ui', 'indicator.html');
@@ -32,11 +32,6 @@ function trayMenu() {
   if (!tray) return;
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: 'Open Dictate', click: () => showWindow() },
-    { label: 'Speech engine', submenu: ['whistle', 'whisper'].map(engine => ({
-      label: engine === 'whistle' ? 'Whistle' : 'Whisper', type: 'radio', checked: state?.settings.speech_engine === engine,
-      enabled: state?.phase === 'idle' && !state?.preparing,
-      click: () => run('select-engine', { engine })
-    })) },
     { type: 'separator' },
     { label: 'Undo last dictation', enabled: state?.phase === 'idle', click: () => run('undo') },
     { label: 'Restore original transcript', enabled: state?.phase === 'idle', click: () => run('restore') },

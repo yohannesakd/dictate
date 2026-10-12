@@ -1,6 +1,6 @@
 # Whistle and Whisper evaluation
 
-This comparison describes revision `d515489`. The [current app verification](electron-desktop-verification.md) covers the shared desktop interface and selected English profiles.
+This archived comparison describes revision `d515489`. The [current app](whisper-only.md) uses English Whisper on the CPU.
 
 Both CPU engines completed 280 recognition runs on Mac, Windows, Linux, and an ARM64 Android emulator.
 Each engine received seven recordings, with five alternating passes per recording.

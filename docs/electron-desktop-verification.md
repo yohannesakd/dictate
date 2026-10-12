@@ -1,5 +1,7 @@
 # Electron desktop verification
 
+This record covers the earlier two-engine app. See the [Whisper-only record](whisper-only.md) for the current design.
+
 Branch: `feat/electron-desktop`. Verification date: October 11, 2026.
 
 Dictate now uses one Electron interface on macOS, Windows, and Linux.

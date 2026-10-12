@@ -1,7 +1,7 @@
 # Shared Dictate architecture
 
 `Core` owns cleanup, dictionary matching, provider requests, settings, history, shortcuts, and the dictation lifecycle.
-`Speech` owns the two English CPU profiles, asset checks, and native recognition lifetimes.
+`Speech` owns English Whisper, asset checks, and the native recognition lifetime.
 `desktop/` owns the Electron windows, tray, clipboard, login settings, and shared HTML interface.
 `portable/Desktop` owns the headless native service and platform adapters.
 `Android` owns the local WebView bridge, native activity, microphone, input-method service, input connections, and Keystore.
@@ -29,7 +29,7 @@ The import leaves legacy sources unchanged and writes settings last to mark comp
 
 ## Recognition and operations
 
-The menu offers Whistle and quantized English Whisper `base.en-q5_1`.
+Every app uses quantized English Whisper `base.en-q5_1`. There is no engine selector.
 Asset downloads enforce a size limit and check a pinned SHA-256 hash before atomic replacement.
 Digital silence returns no transcript before model loading.
 This check does not detect all non-speech noise.
@@ -38,10 +38,11 @@ Recording captures settings before recognition starts.
 Release captures the target field.
 Cancellation stops capture and retires the operation.
 A late result cannot insert text or reset a newer operation.
-Whistle runs in an owned process with bounded output and a deadline.
-Cancellation waits for process cleanup.
-Selecting Whistle unloads the cached Whisper model before inference.
-Both recognizers use the CPU and at most four threads.
+Whisper owns one cached native model and serializes preparation and recognition through one gate.
+Its lifetime and operation cancellation tokens stop pending recognition. It uses the CPU and at most four threads.
+The x64 runtime falls back to the bundled no-AVX library when required CPU instructions are unavailable.
+Whistle executables, model downloads, process runners, and Android native libraries are removed.
+Stored engine names remain readable for old settings and history. Settings normalize to Whisper without rewriting historical records.
 
 The core saves the raw transcript, cleanup result, delivery receipt, engine, model, and stage timings.
 Delivery does not retry automatically.
@@ -75,7 +76,7 @@ Closing the keyboard stops capture. Password fields disable dictation.
 The activity and voice keyboard embed the shared interface assets in a WebView.
 Only bundled assets from `https://dictate.local` are served. Navigation, file access, and external resources are blocked.
 The JavaScript bridge accepts bounded requests and explicit commands. It never returns credential values.
-`Core/AppCommands.cs` validates settings, engine names, provider names, and dictionary entries for both hosts.
+`Core/AppCommands.cs` validates settings, provider names, and dictionary entries for both hosts.
 Both Android views share one session and serialized settings writes.
 Focused Android editors and the permanent dictation test field retain their native input connection during state updates.
 

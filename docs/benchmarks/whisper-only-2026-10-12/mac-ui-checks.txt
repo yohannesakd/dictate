@@ -1,0 +1,10 @@
+The renderer is sandboxed, isolated, and rendered without hardware acceleration.
+Credential timeouts used plain messages. A successful retry cleared its own notice and preserved unrelated warnings.
+The compact layout fit the default window and minimum 400 by 480 window without horizontal overflow.
+Home, History, all Settings sections, copy, search, the English Whisper profile, dictionary, and cleanup controls passed.
+The English Whisper profile persisted. Late state updates preserved active input text, focus, and caret.
+Changing cleanup providers cleared the other provider's unsaved credential field.
+Microphone start and cancellation passed. Model preparation was refused during recording.
+The 84 by 40 transparent indicator displayed only a 24-pixel waveform surface in every active phase, preserved focus, hid when idle, and excluded warnings.
+CPU recognition and local cleanup remained available through the native service.
+English Whisper prepared through the packaged native service.

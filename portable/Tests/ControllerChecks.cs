@@ -16,10 +16,10 @@ public class ControllerChecks
     private sealed class Speech : ISpeechEngine
     {
         public readonly Queue<TaskCompletionSource<string>> Requests = new();
-        public (SpeechEngineKind Engine, string Model)? Selection;
-        public Task<string> TranscribeAsync(float[] pcm, SpeechEngineKind engine, string model, string language, CancellationToken cancellation)
+        public (string Model, string Language)? Selection;
+        public Task<string> TranscribeAsync(float[] pcm, string model, string language, CancellationToken cancellation)
         {
-            Selection = (engine, model);
+            Selection = (model, language);
             var result = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
             Requests.Enqueue(result);
             return result.Task;
@@ -81,14 +81,14 @@ public class ControllerChecks
         var store = new Store();
         using var controller = new DictationController(new Audio(), speech, delivery, new(new Client()), store);
         var entries = new[] { new DictionaryEntry("soul", "Sol") };
-        controller.Start(new() { SmartCleanup = false, Dictionary = entries, SpeechEngine = SpeechEngineKind.Whistle, SpeechModel = "base" });
+        controller.Start(new() { SmartCleanup = false, Dictionary = entries, SpeechEngine = SpeechEngineKind.Whisper, SpeechModel = "base" });
         var finished = controller.FinishAsync();
         entries[0] = new("soul", "Wrong");
         speech.Requests.Dequeue().SetResult("Ask soul.");
         await finished;
         Assert.Equal(["Ask Sol."], delivery.Inserted);
-        Assert.Equal((SpeechEngineKind.Whistle, "base"), speech.Selection);
-        Assert.Equal(SpeechEngineKind.Whistle, Assert.Single(store.Records).SpeechEngine);
-        Assert.Equal("whistle", store.Records[0].SpeechModel);
+        Assert.Equal(("base", "en"), speech.Selection);
+        Assert.Equal(SpeechEngineKind.Whisper, Assert.Single(store.Records).SpeechEngine);
+        Assert.Equal("base", store.Records[0].SpeechModel);
     }
 }

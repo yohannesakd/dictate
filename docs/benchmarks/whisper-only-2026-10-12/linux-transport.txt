@@ -1,0 +1,15 @@
+
+> dictate-desktop@0.2.0 test
+> node --test tests/*.test.cjs
+
+✔ The transport matches concurrent replies by identity and accepts fragmented state events. (179.387686ms)
+✔ Service exit rejects pending work and does not replay it. (85.142691ms)
+✔ The transport bounds outstanding commands and payload size. (130.688506ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 526.549053

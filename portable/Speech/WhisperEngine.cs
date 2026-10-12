@@ -7,7 +7,7 @@ using Whisper.net.LibraryLoader;
 
 namespace Dictate.Speech;
 
-public sealed class WhisperEngine(string directory) : IDisposable
+public sealed class WhisperEngine(string directory) : ISpeechEngine, IDisposable
 {
     // Older weights remain available to reproduce the recorded quality comparison. Apps select only SpeechProfiles.WhisperModel.
     public static readonly string[] Models = ["tiny", "base", "small", "tiny.en", "base.en", "small.en", SpeechProfiles.WhisperModel];
@@ -31,6 +31,10 @@ public sealed class WhisperEngine(string directory) : IDisposable
     public async Task<string> TranscribeAsync(float[] pcm, string model, string language, CancellationToken cancellation)
     {
         ObjectDisposedException.ThrowIf(disposed, this);
+        if (pcm.Length > 300 * 16000) throw new ArgumentException("Record at most five minutes of speech.", nameof(pcm));
+        cancellation.ThrowIfCancellationRequested();
+        // Exact digital silence must not load a model or produce a hallucinated transcript.
+        if (pcm.All(sample => sample == 0)) return "";
         using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellation, lifetime.Token);
         cancellation = linked.Token;
         await gate.WaitAsync(cancellation).ConfigureAwait(false);
@@ -93,14 +97,6 @@ public sealed class WhisperEngine(string directory) : IDisposable
         factory = next;
         loadedModel = model;
         Status?.Invoke("Ready. Speech recognition stays on this device.");
-    }
-
-    /// <summary>Releases the cached native model before another speech engine is selected.</summary>
-    public async Task UnloadAsync(CancellationToken cancellation = default)
-    {
-        await gate.WaitAsync(cancellation).ConfigureAwait(false);
-        try { factory?.Dispose(); factory = null; loadedModel = null; }
-        finally { gate.Release(); }
     }
 
     public void Dispose()

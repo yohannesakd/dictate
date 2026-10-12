@@ -15,7 +15,7 @@ public sealed class Session
     public HttpClient Http { get; } = new() { Timeout = TimeSpan.FromSeconds(30) };
     public AndroidDelivery Delivery { get; } = new();
     public AndroidAudio Audio { get; } = new();
-    public SpeechRecognizer Speech { get; }
+    public WhisperEngine Speech { get; }
     public DictationController Controller { get; }
     public event Action? Changed;
     public string? Status { get; private set; }
@@ -26,8 +26,7 @@ public sealed class Session
         Store = new(context.FilesDir!.AbsolutePath);
         Settings = Store.LoadSettings();
         Secrets = new(context);
-        Speech = new(Path.Combine(Store.DirectoryPath, "models"), new AndroidWhistleProcess(),
-            Path.Combine(context.ApplicationInfo!.NativeLibraryDir!, "libdictate_needle.so"));
+        Speech = new(Path.Combine(Store.DirectoryPath, "models"));
         Speech.Status += _ => MainThread.Post(() => Changed?.Invoke());
         Controller = new(Audio, Speech, Delivery, new(new HttpCleanupClient(Http, Secrets)), Store);
         Controller.Notice += Message;
@@ -45,13 +44,6 @@ public sealed class Session
         try
         {
             var next = SpeechProfiles.Normalize(change(Settings));
-            if (next.SpeechEngine != Settings.SpeechEngine)
-            {
-                if (Preparing || Controller.Phase != DictationPhase.Idle)
-                    throw new InvalidOperationException("Finish or cancel dictation before changing the speech engine.");
-                if (next.SpeechEngine == SpeechEngineKind.Whistle && !Speech.WhistleSupported)
-                    throw new InvalidOperationException("Whistle requires the ARM64 Android package. Select Whisper on this device.");
-            }
             await Store.SaveSettingsAsync(next);
             Settings = next;
             MainThread.Post(() => Changed?.Invoke());
@@ -64,7 +56,7 @@ public sealed class Session
         if (Preparing || Controller.Phase != DictationPhase.Idle)
             throw new InvalidOperationException("Finish the current action before loading a model.");
         Preparing = true; Changed?.Invoke();
-        try { await Speech.PrepareAsync(Settings.SpeechEngine, Settings.SpeechModel, cancellation); }
+        try { await Speech.PrepareAsync(Settings.SpeechModel, cancellation); }
         finally { Preparing = false; MainThread.Post(() => Changed?.Invoke()); }
     }
 }

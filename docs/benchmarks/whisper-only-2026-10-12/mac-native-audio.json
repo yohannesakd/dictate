@@ -1,0 +1,386 @@
+{
+  "host": "saiMBP",
+  "platform": "macOS 26.5.2",
+  "architecture": "Arm64",
+  "logicalCores": 12,
+  "whisperModel": "base.en-q5_1",
+  "passes": 5,
+  "samples": [
+    {
+      "Name": "jfk",
+      "Kind": "human reference",
+      "Sha256": "59dfb9a4acb36fe2a2affc14bacbee2920ff435cb13cc314a08c13f66ba7860e",
+      "Reference": "And so my fellow Americans ask not what your country can do for you ask what you can do for your country",
+      "Language": "en"
+    },
+    {
+      "Name": "dictate-short",
+      "Kind": "Mac say, Samantha",
+      "Sha256": "eb4c810cb6f97c13d3ab9bdf016180112c08005033f9bf4adda43d1fa09fd32d",
+      "Reference": "Please move the design review to Thursday at three thirty and send the updated notes to the team.",
+      "Language": "en"
+    },
+    {
+      "Name": "dictate-technical",
+      "Kind": "Mac say, Samantha",
+      "Sha256": "57aca0f42e50795a10dbf468e8b59119f2c3afef3073f8cef8d8d3db4d763d44",
+      "Reference": "Open the Dictate settings and choose Whistle. Compare the transcription speed, memory usage, and accuracy with Phonon. Keep the original recording so that both models receive the same audio. The new branch is called feature slash Mac Whistle model. Please send the results tomorrow morning.",
+      "Language": "en"
+    },
+    {
+      "Name": "dictate-long",
+      "Kind": "Mac say, Samantha",
+      "Sha256": "a05da10313937660698f1107cdfe0873ea2a7949cca9d5d4d84bc7bd4247c731",
+      "Reference": "I want to review the changes before we release the new version. First, check that the settings menu shows both speech models and remembers the selection after a restart. Next, record a short message with the microphone and compare the transcript with what was spoken. Repeat the same check with a longer recording. We should measure the time after the recording stops, because that delay affects the user. Memory usage matters as well, especially when other applications are running. If a transcription is cancelled, the application must stop the pending work and allow another recording. Write down the results and explain which model you would choose for daily dictation.",
+      "Language": "en"
+    },
+    {
+      "Name": "silence",
+      "Kind": "two seconds of digital silence",
+      "Sha256": "28d773c3292ead92685c9f768979ddfd715132f8b676ac12d42717995c0c2d68",
+      "Reference": "",
+      "Language": "en"
+    },
+    {
+      "Name": "jfk-noise",
+      "Kind": "JFK plus seeded Gaussian noise, seed 61011, standard deviation 1200 PCM16 units",
+      "Sha256": "b3a0075e73145ff01d6acd751fedcdea49f890fd5d1c9de495b931285f3be419",
+      "Reference": "And so my fellow Americans ask not what your country can do for you ask what you can do for your country",
+      "Language": "en"
+    }
+  ],
+  "measurements": [
+    {
+      "Sample": "jfk",
+      "Engine": 0,
+      "Pass": 1,
+      "AudioSeconds": 11,
+      "PreparationMs": 0.3064,
+      "RecognitionMs": 210.2461,
+      "Text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "Error": null,
+      "ParentRssBytes": 245907456
+    },
+    {
+      "Sample": "dictate-short",
+      "Engine": 0,
+      "Pass": 1,
+      "AudioSeconds": 4.7349375,
+      "PreparationMs": 0.0108,
+      "RecognitionMs": 201.5604,
+      "Text": "Please move the design review to Thursday at 3.30 and send the updated notes to the team.",
+      "Error": null,
+      "ParentRssBytes": 254443520
+    },
+    {
+      "Sample": "dictate-technical",
+      "Engine": 0,
+      "Pass": 1,
+      "AudioSeconds": 16.5375625,
+      "PreparationMs": 0.0543,
+      "RecognitionMs": 267.2635,
+      "Text": "Open the dictate settings and choose whistle, compare the transcription speed, memory usage, and accuracy with phone on. Keep the original recording so that both models receive the same audio. The new branch is called feature/mac whistle model. Please send the results tomorrow morning.",
+      "Error": null,
+      "ParentRssBytes": 256180224
+    },
+    {
+      "Sample": "dictate-long",
+      "Engine": 0,
+      "Pass": 1,
+      "AudioSeconds": 36.8694375,
+      "PreparationMs": 0.0125,
+      "RecognitionMs": 570.4922,
+      "Text": "I want to review the changes before we release the new version. First, check that the settings menu shows both speech models and remembers the selection after a restart. Next, record a short message with the microphone and compare the transcript with what was spoken. Repeat the same check with the longer recording. We should measure the time after the recording stops, because that delay affects the user. Memory usage matters as well, especially when other applications are running. If a transcription is cancelled, the application must stop the pending work and allow another recording. Write down the results and explain which model you would choose for daily dictation.",
+      "Error": null,
+      "ParentRssBytes": 407650304
+    },
+    {
+      "Sample": "silence",
+      "Engine": 0,
+      "Pass": 1,
+      "AudioSeconds": 2,
+      "PreparationMs": 0.0126,
+      "RecognitionMs": 0.5031,
+      "Text": "",
+      "Error": null,
+      "ParentRssBytes": 403324928
+    },
+    {
+      "Sample": "jfk-noise",
+      "Engine": 0,
+      "Pass": 1,
+      "AudioSeconds": 11,
+      "PreparationMs": 0.0027,
+      "RecognitionMs": 223.3815,
+      "Text": "and so am I fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "Error": null,
+      "ParentRssBytes": 410402816
+    },
+    {
+      "Sample": "jfk",
+      "Engine": 0,
+      "Pass": 2,
+      "AudioSeconds": 11,
+      "PreparationMs": 0.0087,
+      "RecognitionMs": 233.5135,
+      "Text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "Error": null,
+      "ParentRssBytes": 415563776
+    },
+    {
+      "Sample": "dictate-short",
+      "Engine": 0,
+      "Pass": 2,
+      "AudioSeconds": 4.7349375,
+      "PreparationMs": 0.0094,
+      "RecognitionMs": 205.9492,
+      "Text": "Please move the design review to Thursday at 3.30 and send the updated notes to the team.",
+      "Error": null,
+      "ParentRssBytes": 419020800
+    },
+    {
+      "Sample": "dictate-technical",
+      "Engine": 0,
+      "Pass": 2,
+      "AudioSeconds": 16.5375625,
+      "PreparationMs": 0.0098,
+      "RecognitionMs": 267.6508,
+      "Text": "Open the dictate settings and choose whistle, compare the transcription speed, memory usage, and accuracy with phone on. Keep the original recording so that both models receive the same audio. The new branch is called feature/mac whistle model. Please send the results tomorrow morning.",
+      "Error": null,
+      "ParentRssBytes": 421609472
+    },
+    {
+      "Sample": "dictate-long",
+      "Engine": 0,
+      "Pass": 2,
+      "AudioSeconds": 36.8694375,
+      "PreparationMs": 0.0114,
+      "RecognitionMs": 583.5576,
+      "Text": "I want to review the changes before we release the new version. First, check that the settings menu shows both speech models and remembers the selection after a restart. Next, record a short message with the microphone and compare the transcript with what was spoken. Repeat the same check with the longer recording. We should measure the time after the recording stops, because that delay affects the user. Memory usage matters as well, especially when other applications are running. If a transcription is cancelled, the application must stop the pending work and allow another recording. Write down the results and explain which model you would choose for daily dictation.",
+      "Error": null,
+      "ParentRssBytes": 424394752
+    },
+    {
+      "Sample": "silence",
+      "Engine": 0,
+      "Pass": 2,
+      "AudioSeconds": 2,
+      "PreparationMs": 0.0111,
+      "RecognitionMs": 0.0542,
+      "Text": "",
+      "Error": null,
+      "ParentRssBytes": 424607744
+    },
+    {
+      "Sample": "jfk-noise",
+      "Engine": 0,
+      "Pass": 2,
+      "AudioSeconds": 11,
+      "PreparationMs": 0.0041,
+      "RecognitionMs": 225.6555,
+      "Text": "and so am I fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "Error": null,
+      "ParentRssBytes": 425050112
+    },
+    {
+      "Sample": "jfk",
+      "Engine": 0,
+      "Pass": 3,
+      "AudioSeconds": 11,
+      "PreparationMs": 0.0094,
+      "RecognitionMs": 219.686,
+      "Text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "Error": null,
+      "ParentRssBytes": 425361408
+    },
+    {
+      "Sample": "dictate-short",
+      "Engine": 0,
+      "Pass": 3,
+      "AudioSeconds": 4.7349375,
+      "PreparationMs": 0.0087,
+      "RecognitionMs": 213.9543,
+      "Text": "Please move the design review to Thursday at 3.30 and send the updated notes to the team.",
+      "Error": null,
+      "ParentRssBytes": 427343872
+    },
+    {
+      "Sample": "dictate-technical",
+      "Engine": 0,
+      "Pass": 3,
+      "AudioSeconds": 16.5375625,
+      "PreparationMs": 0.0103,
+      "RecognitionMs": 269.3522,
+      "Text": "Open the dictate settings and choose whistle, compare the transcription speed, memory usage, and accuracy with phone on. Keep the original recording so that both models receive the same audio. The new branch is called feature/mac whistle model. Please send the results tomorrow morning.",
+      "Error": null,
+      "ParentRssBytes": 427360256
+    },
+    {
+      "Sample": "dictate-long",
+      "Engine": 0,
+      "Pass": 3,
+      "AudioSeconds": 36.8694375,
+      "PreparationMs": 0.0136,
+      "RecognitionMs": 592.9815,
+      "Text": "I want to review the changes before we release the new version. First, check that the settings menu shows both speech models and remembers the selection after a restart. Next, record a short message with the microphone and compare the transcript with what was spoken. Repeat the same check with the longer recording. We should measure the time after the recording stops, because that delay affects the user. Memory usage matters as well, especially when other applications are running. If a transcription is cancelled, the application must stop the pending work and allow another recording. Write down the results and explain which model you would choose for daily dictation.",
+      "Error": null,
+      "ParentRssBytes": 425672704
+    },
+    {
+      "Sample": "silence",
+      "Engine": 0,
+      "Pass": 3,
+      "AudioSeconds": 2,
+      "PreparationMs": 0.0143,
+      "RecognitionMs": 0.2017,
+      "Text": "",
+      "Error": null,
+      "ParentRssBytes": 425672704
+    },
+    {
+      "Sample": "jfk-noise",
+      "Engine": 0,
+      "Pass": 3,
+      "AudioSeconds": 11,
+      "PreparationMs": 0.0047,
+      "RecognitionMs": 226.5084,
+      "Text": "and so am I fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "Error": null,
+      "ParentRssBytes": 425721856
+    },
+    {
+      "Sample": "jfk",
+      "Engine": 0,
+      "Pass": 4,
+      "AudioSeconds": 11,
+      "PreparationMs": 0.0098,
+      "RecognitionMs": 219.629,
+      "Text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "Error": null,
+      "ParentRssBytes": 428654592
+    },
+    {
+      "Sample": "dictate-short",
+      "Engine": 0,
+      "Pass": 4,
+      "AudioSeconds": 4.7349375,
+      "PreparationMs": 0.0057,
+      "RecognitionMs": 196.6925,
+      "Text": "Please move the design review to Thursday at 3.30 and send the updated notes to the team.",
+      "Error": null,
+      "ParentRssBytes": 429047808
+    },
+    {
+      "Sample": "dictate-technical",
+      "Engine": 0,
+      "Pass": 4,
+      "AudioSeconds": 16.5375625,
+      "PreparationMs": 0.0083,
+      "RecognitionMs": 263.4228,
+      "Text": "Open the dictate settings and choose whistle, compare the transcription speed, memory usage, and accuracy with phone on. Keep the original recording so that both models receive the same audio. The new branch is called feature/mac whistle model. Please send the results tomorrow morning.",
+      "Error": null,
+      "ParentRssBytes": 429047808
+    },
+    {
+      "Sample": "dictate-long",
+      "Engine": 0,
+      "Pass": 4,
+      "AudioSeconds": 36.8694375,
+      "PreparationMs": 0.0099,
+      "RecognitionMs": 575.056,
+      "Text": "I want to review the changes before we release the new version. First, check that the settings menu shows both speech models and remembers the selection after a restart. Next, record a short message with the microphone and compare the transcript with what was spoken. Repeat the same check with the longer recording. We should measure the time after the recording stops, because that delay affects the user. Memory usage matters as well, especially when other applications are running. If a transcription is cancelled, the application must stop the pending work and allow another recording. Write down the results and explain which model you would choose for daily dictation.",
+      "Error": null,
+      "ParentRssBytes": 429064192
+    },
+    {
+      "Sample": "silence",
+      "Engine": 0,
+      "Pass": 4,
+      "AudioSeconds": 2,
+      "PreparationMs": 0.0065,
+      "RecognitionMs": 0.062,
+      "Text": "",
+      "Error": null,
+      "ParentRssBytes": 429064192
+    },
+    {
+      "Sample": "jfk-noise",
+      "Engine": 0,
+      "Pass": 4,
+      "AudioSeconds": 11,
+      "PreparationMs": 0.0027,
+      "RecognitionMs": 219.3668,
+      "Text": "and so am I fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "Error": null,
+      "ParentRssBytes": 429375488
+    },
+    {
+      "Sample": "jfk",
+      "Engine": 0,
+      "Pass": 5,
+      "AudioSeconds": 11,
+      "PreparationMs": 0.0081,
+      "RecognitionMs": 215.0567,
+      "Text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "Error": null,
+      "ParentRssBytes": 429408256
+    },
+    {
+      "Sample": "dictate-short",
+      "Engine": 0,
+      "Pass": 5,
+      "AudioSeconds": 4.7349375,
+      "PreparationMs": 0.0067,
+      "RecognitionMs": 210.3729,
+      "Text": "Please move the design review to Thursday at 3.30 and send the updated notes to the team.",
+      "Error": null,
+      "ParentRssBytes": 429490176
+    },
+    {
+      "Sample": "dictate-technical",
+      "Engine": 0,
+      "Pass": 5,
+      "AudioSeconds": 16.5375625,
+      "PreparationMs": 0.0079,
+      "RecognitionMs": 265.0652,
+      "Text": "Open the dictate settings and choose whistle, compare the transcription speed, memory usage, and accuracy with phone on. Keep the original recording so that both models receive the same audio. The new branch is called feature/mac whistle model. Please send the results tomorrow morning.",
+      "Error": null,
+      "ParentRssBytes": 429490176
+    },
+    {
+      "Sample": "dictate-long",
+      "Engine": 0,
+      "Pass": 5,
+      "AudioSeconds": 36.8694375,
+      "PreparationMs": 0.0074,
+      "RecognitionMs": 577.1316,
+      "Text": "I want to review the changes before we release the new version. First, check that the settings menu shows both speech models and remembers the selection after a restart. Next, record a short message with the microphone and compare the transcript with what was spoken. Repeat the same check with the longer recording. We should measure the time after the recording stops, because that delay affects the user. Memory usage matters as well, especially when other applications are running. If a transcription is cancelled, the application must stop the pending work and allow another recording. Write down the results and explain which model you would choose for daily dictation.",
+      "Error": null,
+      "ParentRssBytes": 429490176
+    },
+    {
+      "Sample": "silence",
+      "Engine": 0,
+      "Pass": 5,
+      "AudioSeconds": 2,
+      "PreparationMs": 0.0231,
+      "RecognitionMs": 0.0396,
+      "Text": "",
+      "Error": null,
+      "ParentRssBytes": 429506560
+    },
+    {
+      "Sample": "jfk-noise",
+      "Engine": 0,
+      "Pass": 5,
+      "AudioSeconds": 11,
+      "PreparationMs": 0.0067,
+      "RecognitionMs": 225.028,
+      "Text": "and so am I fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "Error": null,
+      "ParentRssBytes": 429801472
+    }
+  ],
+  "timing": "Preparation includes model verification/loading. Recognition includes app WAV/process work; cleanup and field delivery are excluded.",
+  "memory": "Parent RSS after recognition includes the managed process and cached Whisper model."
+}

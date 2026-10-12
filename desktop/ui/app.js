@@ -14,7 +14,7 @@ const escape = value => String(value ?? '').replace(/[&<>"']/g, character => ({ 
 const engineName = engine => engine === 'whisper' ? 'Whisper' : 'Whistle';
 const $ = selector => document.querySelector(selector);
 let api = window.dictate, state, page = 'home', settingPage = 'speech', localNotice, unavailable, search = '', busy = new Set();
-let menuOpen = false, toastTimer;
+let toastTimer;
 const android = () => state?.platform === 'android';
 const keyboard = () => !!state?.keyboard;
 if (!api && new URLSearchParams(location.search).has('preview')) {
@@ -82,19 +82,12 @@ function render() {
   const idle = state.phase === 'idle';
   $('#connection').innerHTML = `<span class="status-dot"></span>${idle ? 'On-device dictation' : state.phase === 'listening' ? 'Listening' : state.phase === 'processing' ? 'Processing' : 'Inserting text'}`;
   if (unavailable) $('#connection').textContent = 'Service unavailable';
-  $('#engine-button').innerHTML = `${engineName(state.settings.speech_engine)}<span aria-hidden="true">⌄</span>`;
-  $('#engine-button').disabled = !idle || state.preparing || busy.has('select-engine') || !!unavailable;
-  renderMenu();
   $('#dictation-test-container').hidden = !android() || keyboard() || page !== 'home';
   if (android() && !keyboard() && $('#content').contains(document.activeElement) && document.activeElement.matches('input[type=text],input[type=password],input[type=search]')) {
     if (document.activeElement.id === 'history-search') $('#transcripts').innerHTML = historyItems();
     return;
   }
   preservedRender(keyboard() ? keyboardHome() : page === 'home' ? home() : page === 'history' ? history() : settings());
-}
-function renderMenu() {
-  $('#engine-button').setAttribute('aria-expanded', String(menuOpen)); $('#engine-menu').hidden = !menuOpen;
-  $('#engine-menu').innerHTML = ['whistle', 'whisper'].map(engine => `<button class="engine-option" role="menuitemradio" aria-checked="${state?.settings.speech_engine === engine}" data-engine="${engine}" ${engine === 'whistle' && !state?.models.whistle_supported ? 'disabled' : ''}><span class="checkmark">${state?.settings.speech_engine === engine ? icon('check') : ''}</span><span>${engineName(engine)}<small>${engine === 'whistle' ? '17 MB model, English' : '60 MB model, English'}${engine === 'whistle' && !state?.models.whistle_supported ? '. Unavailable on this device' : ''}</small></span></button>`).join('');
 }
 function setup() {
   if (android()) return !state.permissions.microphone || !state.permissions.keyboard ? `<div class="setup">Enable the microphone and Dictate keyboard to speak into text fields.<div class="inline-actions">${button('Allow microphone', 'permissions', 'quiet')}${button('Enable keyboard', 'keyboard-settings', 'quiet')}${button('Choose keyboard', 'choose-keyboard', 'quiet')}</div></div>` : '';
@@ -105,7 +98,7 @@ function setup() {
 }
 function home() {
   const phase = state.phase, idle = phase === 'idle', shortcut = state.platform === 'mac' ? 'fn' : 'F8';
-  const ready = state.models[state.settings.speech_engine];
+  const ready = state.models.whisper;
   const week = state.usage.week, words = week.reduce((total, day) => total + day.words, 0);
   const max = Math.max(1, ...week.map(day => day.words));
   return `${setup()}<section class="recording" data-phase="${phase}"><div class="recording-top"><span class="wave" aria-hidden="true">${'<i></i>'.repeat(7)}</span><div><h2>${idle ? 'Ready to dictate' : phase === 'listening' ? 'Listening' : phase === 'processing' ? 'Processing your words' : 'Inserting text'}</h2><p>${idle ? (android() ? 'Use the Dictate keyboard in any text field.' : 'Put the cursor where your words belong.') : phase === 'listening' ? (android() ? 'Speak naturally. Tap Cancel to stop.' : 'Speak naturally. Press Esc to cancel.') : 'Your transcript will appear in the selected field.'}</p></div>${idle && !ready ? button('Get model', 'go-speech', 'primary', false) : button(idle ? 'Record' : phase === 'listening' ? 'Stop' : 'Cancel', idle ? (android() ? 'dictate-field' : 'start') : phase === 'listening' ? 'finish' : 'cancel', 'primary', state.preparing || !!unavailable || busy.has('start'), idle ? 'mic' : phase === 'listening' ? 'stop' : 'close')}</div>${android() ? '<div class="keyboard-hint">Choose Dictate, tap Record, then tap Stop to insert.</div>' : `<div class="keyboard-hint"><kbd>${shortcut}</kbd><span>Hold to speak. Release to insert. Press twice for hands-free.</span></div>`}</section><section class="weekly"><div class="section-title"><h3>This week</h3><span><strong>${words.toLocaleString()}</strong> words</span></div><div class="chart" role="img" aria-label="Words per day: ${week.map(day => `${day.date}: ${day.words}`).join(', ')}">${week.map(day => `<div class="day" title="${day.words} words"><div class="bar-track"><div class="bar" style="height:${Math.round(day.words / max * 52)}px"></div></div><small>${new Date(day.date + 'T12:00:00').toLocaleDateString('en', { weekday: 'short' })}</small></div>`).join('')}</div><div class="metrics"><span><strong>${week.reduce((sum, day) => sum + day.dictations, 0)}</strong>dictations</span>${state.usage.words_per_minute ? `<span><strong>${state.usage.words_per_minute}</strong>words / min</span>` : ''}${state.usage.median_latency !== null ? `<span><strong>${(state.usage.median_latency / 1000).toFixed(1)}s</strong>to text</span>` : ''}</div></section><section><div class="section-title"><h3>Recent dictations</h3>${button('View all', 'go-history', 'quiet')}</div>${state.history.length ? state.history.slice(0, 3).map(transcript).join('') : empty('Your first dictation starts here.', android() ? 'Choose Dictate in a text field, tap Record, and speak.' : `Hold ${shortcut}, speak, and release. Your transcript will be saved here.`)}</section>`;
@@ -129,7 +122,7 @@ function settings() {
   return `<div class="page-title"><div><h2>Settings</h2><p>Make Dictate work the way you speak.</p></div></div><nav class="subnav" aria-label="Settings sections">${[['speech', 'Speech'], ['cleanup', 'Cleanup'], ['dictionary', 'Dictionary'], ['general', 'General']].map(([key, label]) => `<button data-section="${key}" aria-current="${settingPage === key ? 'page' : 'false'}">${label}</button>`).join('')}</nav>${settingPage === 'speech' ? speechSettings() : settingPage === 'cleanup' ? cleanupSettings() : settingPage === 'dictionary' ? dictionarySettings() : generalSettings()}`;
 }
 function speechSettings() {
-  return `<h3>Speech engine</h3><p class="section-description">Two English models. Both run on your CPU, without a GPU. Choose an engine here or from the menu.</p>${['whistle', 'whisper'].map(engine => `<label class="model-choice ${state.settings.speech_engine === engine ? 'selected' : ''}"><input type="radio" name="speech-engine" value="${engine}" ${state.settings.speech_engine === engine ? 'checked' : ''} ${state.phase !== 'idle' || state.preparing || busy.has('select-engine') || (engine === 'whistle' && !state.models.whistle_supported) ? 'disabled' : ''}><span>${engineName(engine)}<small>${engine === 'whistle' ? 'Compact model, 17 MB' : 'English model, 60 MB'}</small></span><em>${engine === 'whistle' && !state.models.whistle_supported ? 'Unavailable' : state.models[engine] ? 'Downloaded' : 'Not downloaded'}</em></label>`).join('')}<div class="inline-actions">${button(state.preparing ? 'Preparing model…' : 'Download and load model', 'prepare', 'primary', state.phase !== 'idle' || state.preparing || !!unavailable || busy.has('prepare'))}</div>${shortcutsSettings()}`;
+  return `<h3>Speech recognition</h3><p class="section-description">Whisper recognizes English on your CPU. No GPU or Neural Engine is required.</p><div class="setting-row"><span>English model · 60 MB</span><span id="model-status" class="model-status">${state.models.whisper ? 'Downloaded' : 'Not downloaded'}</span></div><div class="inline-actions">${button(state.preparing ? 'Preparing model…' : 'Download and load model', 'prepare', 'primary', state.phase !== 'idle' || state.preparing || !!unavailable || busy.has('prepare'))}</div>${shortcutsSettings()}`;
 }
 function shortcutsSettings() {
   if (android()) return `<div class="group">${setup()}<h3>Voice keyboard</h3><p class="section-description">Choose Dictate in a text field. Tap Record to speak, then Stop to insert. The keyboard also offers undo, original text, repeat, and selected-word capture.</p><div class="inline-actions">${button('Enable keyboard', 'keyboard-settings')}${button('Choose keyboard', 'choose-keyboard')}</div></div>`;
@@ -137,7 +130,7 @@ function shortcutsSettings() {
 }
 function keyboardHome() {
   const idle = state.phase === 'idle', listening = state.phase === 'listening';
-  const ready = state.models[state.settings.speech_engine];
+  const ready = state.models.whisper;
   return `<section class="recording" data-phase="${state.phase}"><div class="recording-top"><span class="wave" aria-hidden="true">${'<i></i>'.repeat(7)}</span><div><h2>${idle ? (state.can_record ? 'Ready to dictate' : 'Dictation unavailable here') : listening ? 'Listening' : 'Processing'}</h2></div>${ready ? button(idle ? 'Record' : listening ? 'Stop' : 'Cancel', idle ? 'start' : listening ? 'finish' : 'cancel', 'primary', state.preparing || (idle && !state.can_record), idle ? 'mic' : listening ? 'stop' : 'close') : button('Get model', 'open-app', 'primary')}${listening ? button('Cancel', 'cancel', 'quiet') : ''}</div></section><div class="keyboard-actions">${button('Undo', 'undo', 'secondary', !idle)}${button('Original', 'restore', 'secondary', !idle)}${button('Repeat', 'repeat', 'secondary', !idle || !state.can_record || !state.history.length)}${button('Add word', 'capture-word', 'quiet', !idle || !state.can_record)}${button('Settings', 'open-app', 'quiet')}${button('Keyboard', 'choose-keyboard', 'quiet')}</div>`;
 }
 function cleanupSettings() {
@@ -156,9 +149,7 @@ function generalSettings() {
 document.addEventListener('click', event => {
   const target = event.target.closest('button');
   if (!target || target.disabled) return;
-  if (target.id === 'engine-button') { menuOpen = !menuOpen; renderMenu(); if (menuOpen) $('#engine-menu button:not(:disabled)')?.focus(); return; }
-  if (target.dataset.engine) { menuOpen = false; command('select-engine', { engine: target.dataset.engine }); $('#engine-button').focus(); return; }
-  if (target.dataset.page) { if (android()) document.activeElement.blur(); page = target.dataset.page; menuOpen = false; render(); $('#content').scrollTop = 0; if (page === 'settings' && settingPage === 'cleanup') command('credentials'); return; }
+  if (target.dataset.page) { if (android()) document.activeElement.blur(); page = target.dataset.page; render(); $('#content').scrollTop = 0; if (page === 'settings' && settingPage === 'cleanup') command('credentials'); return; }
   if (target.dataset.section) { if (android()) document.activeElement.blur(); settingPage = target.dataset.section; render(); $('#content').scrollTop = 0; if (settingPage === 'cleanup') command('credentials'); return; }
   if (target.dataset.copy) { windowAction({ type: 'copy', id: target.dataset.copy, original: target.dataset.original === 'true' }, () => toast(target.dataset.original === 'true' ? 'Original copied' : 'Transcript copied')); return; }
   if (target.dataset.removeWord !== undefined) { const entry = state.settings.dictionary[Number(target.dataset.removeWord)]; if (entry) command('remove-word', entry); return; }
@@ -181,11 +172,9 @@ document.addEventListener('click', event => {
   else if (action === 'remove-key') command(action, { provider: state.settings.provider }, () => toast('Key removed'));
   else if (action) command(action);
 });
-document.addEventListener('click', event => { if (menuOpen && !event.target.closest('.engine-control')) { menuOpen = false; renderMenu(); } });
 document.addEventListener('change', event => {
   const target = event.target;
   if (target.dataset.setting) command('settings', { [target.dataset.setting]: target.checked });
-  if (target.name === 'speech-engine') command('select-engine', { engine: target.value });
   if (target.id === 'provider') { if (android()) document.activeElement.blur(); const key = $('#api-key'); if (key) key.value = ''; command('settings', { provider: target.value }, () => command('credentials')); }
 });
 document.addEventListener('input', event => {
@@ -203,13 +192,7 @@ document.addEventListener('submit', event => {
   });
 });
 document.addEventListener('keydown', event => {
-  if (event.key === 'Escape') { if (menuOpen) { menuOpen = false; renderMenu(); $('#engine-button').focus(); } else if (state?.phase !== 'idle') command('cancel'); }
-  if (menuOpen && ['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) {
-    event.preventDefault(); const choices = [...$('#engine-menu').querySelectorAll('button:not(:disabled)')];
-    const current = choices.indexOf(document.activeElement);
-    const next = event.key === 'Home' ? 0 : event.key === 'End' ? choices.length - 1 : (current + (event.key === 'ArrowDown' ? 1 : -1) + choices.length) % choices.length;
-    choices[next]?.focus();
-  }
+  if (event.key === 'Escape' && state?.phase !== 'idle') command('cancel');
 });
 
 document.addEventListener('focusout', () => { if (android() && !keyboard()) setTimeout(render, 0); });

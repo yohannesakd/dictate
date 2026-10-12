@@ -78,7 +78,7 @@ public sealed class DictationController(IAudioCapture recorder, ISpeechEngine sp
         try
         {
             if (pcm.Length < 8000) { Notice?.Invoke("No speech detected."); return; }
-            var raw = (await speech.TranscribeAsync(pcm, current.Settings.SpeechEngine, current.Settings.SpeechModel, current.Settings.Language, cancellation).ConfigureAwait(false)).Trim();
+            var raw = (await speech.TranscribeAsync(pcm, current.Settings.SpeechModel, current.Settings.Language, cancellation).ConfigureAwait(false)).Trim();
             cancellation.ThrowIfCancellationRequested();
             var transcriptAt = Stopwatch.GetTimestamp();
             var settings = current.Settings;
@@ -109,7 +109,7 @@ public sealed class DictationController(IAudioCapture recorder, ISpeechEngine sp
                 Smart = smart.Outcome, ModelReply = smart.Reply, Provider = settings.Provider.ToString(),
                 Model = settings.SmartCleanup ? CleanupPrompt.Model(settings.Provider) : null,
                 Prompt = settings.SmartCleanup ? CleanupPrompt.Version : null, Note = receipt.Error ?? smart.Error,
-                SpeechEngine = settings.SpeechEngine, SpeechModel = settings.SpeechEngine == SpeechEngineKind.Whistle ? "whistle" : settings.SpeechModel,
+                SpeechEngine = SpeechEngineKind.Whisper, SpeechModel = settings.SpeechModel,
                 AudioSeconds = pcm.Length / 16000d, Delivery = receipt.Outcome, PostedUtf16Units = receipt.PostedUtf16Units, DeliveryEvidence = receipt.Evidence,
                 Metrics = new()
                 {

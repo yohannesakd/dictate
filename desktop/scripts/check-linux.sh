@@ -31,7 +31,7 @@ python3 /work/portable/scripts/native-fixture.py /tmp/dictate-command &
 sleep 2
 dotnet /work/portable/NativeChecks/bin/Release/net10.0/Dictate.NativeChecks.dll /tmp/dictate-command
 /tmp/Dictate/Dictate --data-directory /work/portable/artifacts/electron-linux/data --verify-desktop /work/portable/artifacts/electron-linux/results >/work/portable/artifacts/electron-linux/app.log 2>&1
-for engine in whistle whisper; do
+for engine in whisper; do
  /tmp/Dictate/Dictate --data-directory /work/portable/artifacts/electron-linux/data --verify-desktop /work/portable/artifacts/electron-linux/restart-$engine --verify-restart $engine >>/work/portable/artifacts/electron-linux/app.log 2>&1
  cat /work/portable/artifacts/electron-linux/restart-$engine/checks.txt
 done

@@ -4,7 +4,6 @@ namespace Dictate.Core;
 
 public static class AppCommands
 {
-    public static SpeechEngineKind ParseEngine(string? engine) => engine switch { "whistle" => SpeechEngineKind.Whistle, "whisper" => SpeechEngineKind.Whisper, _ => throw new ArgumentException("Select Whistle or Whisper.") };
     public static string ProviderName(CleanupProvider provider) => provider switch { CleanupProvider.Groq => "groq", CleanupProvider.DeepSeek => "deep_seek", _ => "chat_gpt" };
     public static string KeyAccount(string? provider) => provider switch { "groq" => "groq-api-key", "deep_seek" => "deepseek-api-key", _ => throw new ArgumentException("Select an API-key provider.") };
     public static string Word(JsonElement args, string field)
