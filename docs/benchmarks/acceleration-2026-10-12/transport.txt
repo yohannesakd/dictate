@@ -23,4 +23,3 @@ found 0 vulnerabilities
 
 > dictate-desktop@0.2.0 prepare-ui
 > node scripts/prepare-ui.cjs
-
