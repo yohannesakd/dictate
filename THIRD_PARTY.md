@@ -13,6 +13,7 @@ Keep the license files and notices when distributing a package.
 | Phonon-2 Core ML weights | CC-BY-4.0 | Model `NOTICE` and `LICENSE-WEIGHTS-CC-BY-4.0.txt` in the Mac package |
 | OpenVINO 2024.4 | Apache-2.0 | `Licenses/OpenVINO-LICENSE.txt` in the NPU worker |
 | Vulkan and SPIR-V headers | Apache-2.0 and MIT | Header license files in Android assets |
+| Android libc++ runtime | Apache-2.0 with LLVM exceptions and dependency notices | `Licenses/Android-libc++-NOTICE.txt` in Android assets |
 | Electron | MIT and bundled dependency licenses | Electron distribution `LICENSE` and `LICENSES.chromium.html`; inside `Contents/Resources/Licenses` on Mac |
 | .NET runtime | MIT and dependency notices | `portable/Speech/Licenses/DotNet-LICENSE.txt` and `DotNet-ThirdPartyNotices.txt` |
 | Inter | SIL Open Font License 1.1 | `desktop/ui/fonts/LICENSE` |
@@ -29,7 +30,8 @@ Sources: [Whisper](https://github.com/openai/whisper/blob/main/LICENSE),
 [Phonon runtime](https://github.com/fermionresearch/phonon-coreml/tree/1.1.2),
 [Phonon weights](https://huggingface.co/FermionResearch/Phonon-2-CoreML),
 [OpenVINO](https://github.com/openvinotoolkit/openvino),
-[Electron](https://www.electronjs.org/docs/latest/tutorial/about), and
+[Electron](https://www.electronjs.org/docs/latest/tutorial/about),
+[libc++](https://github.com/llvm/llvm-project/blob/llvmorg-18.1.8/libcxx/LICENSE.TXT), and
 [.NET runtime](https://github.com/dotnet/runtime/blob/main/THIRD-PARTY-NOTICES.TXT).
 
 NuGet lock files and `desktop/package-lock.json` record dependency versions.

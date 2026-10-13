@@ -33,6 +33,7 @@ This is a source review with targeted runtime verification. It is not an indepen
    The Mac bundle retains Electron and Chromium licenses inside the app.
    Android header notices moved from a late target into evaluated project assets.
    The final Release APK contains the expected Vulkan and SPIR-V notices.
+   Android native builds also retain the NDK notice for the bundled libc++ runtime.
 
 ## Documentation and repository checks
 
@@ -80,3 +81,4 @@ There is no automatic repair for a history file damaged by an interrupted disk w
 - OpenVINO and Windows check build: `ee583955-d647-4767-bd96-5fad645fac5a`.
 - Android license package check: `338eb39a-c6b7-474d-94d3-55bf81552c42`.
 - Final history tests and Linux package: `4b95bad0-27a7-4b59-aeb6-7529e0abb8d5`.
+- Android libc++ runtime notice: `4213d605-4ddd-4ac4-88fd-0001729b8dc9`.

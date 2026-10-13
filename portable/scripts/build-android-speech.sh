@@ -46,6 +46,7 @@ prefix="$root/headers"
 export CMAKE_PREFIX_PATH="$prefix"
 host=linux-x86_64
 [[ "$(uname -s)" != Darwin ]] || host=darwin-x86_64
+cp "$ndk/toolchains/llvm/prebuilt/$host/NOTICE" "$root/licenses/Android-libc++-NOTICE.txt"
 glslc="$ndk/shader-tools/$host/glslc"
 build="$root/build-vulkan-$abi"
 # Resolve Vulkan 1.1 functions through the existing dispatcher so Android 8 can still load the CPU path.
