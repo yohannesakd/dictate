@@ -1,10 +1,10 @@
 # Whistle and Whisper evaluation
 
-This archived comparison describes revision `d515489`. The [current app](whisper-only.md) uses English Whisper on the CPU.
+This archived comparison describes revision `d515489`. See [hardware modes](acceleration.md) for the current models and acceleration.
 
 Both CPU engines completed 280 recognition runs on Mac, Windows, Linux, and an ARM64 Android emulator.
 Each engine received seven recordings, with five alternating passes per recording.
-Phonon-2 remains the Mac default. Whisper base remains the portable default.
+The comparison used the engine profiles documented below.
 
 The recordings include human speech, short dictation, technical terms, a 36.9-second message, silence, added noise, and German speech.
 The synthetic recordings use the Mac Samantha and Anna voices.
@@ -79,7 +79,7 @@ The [German manifest](../portable/fixtures/speech/german-samples.json) records t
 Use the built Mac app with this command.
 
 These archived commands require revision `d515489`.
-The current branch uses [shared verification commands](../portable/docs/verification.md).
+Use the current [shared verification commands](../portable/docs/verification.md).
 
 ```sh
 python3 scripts/evaluate-mac-speech.py "$PWD/build/Dictate.app" "$PWD/portable/fixtures/speech" "$PWD/mac-results.json"

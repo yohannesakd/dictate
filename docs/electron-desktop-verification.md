@@ -1,10 +1,10 @@
 # Electron desktop verification
 
-This record covers the earlier two-engine app. See the [Whisper-only record](whisper-only.md) for the current design.
+This archive describes an earlier release. See [hardware modes](acceleration.md) and [current verification](benchmarks/platform-speech-2026-10-13/README.md).
 
 Branch: `feat/electron-desktop`. Verification date: October 11, 2026.
 
-Dictate now uses one Electron interface on macOS, Windows, and Linux.
+That release used one Electron interface on macOS, Windows, and Linux.
 The default window is 480 by 600 pixels. The minimum window is 400 by 480 pixels.
 The [design language](design-language.md) follows the selected quiet Mac style.
 Neutral surfaces, compact controls, bundled Inter, and restrained blue accents replace the default Fluent controls.
@@ -60,7 +60,7 @@ Saibot's interactive Windows 11 session passed Unicode insertion, selected-word 
 Focus, edit, caret, and cancellation guards passed.
 Both selected CPU models transcribed the JFK fixture and delivered text into real Edit controls.
 Two physical microphone capture cycles returned audio.
-The compact package is at `C:\Users\Yohannes\dictate-compact-final-20261011\package\Dictate.exe`.
+The compact package is at `C:\Users\build-user\dictate-compact-final-20261011\package\Dictate.exe`.
 
 ### Linux
 

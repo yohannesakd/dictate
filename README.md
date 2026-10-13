@@ -10,8 +10,6 @@ Windows, Linux, and Android use quantized English Whisper `base.en-q5_1`, with a
 Windows and Linux x64 can use Intel NPUs through OpenVINO, Vulkan GPUs, or CPU.
 A supported NPU requires compatible drivers. Unsupported hardware uses GPU or CPU.
 In Settings, choose Automatic or CPU only. See [hardware modes](docs/acceleration.md) for the platform limits.
-Whistle is removed. Historical records retain their original engine identities.
-The [earlier Whisper-only record](docs/whisper-only.md) describes the previous release.
 
 ## Use dictation
 
@@ -44,8 +42,13 @@ Clone the runtime release into `vendor/phonon-coreml`:
 git clone --branch 1.1.2 --depth 1 https://github.com/fermionresearch/phonon-coreml vendor/phonon-coreml
 ```
 
-Download [Phonon-2-CoreML](https://huggingface.co/FermionResearch/Phonon-2-CoreML) into `models/Phonon-2-CoreML`.
-Keep `manifest.json`, `decoder.bin`, `Phonon-2.mlpackage`, `NOTICE`, and `LICENSE-WEIGHTS-CC-BY-4.0.txt`.
+Download the complete [Phonon-2-CoreML](https://huggingface.co/FermionResearch/Phonon-2-CoreML) into `models/Phonon-2-CoreML`.
+The build requires `manifest.json`, `decoder.bin`, `Phonon-2.mlpackage`, `NOTICE`, `LICENSE-WEIGHTS-CC-BY-4.0.txt`, and `SHA256SUMS`.
+Keep the complete download until its upstream checksum check passes.
+Use Git LFS or download the actual files. Git LFS pointer files cannot run the model.
+The verified model uses manifest version `3.0` and encoder functions `5`, `10`, `15`, and `35`.
+Run `shasum -a 256 -c SHA256SUMS` from the downloaded model directory before building.
+Runtime release `1.1.2` resolves to commit `bf59e574639b060e30ee1a3f9c0e003fed5744c8`.
 The first load prepares the model for this Mac.
 
 ```sh
@@ -77,8 +80,13 @@ These checks reduce mistakes but do not prove meaning preservation.
 Credentials use macOS Keychain, Windows Credential Manager, Linux Secret Service, or Android Keystore.
 ChatGPT cleanup uses an unofficial endpoint that can change.
 
-## Credits
+## Project status and license
 
-Whisper is from OpenAI. Whisper and whisper.cpp use MIT licences.
-The desktop interface uses Electron and the Inter font.
-The [design language](docs/design-language.md) defines its shared colors, spacing, controls, and indicator behavior.
+This repository remains private. The source uses the [MIT license](LICENSE).
+Model weights and dependencies retain their own licenses. See [third-party notices](THIRD_PARTY.md).
+The Mac model uses CC-BY-4.0 and requires attribution.
+Android packages currently use a development signing key.
+Physical Intel NPU and Android GPU execution remain unverified.
+See [verification results](docs/benchmarks/platform-speech-2026-10-13/README.md) for tested hardware and limits.
+
+See the [documentation index](docs/README.md), [contribution guide](CONTRIBUTING.md), and [security guidance](SECURITY.md).

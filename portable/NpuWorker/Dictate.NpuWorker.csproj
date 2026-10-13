@@ -20,4 +20,6 @@
   <ItemGroup>
     <None Include="$(OpenVinoNativeRoot)/../../../LICENSE.txt" Link="Licenses/OpenVINO-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+  <ItemGroup><None Include="../Speech/Licenses/DotNet-*" Link="Licenses/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" /></ItemGroup>
+  <ItemGroup><None Include="../../LICENSE" Link="Licenses/Dictate-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" /></ItemGroup>
 </Project>

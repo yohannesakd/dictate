@@ -1,0 +1,18 @@
+{
+  "requested_device": "CPU",
+  "results": [
+    {
+      "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "recognition_ms": 879.0762539993011
+    },
+    {
+      "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "recognition_ms": 731.4317029995436
+    },
+    {
+      "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "recognition_ms": 716.1476520013821
+    }
+  ],
+  "termination_and_restart": "passed"
+}

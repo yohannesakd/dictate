@@ -1,5 +1,5 @@
 {
-  "path": "/home/resource/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/artifacts/android/android-arm64-Release.apk",
+  "path": "/home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/artifacts/android/android-arm64-Release.apk",
   "size": 36760577,
   "libraries": [
     "lib/arm64-v8a/libassemblies.arm64-v8a.blob.so",

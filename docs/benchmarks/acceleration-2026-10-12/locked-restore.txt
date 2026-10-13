@@ -1,10 +1,10 @@
   Determining projects to restore...
-  Restored /home/sai/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/Dictate.Core.csproj (in 326 ms).
-  Restored /home/sai/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/Dictate.Speech.csproj (in 581 ms).
-  Restored /home/sai/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/NativeChecks/Dictate.NativeChecks.csproj (in 580 ms).
-  Restored /home/sai/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Desktop/Dictate.Desktop.csproj (in 580 ms).
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/Dictate.Core.csproj (in 326 ms).
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/Dictate.Speech.csproj (in 581 ms).
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/NativeChecks/Dictate.NativeChecks.csproj (in 580 ms).
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Desktop/Dictate.Desktop.csproj (in 580 ms).
   Determining projects to restore...
-  Restored /home/sai/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/Dictate.Core.csproj (in 321 ms).
-  Restored /home/sai/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Desktop/Dictate.Desktop.csproj (in 606 ms).
-  Restored /home/sai/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/NativeChecks/Dictate.NativeChecks.csproj (in 607 ms).
-  Restored /home/sai/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/Dictate.Speech.csproj (in 606 ms).
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/Dictate.Core.csproj (in 321 ms).
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Desktop/Dictate.Desktop.csproj (in 606 ms).
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/NativeChecks/Dictate.NativeChecks.csproj (in 607 ms).
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/Dictate.Speech.csproj (in 606 ms).

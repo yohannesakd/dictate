@@ -1,12 +1,12 @@
 # Shared desktop verification archive
 
-This record covers the earlier two-engine app. See the [Whisper-only record](whisper-only.md) for the current design.
+This archive describes an earlier release. See [hardware modes](acceleration.md) and [current verification](benchmarks/platform-speech-2026-10-13/README.md).
 
-This record covers the replaced Avalonia interface. See [the current Electron record](electron-desktop-verification.md).
+This record covers the replaced Avalonia interface. See [the later Electron record](electron-desktop-verification.md).
 
 Branch: `feat/shared-desktop-ui`. Verification date: October 11, 2026.
 
-The desktop apps now compile the same Avalonia window, indicator, and engine menu.
+That release compiled the same Avalonia window, indicator, and engine menu.
 They share the Inter font, light theme, layout, cleanup core, and CPU speech profiles.
 Native title bars, shortcut names, and permission setup follow the operating system.
 The app uses software rendering on all three desktops.

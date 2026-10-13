@@ -1,11 +1,11 @@
 ﻿**********************
 Windows PowerShell transcript start
 Start time: 20261012075736
-Username: Saibot\Yohannes
-RunAs User: Saibot\Yohannes
-Configuration Name: 
+Username: build-host\build-user
+RunAs User: build-host\build-user
+Configuration Name:
 Machine: SAIBOT (Microsoft Windows NT 10.0.26200.0)
-Host Application: powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\Yohannes\dictate-electron-check-windows.ps1 -PackageDirectory C:\Users\Yohannes\dictate-waveform-20261012\Dictate-win32-x64 -NativeChecksDirectory C:\Users\Yohannes\dictate-electron-20261011\native -OutputDirectory C:\Users\Yohannes\dictate-waveform-20261012\results -FixtureDirectory C:\Users\Yohannes\dictate-shared-ui-20261011\fixtures -SeedScript C:\Users\Yohannes\dictate-electron-seed-checks.cjs
+Host Application: powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\build-user\dictate-electron-check-windows.ps1 -PackageDirectory C:\Users\build-user\dictate-waveform-20261012\Dictate-win32-x64 -NativeChecksDirectory C:\Users\build-user\dictate-electron-20261011\native -OutputDirectory C:\Users\build-user\dictate-waveform-20261012\results -FixtureDirectory C:\Users\build-user\dictate-shared-ui-20261011\fixtures -SeedScript C:\Users\build-user\dictate-electron-seed-checks.cjs
 Process ID: 20892
 PSVersion: 5.1.26100.7920
 PSEdition: Desktop

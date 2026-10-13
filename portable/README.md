@@ -75,7 +75,9 @@ The x64 Whisper runtime includes a no-AVX fallback.
 ## Build the Android keyboard
 
 Install the .NET 10 Android workload, Android SDK, and required Java SDK.
-The setup script installs isolated build tools and accepts Android SDK licences.
+Run the setup script on Linux. It installs isolated build tools and accepts Android SDK licences.
+On other hosts, install matching tools manually and set `DICTATE_ANDROID_TOOLS` to their parent directory.
+That directory must contain `dotnet/`, `jdk/`, and `android-sdk/`.
 The build script compiles the pinned whisper.cpp runtime with Vulkan and CPU support.
 It installs Android NDK 27.2 and CMake 3.22.1 when required.
 
@@ -105,4 +107,4 @@ dotnet test portable/Tests/Dictate.Tests.csproj
 ```
 
 The frozen cleanup fixtures preserve the original Mac guard cases.
-See [verification instructions](docs/verification.md) and the [Whisper-only record](../docs/whisper-only.md).
+See [verification instructions](docs/verification.md) and [current hardware modes](../docs/acceleration.md).

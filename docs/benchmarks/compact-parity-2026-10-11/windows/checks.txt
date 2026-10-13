@@ -1,11 +1,11 @@
 ﻿**********************
 Windows PowerShell transcript start
 Start time: 20261011215913
-Username: Saibot\Yohannes
-RunAs User: Saibot\Yohannes
-Configuration Name: 
+Username: build-host\build-user
+RunAs User: build-host\build-user
+Configuration Name:
 Machine: SAIBOT (Microsoft Windows NT 10.0.26200.0)
-Host Application: powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\Yohannes\dictate-compact-final-20261011\run.ps1
+Host Application: powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Users\build-user\dictate-compact-final-20261011\run.ps1
 Process ID: 7116
 PSVersion: 5.1.26100.7920
 PSEdition: Desktop

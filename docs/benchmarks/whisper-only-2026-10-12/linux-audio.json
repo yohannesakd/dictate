@@ -1,5 +1,5 @@
 {
-  "host": "vmi3293566",
+  "host": "build-host",
   "platform": "Ubuntu 24.04.5 LTS",
   "architecture": "X64",
   "logicalCores": 6,

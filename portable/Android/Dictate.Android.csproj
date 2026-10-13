@@ -21,6 +21,9 @@
   </ItemGroup>
   <ItemGroup><AndroidAsset Include="../Speech/Licenses/*" Link="Licenses/%(Filename)%(Extension)" /></ItemGroup>
   <ItemGroup>
+    <AndroidAsset Include="$(AndroidSpeechDirectory)/../licenses/*" Exclude="$(AndroidSpeechDirectory)/../licenses/whisper.cpp-LICENSE.txt" Link="Licenses/%(Filename)%(Extension)" />
+  </ItemGroup>
+  <ItemGroup>
     <AndroidAsset Include="../../desktop/ui/index.html;../../desktop/ui/styles.css;../../desktop/ui/app.js;../../desktop/ui/android.js" Link="ui/%(Filename)%(Extension)" />
     <AndroidAsset Include="../../desktop/ui/fonts/*" Link="ui/fonts/%(Filename)%(Extension)" />
   </ItemGroup>
@@ -31,7 +34,7 @@
     <ItemGroup>
       <AndroidNativeLibrary Remove="@(AndroidNativeLibrary)" Condition="$([System.String]::Copy('%(AndroidNativeLibrary.Identity)').Contains('whisper.net.runtime'))" />
       <AndroidNativeLibrary Include="$(AndroidSpeechDirectory)/$(AndroidSpeechAbi)/*.so" Abi="$(AndroidSpeechAbi)" />
-      <AndroidAsset Include="$(AndroidSpeechDirectory)/../licenses/*" Link="Licenses/%(Filename)%(Extension)" />
     </ItemGroup>
   </Target>
+  <ItemGroup><AndroidAsset Include="../../LICENSE" Link="Licenses/Dictate-LICENSE.txt" /></ItemGroup>
 </Project>

@@ -3,7 +3,7 @@
   "version": "0.2.0",
   "description": "Private English dictation with automatic acceleration and CPU fallback.",
   "author": "Yohannes",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "private": true,
   "main": "main.cjs",
   "scripts": {

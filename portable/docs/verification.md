@@ -1,6 +1,6 @@
 # Verify the shared app
 
-The [Whisper-only record](../../docs/whisper-only.md) lists the current change and verification limits.
+The [platform speech record](../../docs/benchmarks/platform-speech-2026-10-13/README.md) lists current models, results, and verification limits.
 The [October 10 archive](verification-2026-10-10.md) retains the original warning investigation and earlier platform results.
 
 ## Core and speech checks
@@ -10,7 +10,8 @@ dotnet test portable/Tests/Dictate.Tests.csproj
 dotnet run --project portable/Checks -- --evaluate portable/fixtures/speech/samples.json portable/models portable/artifacts/audio.json
 ```
 
-The speech check uses six checksum-verified English fixtures and five passes through Whisper.
+The portable speech check uses six checksum-verified English fixtures and five passes through Whisper.
+The signed Mac speech check uses the same fixtures with Phonon-2.
 It checks cancellation and recovery after the audio runs.
 Output records model preparation and recognition separately.
 Parent memory includes the managed app and its cached Whisper model. Earlier comparisons retain their original measurement limits.
@@ -81,17 +82,17 @@ The check uses the real renderer, native service, clipboard, and microphone adap
 It saves screenshots and exits with a result code.
 The normal recording button must hide the main window before capture starts.
 Warnings stay in the main window, and the indicator remains unfocused.
-Run once more with `--verify-restart whisper` to check the profile after a complete process restart.
+Run once more with `--verify-restart whisper` on Windows or Linux to check the profile after restart.
+On Mac, use `--verify-restart phonon`.
 On macOS, launch the signed package through `open -n -W` with absolute argument paths.
 Keep the Mac unlocked and the desktop active.
 The Linux runner supplies synthetic silence to test capture lifecycle.
 
 ## Android checks
 
-Use the Dispatch-managed Android emulator or a physical Android device with wireless debugging.
-Follow the Dispatch skill's Android-on-Saibot workflow. Keep local Mac emulators stopped during routine checks.
+Use an Android emulator or a physical Android device with debugging enabled.
 Build a Debug APK for the device's architecture and install it on that device.
-Open the device in the T3 Device panel before interaction.
+If T3 Code hosts the session, open the device in its Device panel before interaction.
 Install the JFK fixture at the app’s internal `files/device-check.wav` path.
 Copy the speech fixtures into `files/evaluation` to enable the audio matrix.
 Grant microphone permission. Enable and select the Dictate keyboard before you run the instrumentation.
