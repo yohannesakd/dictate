@@ -4,7 +4,7 @@ public enum CleanupProvider { Groq, DeepSeek, ChatGPT }
 public enum DictationPhase { Idle, Listening, Processing, Delivering }
 public enum DeliveryOutcome { Verified, Sent, FocusChanged, Cancelled, Failed, Unsupported }
 // Retain stored engine identities so old settings and transcript histories remain readable.
-public enum SpeechEngineKind { Whisper, Whistle }
+public enum SpeechEngineKind { Whisper, Whistle, Phonon }
 public enum SpeechComputeMode { Automatic, CpuOnly }
 
 public sealed record DictationSettings

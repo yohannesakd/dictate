@@ -6,7 +6,9 @@ export DOTNET_ROOT="$tools/dotnet"
 export PATH="$DOTNET_ROOT:$PATH"
 configuration="${1:-Release}"
 runtime="${2:-android-arm64}"
+./portable/scripts/build-android-speech.sh "$runtime"
 dotnet publish portable/Android/Dictate.Android.csproj -c "$configuration" -r "$runtime" -p:RuntimeIdentifiers="$runtime" \
+  -p:AndroidSpeechDirectory="$tools/android-speech/lib" \
   -p:AndroidSdkDirectory="$tools/android-sdk" \
   -p:JavaSdkDirectory="$tools/jdk" -p:AndroidPackageFormats=apk -p:EmbedAssembliesIntoApk=true -m:1 --nologo
 mkdir -p portable/artifacts/android

@@ -1,0 +1,11 @@
+--- a/ggml/src/ggml-vulkan/ggml-vulkan.cpp
++++ b/ggml/src/ggml-vulkan/ggml-vulkan.cpp
+@@ -5717 +5717 @@
+-        vkGetPhysicalDeviceFeatures2(device->physical_device, &device_features2);
++        VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceFeatures2(device->physical_device, &device_features2);
+@@ -6227 +6227 @@
+-    vkGetPhysicalDeviceFeatures2(physical_device, &device_features2);
++    VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceFeatures2(physical_device, &device_features2);
+@@ -17074 +17074 @@
+-    vkGetPhysicalDeviceFeatures2(vkdev, &device_features2);
++    VULKAN_HPP_DEFAULT_DISPATCHER.vkGetPhysicalDeviceFeatures2(vkdev, &device_features2);

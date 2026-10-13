@@ -10,6 +10,9 @@
     <ApplicationVersion>1</ApplicationVersion>
     <ApplicationDisplayVersion>0.1</ApplicationDisplayVersion>
     <RuntimeIdentifiers>android-arm64;android-x64</RuntimeIdentifiers>
+    <AndroidSpeechAbi Condition="'$(RuntimeIdentifier)' == 'android-arm64'">arm64-v8a</AndroidSpeechAbi>
+    <AndroidSpeechAbi Condition="'$(RuntimeIdentifier)' == 'android-x64'">x86_64</AndroidSpeechAbi>
+    <AndroidSpeechDirectory Condition="'$(AndroidSpeechDirectory)' == ''">$(MSBuildProjectDirectory)/../.tools/android-speech/lib</AndroidSpeechDirectory>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../Core/Dictate.Core.csproj" />
@@ -22,4 +25,13 @@
     <AndroidAsset Include="../../desktop/ui/fonts/*" Link="ui/fonts/%(Filename)%(Extension)" />
   </ItemGroup>
   <ItemGroup Condition="'$(Configuration)' == 'Debug'"><Compile Include="../Checks/SpeechEvaluation.cs" Link="SpeechEvaluation.cs" /></ItemGroup>
+  <Target Name="SelectAndroidSpeechLibraries" BeforeTargets="PrepareForBuild">
+    <Error Condition="'$(AndroidSpeechAbi)' == ''" Text="Select android-arm64 or android-x64." />
+    <Error Condition="!Exists('$(AndroidSpeechDirectory)/$(AndroidSpeechAbi)/libwhisper.so')" Text="Build Android speech libraries with portable/scripts/build-android.sh." />
+    <ItemGroup>
+      <AndroidNativeLibrary Remove="@(AndroidNativeLibrary)" Condition="$([System.String]::Copy('%(AndroidNativeLibrary.Identity)').Contains('whisper.net.runtime'))" />
+      <AndroidNativeLibrary Include="$(AndroidSpeechDirectory)/$(AndroidSpeechAbi)/*.so" Abi="$(AndroidSpeechAbi)" />
+      <AndroidAsset Include="$(AndroidSpeechDirectory)/../licenses/*" Link="Licenses/%(Filename)%(Extension)" />
+    </ItemGroup>
+  </Target>
 </Project>

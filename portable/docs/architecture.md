@@ -18,18 +18,18 @@ Closing the window hides it. Quitting stops the service before Electron exits.
 The floating indicator receives only dictation phase and audio level.
 It preserves destination focus and disappears when idle. Warnings appear in the app.
 All four apps use the same HTML interface, Inter font, light theme, and software rendering.
-Only platform shortcut names and setup controls differ.
+Platform shortcuts, model names, and setup controls follow the native platform.
 The native window frame follows the operating system.
 
 The Mac bridge retains microphone capture, fn shortcuts, text delivery, and Keychain. Electron owns login-item integration.
-The old Swift app and Phonon paths are removed.
+The old Swift window is removed. The Phonon runtime remains behind the native Mac adapter.
 The Mac build keeps the bundle identifier and signing identity.
 A first-launch import copies legacy preferences and transcripts into the shared data directory.
 The import leaves legacy sources unchanged and writes settings last to mark completion.
 
 ## Recognition and operations
 
-Every app uses quantized English Whisper `base.en-q5_1`. There is no engine selector.
+Mac uses Phonon-2. Other platforms use quantized English Whisper `base.en-q5_1`. There is no engine selector.
 Asset downloads enforce a size limit and check a pinned SHA-256 hash before atomic replacement.
 Digital silence returns no transcript before model loading.
 This check does not detect all non-speech noise.
@@ -43,21 +43,31 @@ Its lifetime and operation cancellation tokens stop pending recognition. It uses
 Each recording captures Automatic or CPU-only mode with its settings.
 A changed mode reloads the native context before recognition. CPU-only sets `UseGpu = false`.
 Whisper.net loads one native library per process. The runtime order stays GPU-capable even if CPU-only runs first.
-Apple silicon Macs prefer the Core ML runtime, then the standard runtime.
-The Core ML bridge checks Apple's available compute devices before enabling Neural Engine support.
-Its encoder uses `CPUAndNeuralEngine`, which excludes GPU execution for that model. The decoder can still use Metal.
-Each native service owns one active recognizer. Its gate serializes Core ML configuration, preparation, and recognition.
-CPU-only disables Core ML through the bridge and sets `UseGpu = false`. Installed encoder files cannot bypass this choice.
-The bridge checks output type and count before copying into the native tensor. The fixed base encoder produces 1500 frames with 512 features.
-A prediction failure sets an explicit flag. The recognizer discards the first result and retries once with Core ML disabled.
-No text reaches the controller before that decision. Other recognition failures retain their existing error behavior.
-The checksum-verified 38 MB encoder archive installs through an isolated extraction folder and an atomic directory move.
-The compiled model's output description has a dynamic shape. Validation uses the actual prediction shape, not that empty description.
-Windows and Linux x64 prefer Vulkan, then CPU.
-Android remains CPU-only because the packaged native runtime has no accelerator backend.
-The x64 runtime falls back to the bundled no-AVX library when required CPU instructions are unavailable.
+Mac uses `PhononEngine` through the existing Swift adapter.
+It compiles the pinned Phonon runtime with the original frame-capacity patch and keeps the 34.9-second single-pass boundary.
+On a Mac with a Neural Engine, Automatic first loads Core ML with `cpuAndNeuralEngine`.
+GPU and CPU remain load fallbacks. CPU-only loads the same model with `cpuOnly`.
+The native queue completes before managed cancellation returns. A cancelled result cannot reach text delivery.
+A hardware change waits for previous model preparation before loading the next configuration.
+The bundled model remains separate from editable settings and history.
+
+Windows and Linux x64 keep Vulkan and CPU in the main service.
+An isolated OpenVINO worker owns NPU inference because Whisper.net loads one native library per process.
+The worker probes available devices before downloading the checksum-verified encoder archive.
+Only an actual OpenVINO NPU device enables this path. The decoder remains on CPU.
+The worker keeps its factory and processor across recordings. Its input accepts at most five minutes of PCM audio.
+While the NPU worker is ready, the main service releases its fallback model.
+Cancellation terminates the worker and retires its response before another recording can use the recognizer.
+An observed worker failure discards its result and uses the main service's GPU or CPU path.
+CPU-only skips and stops the NPU worker and sets `UseGpu = false` in the main service.
+The worker packages the OpenVINO 2024.4 native libraries expected by the pinned Whisper.net runtime.
+
+The desktop x64 runtime falls back to the bundled no-AVX library when required CPU instructions are unavailable.
+Android builds the matching whisper.cpp revision with Vulkan and CPU backends in one native runtime.
+The Android build resolves Vulkan 1.1 entry points dynamically to preserve CPU loading on Android 8.
 Whistle executables, model downloads, process runners, and Android native libraries are removed.
-Stored engine names remain readable for old settings and history. Settings normalize to Whisper without rewriting historical records.
+Stored engine names remain readable for old settings and history.
+Settings normalize to the platform profile without rewriting historical records.
 
 The core saves the raw transcript, cleanup result, delivery receipt, engine, model, and stage timings.
 Delivery does not retry automatically.

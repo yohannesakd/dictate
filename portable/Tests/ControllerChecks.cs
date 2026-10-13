@@ -73,22 +73,24 @@ public class ControllerChecks
         Assert.Equal(DictationPhase.Idle, controller.Phase);
     }
 
-    [Fact]
-    public async Task SettingsAreCapturedBeforeRecognitionCompletes()
+    [Theory]
+    [InlineData(SpeechEngineKind.Whisper)]
+    [InlineData(SpeechEngineKind.Phonon)]
+    public async Task SettingsAreCapturedBeforeRecognitionCompletes(SpeechEngineKind engine)
     {
         var speech = new Speech();
         var delivery = new Delivery();
         var store = new Store();
         using var controller = new DictationController(new Audio(), speech, delivery, new(new Client()), store);
         var entries = new[] { new DictionaryEntry("soul", "Sol") };
-        controller.Start(new() { SmartCleanup = false, Dictionary = entries, SpeechEngine = SpeechEngineKind.Whisper, SpeechModel = "base", SpeechCompute = SpeechComputeMode.CpuOnly });
+        controller.Start(new() { SmartCleanup = false, Dictionary = entries, SpeechEngine = engine, SpeechModel = "base", SpeechCompute = SpeechComputeMode.CpuOnly });
         var finished = controller.FinishAsync();
         entries[0] = new("soul", "Wrong");
         speech.Requests.Dequeue().SetResult("Ask soul.");
         await finished;
         Assert.Equal(["Ask Sol."], delivery.Inserted);
         Assert.Equal(("base", "en", SpeechComputeMode.CpuOnly), speech.Selection);
-        Assert.Equal(SpeechEngineKind.Whisper, Assert.Single(store.Records).SpeechEngine);
+        Assert.Equal(engine, Assert.Single(store.Records).SpeechEngine);
         Assert.Equal("base", store.Records[0].SpeechModel);
     }
 }

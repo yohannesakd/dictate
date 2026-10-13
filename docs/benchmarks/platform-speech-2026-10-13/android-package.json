@@ -1,0 +1,22 @@
+{
+  "path": "/home/resource/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/artifacts/android/android-arm64-Release.apk",
+  "size": 36760577,
+  "libraries": [
+    "lib/arm64-v8a/libassemblies.arm64-v8a.blob.so",
+    "lib/arm64-v8a/libarc.bin.so",
+    "lib/arm64-v8a/libxamarin-app.so",
+    "lib/arm64-v8a/libSystem.Globalization.Native.so",
+    "lib/arm64-v8a/libSystem.IO.Compression.Native.so",
+    "lib/arm64-v8a/libSystem.Native.so",
+    "lib/arm64-v8a/libSystem.Security.Cryptography.Native.Android.so",
+    "lib/arm64-v8a/libmono-component-marshal-ilgen.so",
+    "lib/arm64-v8a/libmonosgen-2.0.so",
+    "lib/arm64-v8a/libmonodroid.so",
+    "lib/arm64-v8a/libc++_shared.so",
+    "lib/arm64-v8a/libggml-base.so",
+    "lib/arm64-v8a/libggml-cpu.so",
+    "lib/arm64-v8a/libggml-vulkan.so",
+    "lib/arm64-v8a/libggml.so",
+    "lib/arm64-v8a/libwhisper.so"
+  ]
+}

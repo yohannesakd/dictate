@@ -60,6 +60,9 @@ internal static class MacNative
     [DllImport(Library, EntryPoint = "dictate_free")] internal static extern void Free(nint pointer);
     [DllImport(Library, EntryPoint = "dictate_operation")] private static extern nint Operation();
     [DllImport(Library, EntryPoint = "dictate_cancel")] private static extern void Cancel(MacObject operation);
+    [DllImport(Library, EntryPoint = "dictate_phonon")] internal static extern void Phonon([MarshalAs(UnmanagedType.LPUTF8Str)] string directory,
+        float[] pcm, int count, int cpuOnly, MacObject operation, ResultCallback callback, nint context);
+    [DllImport(Library, EntryPoint = "dictate_phonon_unload")] internal static extern void PhononUnload();
     [DllImport(Library, EntryPoint = "dictate_target")] internal static extern nint Target();
     [DllImport(Library, EntryPoint = "dictate_target_name")] internal static extern nint TargetName(MacObject target);
     [DllImport(Library, EntryPoint = "dictate_selected_text")] internal static extern nint SelectedText();

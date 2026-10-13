@@ -1,0 +1,93 @@
+{
+  "results": [
+    {
+      "mode": 1,
+      "ActiveHardware": "CPU",
+      "FallbackReason": null,
+      "runtime": 3,
+      "preparationMs": 329.0799,
+      "recognitionMs": [
+        897.2827,
+        874.7441,
+        867.1953
+      ],
+      "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "nativeContext": [
+        "whisper_init_with_params_no_state: use gpu    = 0\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_backend_init_gpu: no GPU found\n"
+      ]
+    },
+    {
+      "mode": 0,
+      "ActiveHardware": "Vulkan GPU",
+      "FallbackReason": null,
+      "runtime": 3,
+      "preparationMs": 1914.8928,
+      "recognitionMs": [
+        1819.5948,
+        565.1558,
+        565.0431
+      ],
+      "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "nativeContext": [
+        "whisper_init_with_params_no_state: use gpu    = 1\n",
+        "whisper_backend_init_gpu: device 0: Vulkan0 (type: 2)\n",
+        "whisper_backend_init_gpu: found GPU device 0: Vulkan0 (type: 2, cnt: 0)\n",
+        "whisper_backend_init_gpu: using Vulkan0 backend\n",
+        "whisper_backend_init_gpu: device 0: Vulkan0 (type: 2)\n",
+        "whisper_backend_init_gpu: found GPU device 0: Vulkan0 (type: 2, cnt: 0)\n",
+        "whisper_backend_init_gpu: using Vulkan0 backend\n",
+        "whisper_backend_init_gpu: device 0: Vulkan0 (type: 2)\n",
+        "whisper_backend_init_gpu: found GPU device 0: Vulkan0 (type: 2, cnt: 0)\n",
+        "whisper_backend_init_gpu: using Vulkan0 backend\n"
+      ]
+    },
+    {
+      "mode": 1,
+      "ActiveHardware": "CPU",
+      "FallbackReason": null,
+      "runtime": 3,
+      "preparationMs": 131.1928,
+      "recognitionMs": [
+        895.2251,
+        904.4949,
+        876.1746
+      ],
+      "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "nativeContext": [
+        "whisper_init_with_params_no_state: use gpu    = 0\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_backend_init_gpu: no GPU found\n"
+      ]
+    },
+    {
+      "mode": 0,
+      "ActiveHardware": "Vulkan GPU",
+      "FallbackReason": null,
+      "runtime": 3,
+      "preparationMs": 1069.9041,
+      "recognitionMs": [
+        560.558,
+        560.8333,
+        559.4325
+      ],
+      "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "nativeContext": [
+        "whisper_init_with_params_no_state: use gpu    = 1\n",
+        "whisper_backend_init_gpu: device 0: Vulkan0 (type: 2)\n",
+        "whisper_backend_init_gpu: found GPU device 0: Vulkan0 (type: 2, cnt: 0)\n",
+        "whisper_backend_init_gpu: using Vulkan0 backend\n",
+        "whisper_backend_init_gpu: device 0: Vulkan0 (type: 2)\n",
+        "whisper_backend_init_gpu: found GPU device 0: Vulkan0 (type: 2, cnt: 0)\n",
+        "whisper_backend_init_gpu: using Vulkan0 backend\n",
+        "whisper_backend_init_gpu: device 0: Vulkan0 (type: 2)\n",
+        "whisper_backend_init_gpu: found GPU device 0: Vulkan0 (type: 2, cnt: 0)\n",
+        "whisper_backend_init_gpu: using Vulkan0 backend\n"
+      ]
+    }
+  ],
+  "cancellation": "passed"
+}

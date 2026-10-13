@@ -41,6 +41,35 @@ public class SpeechProfileChecks
     }
 
     [Fact]
+    public async Task MacRestoresPhononWithoutChangingHardwareChoiceOrHistory()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), "dictate-phonon-" + Guid.NewGuid());
+        try
+        {
+            var oldStore = new FileStore(directory);
+            await oldStore.SaveSettingsAsync(new() { SpeechCompute = SpeechComputeMode.CpuOnly, SmartCleanup = false,
+                Provider = CleanupProvider.DeepSeek, Dictionary = [new("shay", "Sai")] });
+            await oldStore.AppendAsync(new() { Raw = "old", Rules = "old", Text = "old", Smart = "off",
+                Delivery = DeliveryOutcome.Sent, SpeechEngine = SpeechEngineKind.Whisper });
+            var history = await File.ReadAllTextAsync(Path.Combine(directory, "transcripts.jsonl"));
+            var macStore = new FileStore(directory, SpeechEngineKind.Phonon);
+            var loaded = macStore.LoadSettings();
+            Assert.Equal(SpeechEngineKind.Phonon, loaded.SpeechEngine);
+            Assert.Equal(SpeechProfiles.PhononModel, loaded.SpeechModel);
+            Assert.Equal("auto", loaded.Language);
+            Assert.Equal(SpeechComputeMode.CpuOnly, loaded.SpeechCompute);
+            Assert.False(loaded.SmartCleanup);
+            Assert.Equal(CleanupProvider.DeepSeek, loaded.Provider);
+            Assert.Equal(new[] { new DictionaryEntry("shay", "Sai") }, loaded.Dictionary);
+            await macStore.SaveSettingsAsync(loaded);
+            Assert.Equal(SpeechEngineKind.Phonon, macStore.LoadSettings().SpeechEngine);
+            Assert.Equal(history, await File.ReadAllTextAsync(Path.Combine(directory, "transcripts.jsonl")));
+            Assert.Equal(SpeechEngineKind.Whisper, macStore.History().Single().SpeechEngine);
+        }
+        finally { Directory.Delete(directory, true); }
+    }
+
+    [Fact]
     public async Task DigitalSilenceCannotProduceTextOrLoadTheModel()
     {
         var directory = Path.Combine(Path.GetTempPath(), "dictate-silence-" + Guid.NewGuid());

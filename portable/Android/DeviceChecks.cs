@@ -79,8 +79,16 @@ public sealed class DeviceChecks : Instrumentation
         var pcm = new List<float>();
         while (reader.BaseStream.Position + 2 <= reader.BaseStream.Length) pcm.Add(reader.ReadInt16() / 32768f);
         using var speech = new WhisperEngine(Path.Combine(context.FilesDir.AbsolutePath, "models"));
-        var transcript = await speech.TranscribeAsync(pcm.ToArray(), SpeechProfiles.WhisperModel, "en", CancellationToken.None);
-        Require(transcript.Contains("country", StringComparison.OrdinalIgnoreCase) && transcript.Contains("fellow", StringComparison.OrdinalIgnoreCase), "Unexpected CPU transcript: " + transcript);
+        var hardware = new List<object>();
+        string transcript = "";
+        foreach (var mode in new[] { SpeechComputeMode.CpuOnly, SpeechComputeMode.Automatic, SpeechComputeMode.CpuOnly })
+        {
+            transcript = await speech.TranscribeAsync(pcm.ToArray(), SpeechProfiles.WhisperModel, "en", CancellationToken.None, mode);
+            Require(transcript.Contains("country", StringComparison.OrdinalIgnoreCase) && transcript.Contains("fellow", StringComparison.OrdinalIgnoreCase), "Unexpected transcript: " + transcript);
+            Require(mode != SpeechComputeMode.CpuOnly || speech.ActiveHardware == "CPU", "CPU-only mode reported an accelerator.");
+            hardware.Add(new { mode, speech.ActiveHardware, speech.FallbackReason, transcript });
+        }
+        File.WriteAllText(Path.Combine(context.FilesDir.AbsolutePath, "speech-hardware.json"), JsonSerializer.Serialize(hardware));
         RunOnMainSync(() => { field!.Text = ""; field.SetSelection(0); });
         delivery.Bind(connection, context.PackageName);
         Require((await delivery.CaptureTarget().InsertAsync(transcript, transcript, CancellationToken.None)).Outcome == DeliveryOutcome.Verified,
@@ -129,6 +137,16 @@ public sealed class DeviceChecks : Instrumentation
         Require(session.Store.LoadSettings().SpeechEngine == SpeechEngineKind.Whisper, "The Android profile is not Whisper.");
         await session.PrepareAsync(CancellationToken.None);
         await Wait("document.querySelector('#model-status').textContent==='Downloaded'");
+        foreach (var mode in new[] { SpeechComputeMode.CpuOnly, SpeechComputeMode.Automatic })
+        {
+            var value = mode == SpeechComputeMode.CpuOnly ? "cpu_only" : "automatic";
+            await Evaluate($"window.hardwareSaved=false;window.dictate.command('settings',{{speech_compute:'{value}'}}).then(()=>window.hardwareSaved=true)");
+            await Wait("window.hardwareSaved");
+            await session.PrepareAsync(CancellationToken.None);
+            Require(session.Speech.LoadedCompute == mode, "The Android hardware mode did not reach the recognizer.");
+            if (mode == SpeechComputeMode.CpuOnly)
+                await Wait("document.querySelector('#hardware-status').textContent.includes('Using CPU.')");
+        }
         await Click("[data-section=cleanup]");
         var fillers = session.Settings.Rules.Fillers;
         await Click("#toggle-fillers");

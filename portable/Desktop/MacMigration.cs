@@ -18,7 +18,7 @@ internal static class MacMigration
         File.WriteAllLines(staging, records.Select(record => JsonSerializer.Serialize(record, FileStore.Json)));
         File.Move(staging, history, true);
         // Settings mark a complete import. A failed import retries from the unchanged legacy source.
-        store.SaveSettingsAsync(SpeechProfiles.Normalize(settings)).GetAwaiter().GetResult();
+        store.SaveSettingsAsync(SpeechProfiles.Normalize(settings, SpeechEngineKind.Phonon)).GetAwaiter().GetResult();
     }
 
     internal static IEnumerable<TranscriptRecord> ConvertHistory(IEnumerable<string> lines)

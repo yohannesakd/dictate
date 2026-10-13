@@ -20,15 +20,6 @@
           "Whisper.net.Runtime.Metal": "1.9.1"
         }
       },
-      "Whisper.net.Runtime.CoreML": {
-        "type": "Direct",
-        "requested": "[1.9.1, )",
-        "resolved": "1.9.1",
-        "contentHash": "DALf8ZocgBIz5zEeUYcan46e8IDaMCXmkUmVyt10lSRjXgY8OV190FfQ39uvkklP93l4+AkKPkF1wVGMAC93fA==",
-        "dependencies": {
-          "Whisper.net.Runtime.Metal": "1.9.1"
-        }
-      },
       "Whisper.net.Runtime.NoAvx": {
         "type": "Direct",
         "requested": "[1.9.1, )",

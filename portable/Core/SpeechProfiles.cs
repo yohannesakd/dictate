@@ -1,15 +1,16 @@
 namespace Dictate.Core;
 
-/// <summary>The English Whisper profile used by every app.</summary>
+/// <summary>Recognition profiles selected by the platform.</summary>
 public static class SpeechProfiles
 {
     public const string WhisperModel = "base.en-q5_1";
+    public const string PhononModel = "phonon-2";
 
     // Existing histories retain their model identities. Only future dictation settings change.
-    public static DictationSettings Normalize(DictationSettings settings) => settings with
+    public static DictationSettings Normalize(DictationSettings settings, SpeechEngineKind engine = SpeechEngineKind.Whisper) => settings with
     {
-        SpeechEngine = SpeechEngineKind.Whisper,
-        SpeechModel = WhisperModel,
-        Language = "en"
+        SpeechEngine = engine,
+        SpeechModel = engine == SpeechEngineKind.Phonon ? PhononModel : WhisperModel,
+        Language = engine == SpeechEngineKind.Phonon ? "auto" : "en"
     };
 }

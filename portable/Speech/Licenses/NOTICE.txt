@@ -4,5 +4,12 @@ whisper.cpp native runtime: ggml contributors, MIT.
 Source and license: https://github.com/ggml-org/whisper.cpp/blob/master/LICENSE
 Whisper.net bindings and native runtimes: Sandro Hanea, MIT.
 Source and license: https://github.com/sandrohanea/whisper.net/blob/main/LICENSE
-Dictate Core ML bridge uses the whisper.cpp encoder ABI with Apple Core ML.
-Source: portable/Speech/Mac/CoreMlBridge.mm
+Phonon-2 by Fermion Research, based on NVIDIA Parakeet TDT 0.6B v3.
+Mac runtime: Apache-2.0. Model weights: CC-BY-4.0.
+Source and license: https://github.com/fermionresearch/phonon-coreml
+The Mac package includes the model NOTICE and LICENSE-WEIGHTS-CC-BY-4.0.txt.
+OpenVINO inference runtime: Intel, Apache-2.0.
+Source and license: https://github.com/openvinotoolkit/openvino
+The Windows and Linux NPU worker includes OpenVINO-LICENSE.txt.
+Android Vulkan and SPIR-V headers: Khronos Group, Apache-2.0 and MIT.
+Sources: https://github.com/KhronosGroup/Vulkan-Headers and https://github.com/KhronosGroup/SPIRV-Headers

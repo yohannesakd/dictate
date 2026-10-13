@@ -1,0 +1,2 @@
+Android shared UI, English profile, model preparation, clipboard, draft preservation, native insertion, correction, binding changes, Keystore, microphone, and CPU speech passed.
+Hardware modes, reference recognition, and bundled Vulkan/CPU libraries passed artifact validation.

@@ -8,7 +8,7 @@ TARGET="$(uname -m)-apple-macosx15.0"
 APP_NAME=Dictate
 PROJECT=portable/Desktop/Dictate.Desktop.csproj
 EXECUTABLE=Dictate.Desktop
-NATIVE_SOURCES=(Sources/Recorder.swift Sources/Insertion.swift Sources/Keyboard.swift Sources/Operation.swift portable/Desktop/Mac/NativeBridge.swift)
+NATIVE_SOURCES=(Sources/Recorder.swift Sources/Insertion.swift Sources/Keyboard.swift Sources/Operation.swift portable/Desktop/Mac/NativeBridge.swift portable/Desktop/Mac/PhononSpeech.swift)
 if [[ "${1:-}" == --checks ]]; then
   APP_NAME=Dictate.Checks
   PROJECT=portable/NativeChecks/Dictate.NativeChecks.csproj
@@ -35,6 +35,18 @@ cleanup() {
 }
 trap cleanup EXIT
 
+PHONON=vendor/phonon-coreml
+PHONON_TDT=$PHONON/Binaries/PhononTDT.xcframework/macos-arm64_x86_64
+MODEL=models/Phonon-2-CoreML
+cp -R "$PHONON/Sources/PhononCoreML" "$STAGING/PhononCoreML"
+patch -s -d "$STAGING/PhononCoreML" -p1 < patches/phonon-frame-capacity.patch
+mkdir -p "$STAGING/phonon"
+xcrun swiftc -O -swift-version 6 -target "$TARGET" -parse-as-library -module-name PhononCoreML \
+  -I "$PHONON_TDT/Headers" "$STAGING"/PhononCoreML/*.swift \
+  -emit-module -emit-module-path "$STAGING/phonon/PhononCoreML.swiftmodule" \
+  -emit-library -static -o "$STAGING/phonon/libPhononCoreML.a"
+PHONON_FLAGS=(-I "$STAGING/phonon" -I "$PHONON_TDT/Headers" "$STAGING/phonon/libPhononCoreML.a" "$PHONON_TDT/libPhononTDT.a" -framework Accelerate -framework CoreML)
+
 # Electron owns the window. Swift supplies only macOS adapters.
 export PATH=/usr/local/share/dotnet:/opt/homebrew/bin:$PATH
 ARCH=$(uname -m)
@@ -45,17 +57,27 @@ if [[ "${1:-}" == --checks ]]; then
   dotnet publish "$PROJECT" -c Release -r "$RID" --self-contained true \
     -p:UseAppHost=true -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false -m:2 -o "$APP/Contents/MacOS"
   mv "$APP/Contents/MacOS/$EXECUTABLE" "$APP/Contents/MacOS/Dictate"
-  xcrun swiftc -O -swift-version 5 -target "$TARGET" -emit-library \
-    "${NATIVE_SOURCES[@]}" -o "$APP/Contents/MacOS/libdictate-macos.dylib"
+  xcrun swiftc -O -warnings-as-errors -swift-version 5 -target "$TARGET" -emit-library \
+    "${NATIVE_SOURCES[@]}" "${PHONON_FLAGS[@]}" -o "$APP/Contents/MacOS/libdictate-macos.dylib"
+  MODEL_OUTPUT="$APP/Contents/Resources/Phonon-2-CoreML"
   cp Info.plist "$APP/Contents/Info.plist"
 else
   ./desktop/scripts/build-backend.sh "$RID"
-  xcrun swiftc -O -swift-version 5 -target "$TARGET" -emit-library \
-    "${NATIVE_SOURCES[@]}" -o desktop/resources/backend/libdictate-macos.dylib
+  xcrun swiftc -O -warnings-as-errors -swift-version 5 -target "$TARGET" -emit-library \
+    "${NATIVE_SOURCES[@]}" "${PHONON_FLAGS[@]}" -o desktop/resources/backend/libdictate-macos.dylib
+  MODEL_OUTPUT=desktop/resources/backend/Phonon-2-CoreML
+  mkdir -p "$MODEL_OUTPUT"
+  cp -c -R "$MODEL/manifest.json" "$MODEL/decoder.bin" "$MODEL/Phonon-2.mlpackage" \
+    "$MODEL/NOTICE" "$MODEL/LICENSE-WEIGHTS-CC-BY-4.0.txt" "$MODEL_OUTPUT/"
   (cd desktop && npm ci && npm run prepare-ui && npm run package -- darwin "$([[ "$ARCH" == arm64 ]] && print arm64 || print x64)")
   ELECTRON_ARCH=$ARCH
   [[ "$ARCH" == arm64 ]] || ELECTRON_ARCH=x64
   ditto "desktop/dist/Dictate-darwin-$ELECTRON_ARCH/Dictate.app" "$APP"
+fi
+if [[ "${1:-}" == --checks ]]; then
+  mkdir -p "$MODEL_OUTPUT"
+  cp -c -R "$MODEL/manifest.json" "$MODEL/decoder.bin" "$MODEL/Phonon-2.mlpackage" \
+    "$MODEL/NOTICE" "$MODEL/LICENSE-WEIGHTS-CC-BY-4.0.txt" "$MODEL_OUTPUT/"
 fi
 
 # This is the app's separate signing keychain. Restore the original search list after signing.

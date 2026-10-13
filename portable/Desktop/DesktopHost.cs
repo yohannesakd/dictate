@@ -176,13 +176,12 @@ internal sealed class DesktopHost : IDisposable
         return new
         {
             sequence = ++sequence, platform = OperatingSystem.IsMacOS() ? "mac" : OperatingSystem.IsWindows() ? "windows" : "linux",
-            speech = new { hardware = session.Speech.ActiveHardware, compute = session.Speech.LoadedCompute, fallback = session.Speech.FallbackReason,
-                neural_supported = session.Speech.SupportsNeuralEngine },
+            speech = new { hardware = session.Speech.ActiveHardware, compute = session.Speech.LoadedCompute, fallback = session.Speech.FallbackReason },
             settings = session.Settings, phase = session.Controller.Phase, notice = session.Status, preparing, signingIn,
             permissions = OperatingSystem.IsMacOS() ? MacNative.Permissions(false) : (object?)null,
             wayland = OperatingSystem.IsLinux() && LinuxDelivery.IsWayland, credentials,
             credentialsError = credentialsErrors.GetValueOrDefault(AppCommands.ProviderName(session.Settings.Provider)),
-            models = new { whisper = File.Exists(whisperModel), neural = session.Speech.NeuralModelReady },
+            models = new { ready = session.Speech.ModelReady, whisper = File.Exists(whisperModel) },
             directory = session.Store.DirectoryPath, usage = session.Store.Usage(),
             history = session.Store.History().Select(record => new { record.Id, record.Date, record.Text, record.Raw, record.Application, record.Note, record.SpeechEngine, record.Delivery, record.Metrics }).ToArray()
         };

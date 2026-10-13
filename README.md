@@ -4,17 +4,14 @@ Dictate provides local English dictation on macOS, Windows, Linux, and Android.
 The three desktop apps use one Electron interface, one core, and software rendering.
 Speech recognition uses available acceleration, with a CPU fallback.
 
-All platforms use the 59.7 MB quantized English Whisper model, `base.en-q5_1`.
-In Settings, choose Automatic or CPU only.
-Apple silicon Macs prefer the Neural Engine for the encoder and use Metal for decoding.
-Automatic falls back to Metal, then CPU. Windows and Linux x64 use Vulkan when the driver supports it.
-Android uses CPU because the packaged runtime has no Android accelerator backend.
-No GPU or Neural Engine is required. Older supported x64 CPUs use the bundled no-AVX runtime.
-See [hardware modes](docs/acceleration.md) for support and verification limits.
-Whistle is removed from recognition, downloads, menus, and Android packaging.
-Older Whistle settings load as Whisper. Transcript history retains the engine that originally produced each record.
-The [Whisper-only decision](docs/whisper-only.md) explains the change and verification limits.
-The [archived comparison](docs/whistle-whisper-evaluation.md) retains earlier quality and resource measurements.
+The Mac app uses the original Phonon-2 model, based on NVIDIA Parakeet TDT 0.6B v3.
+Automatic prefers the Neural Engine. CPU only disables acceleration for the same model.
+Windows, Linux, and Android use quantized English Whisper `base.en-q5_1`, with a 59.7 MB download.
+Windows and Linux x64 can use Intel NPUs through OpenVINO, Vulkan GPUs, or CPU.
+A supported NPU requires compatible drivers. Unsupported hardware uses GPU or CPU.
+In Settings, choose Automatic or CPU only. See [hardware modes](docs/acceleration.md) for the platform limits.
+Whistle is removed. Historical records retain their original engine identities.
+The [earlier Whisper-only record](docs/whisper-only.md) describes the previous release.
 
 ## Use dictation
 
@@ -40,6 +37,17 @@ Select a word and press **fn+D** or **F8+D** to add a dictionary entry.
 The Mac build requires macOS 15 or later, Xcode tools, Node.js 22 or later, and the .NET 10 SDK.
 The tested Mac uses Apple silicon.
 
+The Mac build bundles Phonon-2 and compiles its original Core ML runtime.
+Clone the runtime release into `vendor/phonon-coreml`:
+
+```sh
+git clone --branch 1.1.2 --depth 1 https://github.com/fermionresearch/phonon-coreml vendor/phonon-coreml
+```
+
+Download [Phonon-2-CoreML](https://huggingface.co/FermionResearch/Phonon-2-CoreML) into `models/Phonon-2-CoreML`.
+Keep `manifest.json`, `decoder.bin`, `Phonon-2.mlpackage`, `NOTICE`, and `LICENSE-WEIGHTS-CC-BY-4.0.txt`.
+The first load prepares the model for this Mac.
+
 ```sh
 ./make-signing-identity.sh
 ./build.sh
@@ -47,11 +55,8 @@ open build/Dictate.app
 ```
 
 Run the signing script once. Keep the signing identity to retain microphone and Accessibility permissions across builds.
-The English model downloads when loaded in Settings.
-The Mac build compiles the Core ML encoder bridge with Xcode tools.
-Automatic downloads an additional 38 MB encoder model on Macs with an available Neural Engine.
 
-For a remote Mac, retain `signing/` in `~/Library/Application Support/Dictate Build`.
+For a remote Mac, retain `models/`, `vendor/`, and `signing/` in `~/Library/Application Support/Dictate Build`.
 Run `scripts/install-mac.sh mac` from this checkout.
 See [portable build instructions](portable/README.md) for Windows, Linux, and Android.
 

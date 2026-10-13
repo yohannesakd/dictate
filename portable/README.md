@@ -21,10 +21,11 @@ npm start
 
 In Settings, select **Download and load model**.
 Whisper recognizes English on this device. Choose Automatic or CPU only in Settings.
-Automatic prefers the Neural Engine on Apple silicon Macs, with Metal decoding and fallback.
-The Neural Engine encoder adds a 38 MB download. CPU only skips this download and disables both accelerators.
+Mac uses the original Phonon-2 model on the Neural Engine. CPU-only disables its acceleration.
+Windows and Linux x64 can use supported Intel NPUs through OpenVINO, with a separate encoder download.
 Windows and Linux x64 use Vulkan when supported.
-If no supported accelerator is available, Whisper uses CPU. Android currently uses CPU.
+Android uses Vulkan when its GPU and driver support the required operations.
+If no supported accelerator is available, Whisper uses CPU.
 See [hardware modes](../docs/acceleration.md) for limits and verification.
 The app fixes Whisper to `base.en-q5_1` and does not expose other model sizes.
 
@@ -56,6 +57,9 @@ From PowerShell, publish into `desktop/resources/backend` before packaging:
 dotnet publish portable/Desktop -c Release -r win-x64 --self-contained true `
   -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false `
   -o desktop/resources/backend
+dotnet publish portable/NpuWorker -c Release -r win-x64 --self-contained true `
+  -p:PublishSingleFile=true -p:DebugType=None -p:DebugSymbols=false `
+  -o desktop/resources/backend/npu-worker
 cd desktop
 npm ci
 npm run prepare-ui
@@ -72,6 +76,8 @@ The x64 Whisper runtime includes a no-AVX fallback.
 
 Install the .NET 10 Android workload, Android SDK, and required Java SDK.
 The setup script installs isolated build tools and accepts Android SDK licences.
+The build script compiles the pinned whisper.cpp runtime with Vulkan and CPU support.
+It installs Android NDK 27.2 and CMake 3.22.1 when required.
 
 ```sh
 portable/scripts/setup-android.sh

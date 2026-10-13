@@ -1,6 +1,7 @@
-# English Whisper on every platform
+# Archived Whisper-only release
 
-Dictate uses the same 59.7 MB English Whisper model, `base.en-q5_1`, on Mac, Windows, Linux, and Android.
+This earlier release used the same 59.7 MB English Whisper model on every platform.
+The current Mac app restores Phonon-2. See [hardware modes](acceleration.md) for current behavior.
 The verification below records the earlier CPU-only release.
 The current app adds [automatic acceleration and a CPU-only option](acceleration.md). A GPU or Apple Neural Engine is not required.
 The [Whisper.net CPU runtime](https://github.com/sandrohanea/whisper.net#whispernetruntime) supports these platforms and supplies a no-AVX alternative for older supported CPUs.

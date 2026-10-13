@@ -14,7 +14,7 @@ public static class SpeechEvaluation
     public sealed record Measurement(string Sample, SpeechEngineKind Engine, int Pass, double AudioSeconds,
         double PreparationMs, double RecognitionMs, string? Text, string? Error, long ParentRssBytes);
 
-    public static async Task RunAsync(WhisperEngine speech, string manifest, string output, string whisperModel = SpeechProfiles.WhisperModel)
+    public static async Task RunAsync(ISpeechRecognizer speech, string manifest, string output, string speechModel = SpeechProfiles.WhisperModel)
     {
         var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, WriteIndented = true };
         var samples = JsonSerializer.Deserialize<Sample[]>(File.ReadAllText(manifest), options)!;
@@ -31,25 +31,25 @@ public static class SpeechEvaluation
         {
             host = Environment.MachineName, platform = RuntimeInformation.OSDescription,
             architecture = RuntimeInformation.ProcessArchitecture.ToString(), logicalCores = Environment.ProcessorCount,
-            whisperModel, passes = 5, samples, measurements = rows,
-            timing = "Preparation includes model verification and loading. Recognition includes Whisper decoding and transcript assembly. Cleanup and field delivery are excluded.",
-            memory = "Parent RSS after recognition includes the managed process and cached Whisper model."
+            speechModel, passes = 5, samples, measurements = rows,
+            timing = "Preparation includes model verification and loading. Recognition includes decoding and transcript assembly. Cleanup and field delivery are excluded.",
+            memory = "Parent RSS after recognition includes the managed process and cached speech model."
         }, options));
         for (var pass = 0; pass < 5; pass++)
         foreach (var sample in samples)
         {
             var pcm = WaveAudio.Read(Path.Combine(directory, sample.Name + ".wav"));
-            var engine = SpeechEngineKind.Whisper;
+            var engine = speech.Kind;
             var preparation = Stopwatch.StartNew();
             double preparationMs = 0, recognitionMs = 0;
             string? text = null, error = null;
             using var deadline = new CancellationTokenSource(TimeSpan.FromMinutes(6));
             try
             {
-                await speech.PrepareAsync(whisperModel, deadline.Token);
+                await speech.PrepareAsync(speechModel, deadline.Token);
                 preparationMs = preparation.Elapsed.TotalMilliseconds;
                 var recognition = Stopwatch.StartNew();
-                try { text = await speech.TranscribeAsync(pcm, whisperModel, sample.Language, deadline.Token); }
+                try { text = await speech.TranscribeAsync(pcm, speechModel, sample.Language, deadline.Token); }
                 finally { recognitionMs = recognition.Elapsed.TotalMilliseconds; }
             }
             catch (Exception failure) { error = failure.ToString(); }
@@ -61,19 +61,19 @@ public static class SpeechEvaluation
         if (rows.Any(row => row.Error is not null)) throw new InvalidOperationException("Speech evaluation contains failed runs. Inspect " + output);
     }
 
-    public static async Task CheckCancellationAsync(WhisperEngine speech, float[] reference, string whisperModel = SpeechProfiles.WhisperModel)
+    public static async Task CheckCancellationAsync(ISpeechRecognizer speech, float[] reference, string speechModel = SpeechProfiles.WhisperModel)
     {
-        var engine = SpeechEngineKind.Whisper;
-        await speech.PrepareAsync(whisperModel);
+        var engine = speech.Kind;
+        await speech.PrepareAsync(speechModel);
         using var cancelled = new CancellationTokenSource(TimeSpan.FromMilliseconds(100));
         var longRecording = Enumerable.Range(0, Math.Min(20, 300 * 16000 / reference.Length)).SelectMany(_ => reference).ToArray();
         try
         {
-            await speech.TranscribeAsync(longRecording, whisperModel, "en", cancelled.Token);
+            await speech.TranscribeAsync(longRecording, speechModel, "en", cancelled.Token);
             throw new InvalidOperationException(engine + " ignored cancellation.");
         }
         catch (OperationCanceledException) { }
-        var recovered = await speech.TranscribeAsync(reference, whisperModel, "en", CancellationToken.None);
+        var recovered = await speech.TranscribeAsync(reference, speechModel, "en", CancellationToken.None);
         if (!recovered.Contains("country", StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException(engine + " did not recover after cancellation: " + recovered);
     }

@@ -4,6 +4,7 @@ using Dictate.Desktop;
 if (OperatingSystem.IsMacOS())
 {
     if (args is ["--fixture", var macCommand]) { MacChecks.RunFixture(macCommand); return; }
+    if (args is ["--speech", var fixtures, var output]) { MacChecks.RunSpeech(fixtures, output); return; }
     if (args.Length != 3) throw new ArgumentException("Supply output, audio fixture, and model directories.");
     MacChecks.Run(args);
     return;

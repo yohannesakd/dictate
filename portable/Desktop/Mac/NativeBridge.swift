@@ -44,6 +44,18 @@ private func object<T: AnyObject>(_ pointer: UnsafeMutableRawPointer, _ type: T.
 @_cdecl("dictate_free") public func freeBuffer(_ pointer: UnsafeMutableRawPointer) { free(pointer) }
 @_cdecl("dictate_operation") public func operation() -> UnsafeMutableRawPointer { retain(NativeOperation()) }
 @_cdecl("dictate_cancel") public func cancelOperation(_ pointer: UnsafeMutableRawPointer) { object(pointer, NativeOperation.self).cancellation.cancel() }
+@_cdecl("dictate_phonon") public func phonon(_ directory: UnsafePointer<CChar>, _ pcm: UnsafePointer<Float>?, _ count: Int32,
+                                           _ cpuOnly: Int32, _ operation: UnsafeMutableRawPointer,
+                                           _ callback: ResultCallback, _ context: UnsafeMutableRawPointer) {
+    let samples = count > 0 ? Array(UnsafeBufferPointer(start: pcm, count: Int(count))) : nil
+    PhononSpeech.shared.run(directory: string(directory), samples: samples, cpuOnly: cpuOnly != 0,
+                            cancellation: object(operation, NativeOperation.self).cancellation) { result in
+        let buffer = json(result)
+        callback(buffer, context)
+        free(buffer)
+    }
+}
+@_cdecl("dictate_phonon_unload") public func phononUnload() { PhononSpeech.shared.unload() }
 @_cdecl("dictate_target") public func captureTarget() -> UnsafeMutableRawPointer { retain(NativeTarget()) }
 @_cdecl("dictate_target_name") public func targetName(_ pointer: UnsafeMutableRawPointer) -> UnsafeMutablePointer<CChar>? {
     let target = object(pointer, NativeTarget.self).value

@@ -36,11 +36,11 @@ async function verify({ mainWindow, indicator, backend, getState, showWindow, un
     await wait(() => !!getState(), 'native service startup');
     await wait(() => evaluate('!!document.querySelector(".recording")'), 'renderer startup');
     if (restartEngine) {
-      assert.equal(restartEngine, 'whisper');
-      assert.equal(getState().settings.speech_engine, 'whisper');
+      assert.equal(restartEngine, getState().platform === 'mac' ? 'phonon' : 'whisper');
+      assert.equal(getState().settings.speech_engine, getState().platform === 'mac' ? 'phonon' : 'whisper');
       assert.equal(await evaluate('!!document.querySelector("#engine-button")'), false);
       await screenshot('restart-whisper');
-      fs.writeFileSync(path.join(output, 'checks.txt'), 'English Whisper remained selected in the app and native service after process restart.\n');
+      fs.writeFileSync(path.join(output, 'checks.txt'), 'The platform speech model remained selected in the app and native service after process restart.\n');
       fs.writeFileSync(path.join(output, 'exit-code.txt'), '0'); return;
     }
     assert.equal(await evaluate('typeof window.require'), 'undefined');
@@ -63,11 +63,11 @@ async function verify({ mainWindow, indicator, backend, getState, showWindow, un
     }
     await click('[data-page="settings"]');
     await screenshot('settings-speech');
-    assert.equal(getState().settings.speech_engine, 'whisper');
+    assert.equal(getState().settings.speech_engine, getState().platform === 'mac' ? 'phonon' : 'whisper');
     assert.equal(await evaluate('!!document.querySelector("#engine-button") || !!document.querySelector("input[name=speech-engine]")'), false);
     await backend.request('prepare');
-    assert.equal(getState().models.whisper, true);
-    assert.equal(await evaluate('document.querySelector("#model-status").textContent'), 'Downloaded');
+    assert.equal(getState().models.ready ?? getState().models.whisper, true);
+    assert.equal(await evaluate('document.querySelector("#model-status").textContent'), getState().platform === 'mac' ? 'Installed' : 'Downloaded');
     for (const compute of ['cpu_only', 'automatic']) {
       await evaluate(`document.querySelector('#speech-compute').value = ${JSON.stringify(compute)}; document.querySelector('#speech-compute').dispatchEvent(new Event('change', { bubbles: true }))`);
       await wait(() => getState().settings.speech_compute === compute, 'hardware setting');
@@ -78,8 +78,8 @@ async function verify({ mainWindow, indicator, backend, getState, showWindow, un
         await wait(() => evaluate(`document.querySelector('#hardware-status').textContent.includes(${JSON.stringify('Using ')} + ${JSON.stringify(getState().speech.hardware)})`), 'active hardware status');
       else assert.match(await evaluate('document.querySelector("#hardware-status").textContent'), /dictate/i);
     }
-    notes.push('Hardware controls changed the native mode. CPU-only displayed CPU; Automatic deferred detection until recognition.');
-    await screenshot('speech-whisper');
+    notes.push('Hardware controls changed the native mode. CPU-only displayed CPU; Automatic reported preparation or recognition hardware.');
+    await screenshot('speech-' + getState().settings.speech_engine);
     await assert.rejects(backend.request('select-engine', { engine: 'whistle' }), /not supported/);
     assert.equal(await evaluate('window.dictate.command("select-engine", {engine:"whistle"}).then(() => "accepted", error => error.message)'), 'The app command is not supported.');
     await click('[data-section="cleanup"]');
@@ -141,11 +141,11 @@ async function verify({ mainWindow, indicator, backend, getState, showWindow, un
     mainWindow.setSize(480, 600);
     notes.push('The compact layout fit the default window and minimum 400 by 480 window without horizontal overflow.');
     await assert.rejects(backend.request('settings', { speech_engine: 'unknown' }), /not supported/);
-    notes.push('Home, History, all Settings sections, copy, search, the English Whisper profile, dictionary, and cleanup controls passed.');
-    notes.push('The English Whisper profile persisted. Late state updates preserved active input text, focus, and caret.');
+    notes.push('Home, History, all Settings sections, copy, search, the platform speech profile, dictionary, and cleanup controls passed.');
+    notes.push('The platform speech profile persisted. Late state updates preserved active input text, focus, and caret.');
     notes.push('Changing cleanup providers cleared the other provider\'s unsaved credential field.');
     await click('[data-page="home"]');
-    if (!getState().models.whisper) await backend.request('prepare');
+    if (!(getState().models.ready ?? getState().models.whisper)) await backend.request('prepare');
     await click('[data-action="start"]');
     await wait(() => getState().phase === 'listening', 'microphone startup');
     assert.equal(mainWindow.isVisible(), false);
@@ -172,7 +172,7 @@ async function verify({ mainWindow, indicator, backend, getState, showWindow, un
     notes.push('The 84 by 40 transparent indicator displayed only a 24-pixel waveform surface in every active phase, preserved focus, hid when idle, and excluded warnings.');
     await backend.request('settings', { smart_cleanup: false });
     notes.push('CPU recognition and local cleanup remained available through the native service.');
-    notes.push('English Whisper prepared through the packaged native service.');
+    notes.push('The platform speech model prepared through the packaged native service.');
     assert.deepEqual(errors, []);
     const metrics = await Promise.all(app.getAppMetrics().map(async metric => ({ type: metric.type, pid: metric.pid, memory: metric.memory, cpu: metric.cpu })));
     fs.writeFileSync(path.join(output, 'metrics.json'), JSON.stringify({ platform: process.platform, metrics, backendPid: backend.process.pid }, null, 2));

@@ -3,7 +3,7 @@ using System.Text.Json.Serialization;
 
 namespace Dictate.Core;
 
-public sealed class FileStore(string directory) : IDictationStore
+public sealed class FileStore(string directory, SpeechEngineKind engine = SpeechEngineKind.Whisper) : IDictationStore
 {
     public static JsonSerializerOptions Json { get; } = new()
     {
@@ -16,7 +16,7 @@ public sealed class FileStore(string directory) : IDictationStore
 
     public DictationSettings LoadSettings() => SpeechProfiles.Normalize(File.Exists(SettingsPath)
         ? JsonSerializer.Deserialize<DictationSettings>(File.ReadAllText(SettingsPath), Json) ?? throw new InvalidDataException("Settings are empty.")
-        : new());
+        : new(), engine);
 
     public async Task SaveSettingsAsync(DictationSettings settings)
     {

@@ -1,7 +1,7 @@
 #!/bin/zsh
 # Build Dictate on a Mac from this checkout and install it in /Applications. Run it on another machine, such as a server.
 # The Mac keeps only the app and the build inputs that are not in Git, in "~/Library/Application Support/Dictate Build":
-# signing/ (see Build in the README).
+# models/, vendor/, and signing/ (see Build in the README).
 # Usage: scripts/install-mac.sh [ssh-host]   (default: mac)
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -13,7 +13,7 @@ ssh "$HOST" zsh -s <<'EOF'
 set -euo pipefail
 INPUTS="$HOME/Library/Application Support/Dictate Build"
 cd /tmp/dictate-build
-for input in signing; do
+for input in models vendor signing; do
   [[ -d "$INPUTS/$input" ]] || { print -u2 "Missing $INPUTS/$input"; exit 1; }
   ln -s "$INPUTS/$input" "$input"
 done

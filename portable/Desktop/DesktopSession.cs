@@ -11,7 +11,7 @@ public sealed class DesktopSession : IDisposable
     public DictationSettings Settings { get; private set; }
     public DesktopSecrets Secrets { get; } = new();
     public HttpClient Http { get; } = new() { Timeout = TimeSpan.FromSeconds(30) };
-    public WhisperEngine Speech { get; }
+    public ISpeechRecognizer Speech { get; }
     public DictationController Controller { get; }
     public ShortcutController Shortcuts { get; }
     public GlobalShortcuts Hotkeys { get; }
@@ -28,10 +28,11 @@ public sealed class DesktopSession : IDisposable
         directory ??= OperatingSystem.IsMacOS() ? Path.Combine(macData, "Desktop") : OperatingSystem.IsWindows()
             ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Dictate")
             : Path.Combine(Environment.GetEnvironmentVariable("XDG_DATA_HOME") ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".local/share"), "dictate");
-        Store = new(directory);
+        var speechEngine = OperatingSystem.IsMacOS() ? SpeechEngineKind.Phonon : SpeechEngineKind.Whisper;
+        Store = new(directory, speechEngine);
         if (importMac) MacMigration.Import(Store, macData);
         Settings = Store.LoadSettings();
-        Speech = new(Path.Combine(directory, "models"));
+        Speech = OperatingSystem.IsMacOS() ? new PhononEngine() : new WhisperEngine(Path.Combine(directory, "models"));
         Controller = new(Audio, Speech, OperatingSystem.IsMacOS() ? new MacDelivery() : OperatingSystem.IsWindows() ? new WindowsDelivery() : new LinuxDelivery(),
             new SmartCleanup(new HttpCleanupClient(Http, Secrets)), Store);
         Controller.Notice += Message;
@@ -49,7 +50,7 @@ public sealed class DesktopSession : IDisposable
         await settingsGate.WaitAsync();
         try
         {
-            var next = SpeechProfiles.Normalize(change(Settings));
+            var next = SpeechProfiles.Normalize(change(Settings), Speech.Kind);
             await Store.SaveSettingsAsync(next);
             Settings = next;
             SettingsChanged?.Invoke();
