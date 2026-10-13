@@ -12,13 +12,17 @@ internal static class AssetDownload
         return Convert.ToHexString(await SHA256.HashDataAsync(file, cancellation).ConfigureAwait(false)).Equals(hash, StringComparison.OrdinalIgnoreCase);
     }
 
-    internal static async Task Download(string url, string path, string hash, long limit, CancellationToken cancellation)
+    internal static async Task Download(string url, string path, string hash, long limit, CancellationToken cancellation, HttpClient? client = null)
     {
         if (await HasHash(path, hash, cancellation).ConfigureAwait(false)) return;
+        client ??= http;
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+        deadline.CancelAfter(client.Timeout);
+        cancellation = deadline.Token;
         var staging = path + "." + Guid.NewGuid().ToString("N") + ".download";
         try
         {
-            using var response = await http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellation).ConfigureAwait(false);
+            using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, cancellation).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
             await using (var source = await response.Content.ReadAsStreamAsync(cancellation).ConfigureAwait(false))
             await using (var target = File.Create(staging))

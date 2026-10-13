@@ -28,16 +28,17 @@ internal sealed class NpuWorker(string models) : IDisposable
         var search = OperatingSystem.IsWindows() ? "PATH" : "LD_LIBRARY_PATH";
         start.Environment[search] = folder + Path.PathSeparator + Environment.GetEnvironmentVariable(search);
         var current = Process.Start(start) ?? throw new IOException("The NPU service did not start.");
+        diagnostic = null;
         process = current;
         current.ErrorDataReceived += (_, args) => { if (args.Data is { } text) diagnostic = text.Length > 512 ? text[..512] : text; };
         current.BeginErrorReadLine();
         using var registration = cancellation.Register(Stop);
-        var greeting = await ReplyAsync(current, cancellation).ConfigureAwait(false);
+        var greeting = await ReplyAsync(current, cancellation, TimeSpan.FromMinutes(2)).ConfigureAwait(false);
         if (!greeting.GetProperty("available").GetBoolean()) { Stop(); return false; }
         await PrepareEncoderAsync(cancellation).ConfigureAwait(false);
         await current.StandardInput.BaseStream.WriteAsync(new byte[] { 1 }, cancellation).ConfigureAwait(false);
         await current.StandardInput.BaseStream.FlushAsync(cancellation).ConfigureAwait(false);
-        _ = await ReplyAsync(current, cancellation).ConfigureAwait(false);
+        _ = await ReplyAsync(current, cancellation, TimeSpan.FromMinutes(2)).ConfigureAwait(false);
         lock (sync) { cancellation.ThrowIfCancellationRequested(); Ready = true; }
         return true;
     }
@@ -62,29 +63,43 @@ internal sealed class NpuWorker(string models) : IDisposable
     internal async Task<string> TranscribeAsync(float[] pcm, CancellationToken cancellation)
     {
         using var registration = cancellation.Register(Stop);
-        var current = process ?? throw new IOException("The NPU service is unavailable.");
-        var input = current.StandardInput.BaseStream;
-        await input.WriteAsync(new byte[] { 2 }, cancellation).ConfigureAwait(false);
-        await input.WriteAsync(BitConverter.GetBytes(pcm.Length), cancellation).ConfigureAwait(false);
-        var bytes = new byte[pcm.Length * sizeof(float)];
-        Buffer.BlockCopy(pcm, 0, bytes, 0, bytes.Length);
-        await input.WriteAsync(bytes, cancellation).ConfigureAwait(false);
-        await input.FlushAsync(cancellation).ConfigureAwait(false);
-        var result = await ReplyAsync(current, cancellation).ConfigureAwait(false);
-        return result.GetProperty("text").GetString()!;
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+        deadline.CancelAfter(TimeSpan.FromMinutes(6));
+        try
+        {
+            var current = process ?? throw new IOException("The NPU service is unavailable.");
+            var input = current.StandardInput.BaseStream;
+            await input.WriteAsync(new byte[] { 2 }, deadline.Token).ConfigureAwait(false);
+            await input.WriteAsync(BitConverter.GetBytes(pcm.Length), deadline.Token).ConfigureAwait(false);
+            var bytes = new byte[pcm.Length * sizeof(float)];
+            Buffer.BlockCopy(pcm, 0, bytes, 0, bytes.Length);
+            await input.WriteAsync(bytes, deadline.Token).ConfigureAwait(false);
+            await input.FlushAsync(deadline.Token).ConfigureAwait(false);
+            var result = await ReplyAsync(current, deadline.Token, TimeSpan.FromMinutes(6)).ConfigureAwait(false);
+            return result.GetProperty("text").GetString()!;
+        }
+        catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
+        { throw new IOException("The NPU service did not respond in time."); }
     }
 
-    private async Task<JsonElement> ReplyAsync(Process current, CancellationToken cancellation)
+    private async Task<JsonElement> ReplyAsync(Process current, CancellationToken cancellation, TimeSpan timeout)
     {
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellation);
+        deadline.CancelAfter(timeout);
         var output = current.StandardOutput;
-        while (await output.ReadLineAsync(cancellation).ConfigureAwait(false) is { } line)
+        try
         {
-            if (!line.StartsWith(Prefix, StringComparison.Ordinal)) continue;
-            using var document = JsonDocument.Parse(line[Prefix.Length..]);
-            var result = document.RootElement.Clone();
-            if (result.TryGetProperty("error", out var error)) throw new IOException(error.GetString());
-            return result;
+            while (await output.ReadLineAsync(deadline.Token).ConfigureAwait(false) is { } line)
+            {
+                if (!line.StartsWith(Prefix, StringComparison.Ordinal)) continue;
+                using var document = JsonDocument.Parse(line[Prefix.Length..]);
+                var result = document.RootElement.Clone();
+                if (result.TryGetProperty("error", out var error)) throw new IOException(error.GetString());
+                return result;
+            }
         }
+        catch (OperationCanceledException) when (!cancellation.IsCancellationRequested)
+        { throw new IOException("The NPU service did not respond in time."); }
         cancellation.ThrowIfCancellationRequested();
         throw new IOException("The NPU service stopped. " + diagnostic);
     }

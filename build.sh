@@ -38,6 +38,13 @@ trap cleanup EXIT
 PHONON=vendor/phonon-coreml
 PHONON_TDT=$PHONON/Binaries/PhononTDT.xcframework/macos-arm64_x86_64
 MODEL=models/Phonon-2-CoreML
+for input in "$PHONON_TDT/libPhononTDT.a" "$MODEL/manifest.json" "$MODEL/decoder.bin" \
+  "$MODEL/Phonon-2.mlpackage/Data/com.apple.CoreML/weights/weight.bin" "$MODEL/NOTICE" "$MODEL/LICENSE-WEIGHTS-CC-BY-4.0.txt"; do
+  [[ -s "$input" ]] || { print -u2 "Missing Mac build input: $input"; exit 1; }
+done
+for weights in "$MODEL/decoder.bin" "$MODEL/Phonon-2.mlpackage/Data/com.apple.CoreML/weights/weight.bin"; do
+  (( $(stat -f %z "$weights") > 1024 )) || { print -u2 "Download model weights instead of Git LFS pointers: $weights"; exit 1; }
+done
 cp -R "$PHONON/Sources/PhononCoreML" "$STAGING/PhononCoreML"
 patch -s -d "$STAGING/PhononCoreML" -p1 < patches/phonon-frame-capacity.patch
 mkdir -p "$STAGING/phonon"

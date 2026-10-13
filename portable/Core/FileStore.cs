@@ -3,15 +3,24 @@ using System.Text.Json.Serialization;
 
 namespace Dictate.Core;
 
-public sealed class FileStore(string directory, SpeechEngineKind engine = SpeechEngineKind.Whisper) : IDictationStore
+public sealed class FileStore : IDictationStore
 {
+    private readonly SpeechEngineKind engine;
+    public FileStore(string directory, SpeechEngineKind engine = SpeechEngineKind.Whisper)
+    {
+        DirectoryPath = directory;
+        this.engine = engine;
+        Directory.CreateDirectory(directory);
+        if (!OperatingSystem.IsWindows())
+            File.SetUnixFileMode(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+    }
     public static JsonSerializerOptions Json { get; } = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
         Converters = { new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower) }
     };
     private readonly SemaphoreSlim gate = new(1);
-    public string DirectoryPath { get; } = directory;
+    public string DirectoryPath { get; }
     public string SettingsPath => Path.Combine(DirectoryPath, "settings.json");
 
     public DictationSettings LoadSettings() => SpeechProfiles.Normalize(File.Exists(SettingsPath)
@@ -44,11 +53,19 @@ public sealed class FileStore(string directory, SpeechEngineKind engine = Speech
 
     public IEnumerable<TranscriptRecord> History()
     {
-        return Records().TakeLast(50).Reverse().ToArray();
+        gate.Wait();
+        try { return Records().TakeLast(50).Reverse().ToArray(); }
+        finally { gate.Release(); }
     }
 
-    public Usage Usage() => global::Dictate.Core.Usage.From(Records());
+    public Usage Usage()
+    {
+        gate.Wait();
+        try { return global::Dictate.Core.Usage.From(Records()); }
+        finally { gate.Release(); }
+    }
 
+    // Both callers enumerate the file while holding the writer gate.
     private IEnumerable<TranscriptRecord> Records()
     {
         var path = Path.Combine(DirectoryPath, "transcripts.jsonl");
