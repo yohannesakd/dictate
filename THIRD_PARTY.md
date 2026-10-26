@@ -41,6 +41,6 @@ This inventory is a release aid. Recheck notices when changing dependencies or d
 ## Speech fixtures
 
 The [fixture manifests](portable/fixtures/speech/samples.json) identify the audio sources and hashes.
-Four recordings use Apple's Samantha or Anna system voices. Redistribution permission has not been established.
-These recordings are not covered by Dictate's MIT license.
-See the [sharing review](docs/sharing-review.md) before public publication.
+The active fixtures contain JFK speech, digital silence, and JFK speech with added noise.
+Four Apple system-voice recordings were removed because redistribution permission had not been established.
+Their historical Git copies remain. See the [sharing review](docs/sharing-review.md) before public publication.

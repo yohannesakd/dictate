@@ -74,4 +74,4 @@ The [documentation index](docs/README.md) links to build guides, hardware limits
 Dictate's source uses the [MIT license](LICENSE).
 Models and dependencies retain their own licenses. See [third-party notices](THIRD_PARTY.md).
 Phonon-2 weights use CC-BY-4.0 and require attribution when distributed.
-The [sharing review](docs/sharing-review.md) lists unresolved test-audio permissions and public-release requirements.
+The [sharing review](docs/sharing-review.md) records removed test audio, historical copies, and public-release requirements.

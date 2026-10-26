@@ -1,11 +1,12 @@
 # Sharing review: October 26, 2026
 
-Public publication still requires resolving the speech fixtures' redistribution terms.
+The current checkout excludes the Apple system-voice recordings.
+Their copies in earlier Git history still require a publication decision.
 The repository remains private.
 
-## Public-sharing issue
+## Removed speech fixtures
 
-The fixture manifests identify four recordings made with Apple's Samantha or Anna system voices:
+The following recordings made with Apple's Samantha or Anna system voices have been removed:
 
 - `portable/fixtures/speech/dictate-short.wav`
 - `portable/fixtures/speech/dictate-technical.wav`
@@ -14,12 +15,12 @@ The fixture manifests identify four recordings made with Apple's Samantha or Ann
 
 [Apple's macOS license, section 2F](https://www.apple.com/legal/sla/docs/macOSTahoe.pdf), restricts system-voice use and public redistribution.
 This review did not establish separate permission to distribute these recordings.
-Replace them with recordings that permit redistribution, or establish the required permission before publication.
-Their existing Git history also requires a publication decision. Deleting current files alone does not remove historical copies.
+Their entries were removed from the active fixture manifest. The obsolete German manifest was also removed.
+Deleting current files does not remove historical copies. Git history has not been rewritten.
 
-The [English manifest](../portable/fixtures/speech/samples.json) and [German manifest](../portable/fixtures/speech/german-samples.json) retain provenance and hashes.
-Historical recognition results apply to those exact recordings.
-New recordings require new hashes and recognition checks; they do not inherit the historical results.
+The [current manifest](../portable/fixtures/speech/samples.json) retains JFK speech, digital silence, and JFK speech with added noise.
+Archived recognition results retain their original sample metadata and apply to those earlier recordings.
+The smaller fixture set does not reproduce the historical six-fixture evaluation.
 
 ## Completed source changes
 

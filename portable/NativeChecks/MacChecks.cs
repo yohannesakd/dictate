@@ -128,7 +128,7 @@ internal static class MacChecks
     {
         await SpeechEvaluation.RunAsync(speech, Path.Combine(Fixtures, "samples.json"), Path.Combine(Output, "audio.json"), SpeechProfiles.PhononModel);
         await SpeechEvaluation.CheckCancellationAsync(speech, WaveAudio.Read(Path.Combine(Fixtures, "jfk.wav")), SpeechProfiles.PhononModel);
-        notes.Add("Phonon-2 completed six audio fixtures, five passes, cancellation, and recovery.");
+        notes.Add("Phonon-2 completed the fixture manifest, five passes, cancellation, and recovery.");
         var hardware = new List<object>();
         foreach (var mode in new[] { SpeechComputeMode.Automatic, SpeechComputeMode.CpuOnly, SpeechComputeMode.Automatic })
         {

@@ -1,6 +1,8 @@
 # Whistle and Whisper evaluation
 
 This archived comparison describes revision `d515489`. See [hardware modes](acceleration.md) for the current models and acceleration.
+The Apple system-voice recordings used in this comparison have been removed from the current checkout.
+Historical results retain their original recordings' names, references, and hashes.
 
 Both CPU engines completed 280 recognition runs on Mac, Windows, Linux, and an ARM64 Android emulator.
 Each engine received seven recordings, with five alternating passes per recording.
@@ -73,8 +75,8 @@ Both produced the reference transcript and left that directory empty.
 ## Evidence and reproduction
 
 The [raw results](benchmarks/2026-10-11/) retain transcripts, individual times, preparation times, and errors.
-The [fixture manifest](../portable/fixtures/speech/samples.json) records sources, references, and SHA-256 hashes.
-The [German manifest](../portable/fixtures/speech/german-samples.json) records the additional language sample.
+The [current fixture manifest](../portable/fixtures/speech/samples.json) contains the remaining recordings.
+The archived [German results](benchmarks/2026-10-11/linux-german.json) retain that removed sample's reference and SHA-256 hash.
 
 Use the built Mac app with this command.
 
@@ -89,7 +91,6 @@ Run portable audio evaluation from the repository root.
 
 ```sh
 dotnet run --project portable/Checks/Dictate.Checks.csproj -c Release -- --evaluate portable/fixtures/speech/samples.json portable/models results.json
-dotnet run --project portable/Checks/Dictate.Checks.csproj -c Release -- --evaluate portable/fixtures/speech/german-samples.json portable/models german-results.json
 ```
 
 Android Debug instrumentation is `dev.local.dictate.portable.DeviceChecks`.
