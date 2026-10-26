@@ -1,0 +1,24 @@
+  Determining projects to restore...
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/Dictate.Speech.csproj (in 3.98 sec).
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/Dictate.Core.csproj (in 3.98 sec).
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Desktop/Dictate.Desktop.csproj (in 3.98 sec).
+  Dictate.Core -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/bin/Release/net10.0/Dictate.Core.dll
+  Dictate.Speech -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/bin/Release/net10.0/Dictate.Speech.dll
+  Dictate.Desktop -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Desktop/bin/Release/net10.0/linux-x64/Dictate.Desktop.dll
+  Dictate.Desktop -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/desktop/resources/.backend.mqO5J0/
+  Determining projects to restore...
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/NpuWorker/Dictate.NpuWorker.csproj (in 172 ms).
+  Dictate.NpuWorker -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/NpuWorker/bin/Release/net10.0/linux-x64/Dictate.NpuWorker.dll
+  Dictate.NpuWorker -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/desktop/resources/.backend.mqO5J0/npu-worker/
+  Determining projects to restore...
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/Dictate.Core.csproj (in 336 ms).
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/Dictate.Speech.csproj (in 337 ms).
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Desktop/Dictate.Desktop.csproj (in 337 ms).
+  Dictate.Core -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/bin/Release/net10.0/Dictate.Core.dll
+  Dictate.Speech -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/bin/Release/net10.0/Dictate.Speech.dll
+  Dictate.Desktop -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Desktop/bin/Release/net10.0/win-x64/Dictate.Desktop.dll
+  Dictate.Desktop -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/desktop/resources/.backend.MIf0eW/
+  Determining projects to restore...
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/NpuWorker/Dictate.NpuWorker.csproj (in 191 ms).
+  Dictate.NpuWorker -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/NpuWorker/bin/Release/net10.0/win-x64/Dictate.NpuWorker.dll
+  Dictate.NpuWorker -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/desktop/resources/.backend.MIf0eW/npu-worker/

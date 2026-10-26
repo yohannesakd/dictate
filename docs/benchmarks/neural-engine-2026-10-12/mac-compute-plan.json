@@ -1,0 +1,6 @@
+{
+  "compute_units": "CPUAndNeuralEngine",
+  "preferred_devices": {
+    "MLNeuralEngineComputeDevice": 153
+  }
+}

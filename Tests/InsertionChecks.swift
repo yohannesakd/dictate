@@ -40,7 +40,24 @@ import ApplicationServices
         precondition(unchanged.outcome == .unchanged && unchanged.snapshot == nil)
         precondition(elapsed >= 0.15 && elapsed < 0.3)
         field = initial
-        precondition(run(sink: { _, _ in field = .init(value: "partial", selection: .init(location: 7, length: 0)); return true }).outcome == .unexpected)
+        let partial = run(sink: { _, _ in field = .init(value: "partial", selection: .init(location: 7, length: 0)); return true })
+        precondition(partial.outcome == .unexpected && partial.snapshot == nil)
+        precondition(partial.verification?.fields["verification_mismatch"] as? String == "value_and_selection")
+        precondition(partial.verification?.fields["observed_utf16_units"] as? Int == 7)
+        field = initial
+        let cursorMismatch = run(sink: { _, down in
+            if !down { field = .init(value: expected.value, selection: .init(location: 0, length: 0)) }
+            return true
+        })
+        precondition(cursorMismatch.outcome == .unexpected && cursorMismatch.snapshot == nil)
+        precondition(cursorMismatch.verification?.fields["verification_mismatch"] as? String == "selection")
+        field = initial
+        let valueMismatch = run(sink: { _, down in
+            if !down { field = .init(value: String(repeating: "x", count: expected.value.utf16.count), selection: expected.selection) }
+            return true
+        })
+        precondition(valueMismatch.outcome == .unexpected && valueMismatch.snapshot == nil)
+        precondition(valueMismatch.verification?.fields["verification_mismatch"] as? String == "value")
         precondition(run(reads: { nil }, sink: { _, _ in true }).outcome == .sent)
         precondition(run(focus: { .init(app: nil, element: nil) }, sink: { _, _ in preconditionFailure("unexpected posting") }).outcome == .unavailable)
         field = initial

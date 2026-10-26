@@ -1,0 +1,14 @@
+{
+  "configuration": "release",
+  "bytes": 22477036,
+  "sha256": "79c6b8256d8b875715162c99a95d5f5faadbddc9c35396af2c17479bbfae3c7f",
+  "retired_files": [],
+  "whisper_libraries": [
+    "lib/arm64-v8a/libwhisper.so"
+  ],
+  "shared_ui_sha256": {
+    "index.html": "337c8bdf063bfb6867843062f7443de8d931f15c9f66a1233fa5a117a139f40f",
+    "styles.css": "dc344ae3df6b1deb5df621b964677133d620d072ab9d85c5417ecbc370139629",
+    "app.js": "9e098528a7a865013851d519a38e1e66cebbc6bc426f4027326aba4acd7f0ba0"
+  }
+}

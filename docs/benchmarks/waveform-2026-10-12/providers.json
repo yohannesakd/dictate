@@ -1,0 +1,1 @@
+[{"provider":"groq","model":"qwen/qwen3.8-27b","passed":true,"reply_matches":true},{"provider":"deep_seek","model":"deepseek-chat","passed":true,"reply_matches":true}]

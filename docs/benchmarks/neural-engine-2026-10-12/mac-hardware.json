@@ -1,0 +1,117 @@
+{
+  "results": [
+    {
+      "mode": 1,
+      "ActiveHardware": "CPU",
+      "FallbackReason": null,
+      "runtime": 4,
+      "preparationMs": 10473.0775,
+      "recognitionMs": [
+        318.6235,
+        293.9405,
+        290.9023
+      ],
+      "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "nativeContext": [
+        "whisper_init_with_params_no_state: use gpu    = 0\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_init_state: loading Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n",
+        "whisper_init_state: failed to load Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_init_state: loading Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n",
+        "whisper_init_state: failed to load Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_init_state: loading Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n",
+        "whisper_init_state: failed to load Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n"
+      ]
+    },
+    {
+      "mode": 0,
+      "ActiveHardware": "Neural Engine \u002B Metal GPU",
+      "FallbackReason": null,
+      "runtime": 4,
+      "preparationMs": 98.0474,
+      "recognitionMs": [
+        1756.8768,
+        150.7952,
+        137.0406
+      ],
+      "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "nativeContext": [
+        "whisper_init_with_params_no_state: use gpu    = 1\n",
+        "whisper_backend_init_gpu: device 0: MTL0 (type: 1)\n",
+        "whisper_backend_init_gpu: found GPU device 0: MTL0 (type: 1, cnt: 0)\n",
+        "whisper_backend_init_gpu: using MTL0 backend\n",
+        "whisper_init_state: loading Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n",
+        "whisper_init_state: Core ML model loaded\n",
+        "whisper_backend_init_gpu: device 0: MTL0 (type: 1)\n",
+        "whisper_backend_init_gpu: found GPU device 0: MTL0 (type: 1, cnt: 0)\n",
+        "whisper_backend_init_gpu: using MTL0 backend\n",
+        "whisper_init_state: loading Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n",
+        "whisper_init_state: Core ML model loaded\n",
+        "whisper_backend_init_gpu: device 0: MTL0 (type: 1)\n",
+        "whisper_backend_init_gpu: found GPU device 0: MTL0 (type: 1, cnt: 0)\n",
+        "whisper_backend_init_gpu: using MTL0 backend\n",
+        "whisper_init_state: loading Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n",
+        "whisper_init_state: Core ML model loaded\n"
+      ]
+    },
+    {
+      "mode": 1,
+      "ActiveHardware": "CPU",
+      "FallbackReason": null,
+      "runtime": 4,
+      "preparationMs": 98.6565,
+      "recognitionMs": [
+        300.8082,
+        291.6661,
+        295.31
+      ],
+      "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "nativeContext": [
+        "whisper_init_with_params_no_state: use gpu    = 0\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_init_state: loading Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n",
+        "whisper_init_state: failed to load Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_init_state: loading Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n",
+        "whisper_init_state: failed to load Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_init_state: loading Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n",
+        "whisper_init_state: failed to load Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n"
+      ]
+    },
+    {
+      "mode": 0,
+      "ActiveHardware": "Neural Engine \u002B Metal GPU",
+      "FallbackReason": null,
+      "runtime": 4,
+      "preparationMs": 95.9354,
+      "recognitionMs": [
+        132.9411,
+        127.9746,
+        130.7654
+      ],
+      "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "nativeContext": [
+        "whisper_init_with_params_no_state: use gpu    = 1\n",
+        "whisper_backend_init_gpu: device 0: MTL0 (type: 1)\n",
+        "whisper_backend_init_gpu: found GPU device 0: MTL0 (type: 1, cnt: 0)\n",
+        "whisper_backend_init_gpu: using MTL0 backend\n",
+        "whisper_init_state: loading Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n",
+        "whisper_init_state: Core ML model loaded\n",
+        "whisper_backend_init_gpu: device 0: MTL0 (type: 1)\n",
+        "whisper_backend_init_gpu: found GPU device 0: MTL0 (type: 1, cnt: 0)\n",
+        "whisper_backend_init_gpu: using MTL0 backend\n",
+        "whisper_init_state: loading Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n",
+        "whisper_init_state: Core ML model loaded\n",
+        "whisper_backend_init_gpu: device 0: MTL0 (type: 1)\n",
+        "whisper_backend_init_gpu: found GPU device 0: MTL0 (type: 1, cnt: 0)\n",
+        "whisper_backend_init_gpu: using MTL0 backend\n",
+        "whisper_init_state: loading Core ML model from \u0027/tmp/dictate-neural-models/ggml-base.en-encoder.mlmodelc\u0027\n",
+        "whisper_init_state: Core ML model loaded\n"
+      ]
+    }
+  ],
+  "cancellation": "passed"
+}

@@ -1,0 +1,8 @@
+The renderer is sandboxed, isolated, and rendered without hardware acceleration.
+Home, History, all Settings sections, copy, search, both engine choices, dictionary, and cleanup controls passed.
+Engine selections persisted. Late state updates preserved active input text, focus, and caret.
+Changing cleanup providers cleared the other provider's unsaved credential field.
+Microphone start and cancellation passed. Engine changes were refused during recording.
+The indicator was nonfocusable, hid when idle, and excluded the app warning.
+CPU model choice and local cleanup remained available through the native service.
+Both selected CPU profiles prepared through the packaged native service.

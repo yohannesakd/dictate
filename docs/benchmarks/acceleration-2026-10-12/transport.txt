@@ -1,0 +1,25 @@
+
+added 52 packages, and audited 53 packages in 6s
+
+14 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+
+> dictate-desktop@0.2.0 test
+> node --test tests/*.test.cjs
+
+✔ The transport matches concurrent replies by identity and accepts fragmented state events. (251.907854ms)
+✔ Service exit rejects pending work and does not replay it. (220.824111ms)
+✔ The transport bounds outstanding commands and payload size. (321.502864ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 1021.616014
+
+> dictate-desktop@0.2.0 prepare-ui
+> node scripts/prepare-ui.cjs

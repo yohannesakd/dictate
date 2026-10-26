@@ -1,0 +1,6 @@
+Whisper recognition and native field delivery passed.
+Whistle recognition and native field delivery passed.
+Windows native Unicode insertion, selection replacement, selected-word capture, raw restoration, undo, focus changes, edit guards, caret guards, and cancellation passed.
+Windows microphone devices: 1
+Windows microphone capture 1: 10240 samples at 16 kHz.
+Windows microphone capture 2: 10240 samples at 16 kHz.

@@ -1,0 +1,1 @@
+whistle remained selected in the app and native service after process restart.

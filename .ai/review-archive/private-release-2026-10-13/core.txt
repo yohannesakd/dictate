@@ -1,0 +1,46 @@
+  Determining projects to restore...
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/Dictate.Core.csproj (in 64 ms).
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/Dictate.Speech.csproj (in 2.43 sec).
+  1 of 3 projects are up-to-date for restore.
+  Dictate.Core -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/bin/Release/net10.0/Dictate.Core.dll
+  Dictate.Speech -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/bin/Release/net10.0/Dictate.Speech.dll
+  Dictate.Tests -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Tests/bin/Release/net10.0/Dictate.Tests.dll
+Test run for /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Tests/bin/Release/net10.0/Dictate.Tests.dll (.NETCoreApp,Version=v10.0)
+A total of 1 test files matched the specified pattern.
+
+Passed!  - Failed:     0, Passed:    34, Skipped:     0, Total:    34, Duration: 3 s - Dictate.Tests.dll (net10.0)
+  Determining projects to restore...
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Desktop/Dictate.Desktop.csproj (in 182 ms).
+  3 of 4 projects are up-to-date for restore.
+  Dictate.Core -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/bin/Release/net10.0/Dictate.Core.dll
+  Dictate.Speech -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/bin/Release/net10.0/Dictate.Speech.dll
+  Dictate.Desktop -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Desktop/bin/Release/net10.0/Dictate.Desktop.dll
+  Dictate.NativeChecks -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/NativeChecks/bin/Release/net10.0/Dictate.NativeChecks.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:01.88
+
+added 52 packages, and audited 53 packages in 758ms
+
+14 packages are looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+
+> dictate-desktop@0.2.0 test
+> node --test tests/*.test.cjs
+
+✔ The transport matches concurrent replies by identity and accepts fragmented state events. (95.887948ms)
+✔ Service exit rejects pending work and does not replay it. (39.236927ms)
+✔ The transport bounds outstanding commands and payload size. (79.634929ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 3
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 246.684085

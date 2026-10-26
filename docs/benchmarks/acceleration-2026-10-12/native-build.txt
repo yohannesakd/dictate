@@ -1,0 +1,13 @@
+  Determining projects to restore...
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Desktop/Dictate.Desktop.csproj (in 884 ms).
+  3 of 4 projects are up-to-date for restore.
+  Dictate.Core -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/bin/Release/net10.0/Dictate.Core.dll
+  Dictate.Speech -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/bin/Release/net10.0/Dictate.Speech.dll
+  Dictate.Desktop -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Desktop/bin/Release/net10.0/Dictate.Desktop.dll
+  Dictate.NativeChecks -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/NativeChecks/bin/Release/net10.0/Dictate.NativeChecks.dll
+
+Build succeeded.
+    0 Warning(s)
+    0 Error(s)
+
+Time Elapsed 00:00:08.05

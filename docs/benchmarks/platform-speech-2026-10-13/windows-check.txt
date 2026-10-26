@@ -1,0 +1,1 @@
+Hardware switching, CPU isolation, recognition, and cancellation passed.

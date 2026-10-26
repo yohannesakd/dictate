@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <OpenVinoNativeRoot Condition="'$(RuntimeIdentifier)' == 'win-x64'">$(NuGetPackageRoot)openvino.runtime.win/2024.4.0.1/runtimes/win-x64/native</OpenVinoNativeRoot>
+    <OpenVinoNativeRoot Condition="'$(RuntimeIdentifier)' != 'win-x64'">$(NuGetPackageRoot)openvino.runtime.ubuntu.22-x86_64/2024.4.0.1/runtimes/ubuntu.22-x86_64/native</OpenVinoNativeRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Whisper.net" Version="1.9.1" />
+    <PackageReference Include="Whisper.net.Runtime.OpenVino" Version="1.9.1" />
+    <PackageDownload Include="OpenVINO.runtime.win" Version="[2024.4.0.1]" Condition="'$(RuntimeIdentifier)' == 'win-x64'" />
+    <PackageDownload Include="OpenVINO.runtime.ubuntu.22-x86_64" Version="[2024.4.0.1]" Condition="'$(RuntimeIdentifier)' != 'win-x64'" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(RuntimeIdentifier)' == 'win-x64'">
+    <None Include="$(OpenVinoNativeRoot)/*.dll" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(RuntimeIdentifier)' != 'win-x64'">
+    <None Include="$(OpenVinoNativeRoot)/*.so.2440;$(OpenVinoNativeRoot)/*plugin.so;$(OpenVinoNativeRoot)/libtbb.so.12" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Include="$(OpenVinoNativeRoot)/libopenvino_c.so" Link="libopenvino_c.so" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="$(OpenVinoNativeRoot)/../../../LICENSE.txt" Link="Licenses/OpenVINO-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup><None Include="../Speech/Licenses/DotNet-*" Link="Licenses/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" /></ItemGroup>
+  <ItemGroup><None Include="../../LICENSE" Link="Licenses/Dictate-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" /></ItemGroup>
+</Project>

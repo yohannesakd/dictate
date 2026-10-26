@@ -43,6 +43,12 @@ final class KeyboardMonitor {
         return true
     }
 
+    func stop() {
+        if let tap { CGEvent.tapEnable(tap: tap, enable: false); CFMachPortInvalidate(tap) }
+        tap = nil
+        fnDown = false
+    }
+
     func handle(_ type: CGEventType, _ event: CGEvent) -> Unmanaged<CGEvent>? {
         let pass = Unmanaged.passUnretained(event)
         if event.getIntegerValueField(.eventSourceUserData) == dictateEventMarker { return pass }

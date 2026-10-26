@@ -1,0 +1,12 @@
+  Determining projects to restore...
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/Dictate.Core.csproj (in 208 ms).
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/Dictate.Speech.csproj (in 209 ms).
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Checks/Dictate.Checks.csproj (in 209 ms).
+  Dictate.Core -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/bin/Release/net10.0/Dictate.Core.dll
+  Dictate.Speech -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/bin/Release/net10.0/Dictate.Speech.dll
+  Dictate.Checks -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Checks/bin/Release/net10.0/win-x64/Dictate.Checks.dll
+  Dictate.Checks -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/artifacts/windows-gpu-check/
+  Determining projects to restore...
+  All projects are up-to-date for restore.
+  Dictate.NpuWorker -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/NpuWorker/bin/Release/net10.0/win-x64/Dictate.NpuWorker.dll
+  Dictate.NpuWorker -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/artifacts/windows-gpu-check/npu-worker/

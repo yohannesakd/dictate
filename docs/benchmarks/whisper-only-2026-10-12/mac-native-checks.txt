@@ -1,0 +1,5 @@
+The native service uses the English Whisper profile.
+Native Unicode, raw restoration, undo, selection, focus change, edit guard, and cancellation passed.
+Keychain and microphone restart passed.
+Whisper English CPU recognition and native field delivery passed.
+English Whisper completed six audio fixtures, five passes, cancellation, and recovery.

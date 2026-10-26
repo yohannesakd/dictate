@@ -1,0 +1,71 @@
+{
+  "platform": "linux",
+  "metrics": [
+    {
+      "type": "Browser",
+      "pid": 90,
+      "memory": {
+        "workingSetSize": 206536,
+        "peakWorkingSetSize": 206536
+      },
+      "cpu": {
+        "cumulativeCPUUsage": 0.37,
+        "percentCPUUsage": 0,
+        "idleWakeupsPerSecond": 0
+      }
+    },
+    {
+      "type": "GPU",
+      "pid": 119,
+      "memory": {
+        "workingSetSize": 135560,
+        "peakWorkingSetSize": 144876
+      },
+      "cpu": {
+        "cumulativeCPUUsage": 0.1,
+        "percentCPUUsage": 0,
+        "idleWakeupsPerSecond": 0
+      }
+    },
+    {
+      "type": "Utility",
+      "pid": 121,
+      "memory": {
+        "workingSetSize": 86008,
+        "peakWorkingSetSize": 86008
+      },
+      "cpu": {
+        "cumulativeCPUUsage": 0.02,
+        "percentCPUUsage": 0,
+        "idleWakeupsPerSecond": 0
+      }
+    },
+    {
+      "type": "Tab",
+      "pid": 144,
+      "memory": {
+        "workingSetSize": 152644,
+        "peakWorkingSetSize": 153824
+      },
+      "cpu": {
+        "cumulativeCPUUsage": 0.19,
+        "percentCPUUsage": 0,
+        "idleWakeupsPerSecond": 0
+      }
+    },
+    {
+      "type": "Tab",
+      "pid": 159,
+      "memory": {
+        "workingSetSize": 119032,
+        "peakWorkingSetSize": 119032
+      },
+      "cpu": {
+        "cumulativeCPUUsage": 0.02,
+        "percentCPUUsage": 0,
+        "idleWakeupsPerSecond": 0
+      }
+    }
+  ],
+  "backendPid": 153
+}

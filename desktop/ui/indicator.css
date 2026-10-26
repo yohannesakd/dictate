@@ -1,0 +1,10 @@
+* { box-sizing: border-box; }
+body { margin: 0; background: transparent; }
+.indicator { height: 24px; margin: 8px 4px; border-radius: 14px; background: #20232BEF; display: flex; align-items: center; justify-content: center; }
+#wave { height: 20px; display: flex; gap: 3px; align-items: center; }
+#wave i { width: 3px; border-radius: 2px; background: #fff; }
+.indicator[data-phase=processing] i, .indicator[data-phase=delivering] i { animation: pulse 1.2s ease-in-out infinite; }
+.indicator i:nth-child(2n) { animation-delay: .15s; }
+.indicator i:nth-child(3n) { animation-delay: .3s; }
+@keyframes pulse { 50% { opacity: .35; transform: scaleY(.55); } }
+@media (prefers-reduced-motion: reduce) { .indicator i { animation: none; } }

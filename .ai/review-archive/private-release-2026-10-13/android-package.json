@@ -1,0 +1,20 @@
+{
+  "bytes": 36789670,
+  "sha256": "562532b6da345878bbbc904f8d5b6d6d11974555700009ec084e79c607c6ceac",
+  "licenses": [
+    "assets/Licenses/Apache-2.0.txt",
+    "assets/Licenses/Dictate-LICENSE.txt",
+    "assets/Licenses/DotNet-LICENSE.txt",
+    "assets/Licenses/NOTICE.txt",
+    "assets/Licenses/Phonon-NOTICE.txt",
+    "assets/Licenses/SPIRV-Headers-LICENSE.txt",
+    "assets/Licenses/Vulkan-Headers-MIT.txt",
+    "assets/Licenses/Vulkan-Headers-NOTICE.md",
+    "assets/Licenses/Whisper-LICENSE.txt",
+    "assets/Licenses/Whisper.net-LICENSE.txt",
+    "assets/Licenses/whisper.cpp-LICENSE.txt",
+    "assets/Licenses/Android-libc++-NOTICE.txt",
+    "assets/Licenses/DotNet-ThirdPartyNotices.txt",
+    "assets/Licenses/NAudio-LICENSE.txt"
+  ]
+}

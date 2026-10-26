@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup><OutputType>Exe</OutputType><AllowUnsafeBlocks>true</AllowUnsafeBlocks></PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../Core/Dictate.Core.csproj" />
+    <ProjectReference Include="../Speech/Dictate.Speech.csproj" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+<ItemGroup><None Include="../Speech/Licenses/*" Link="Licenses/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" /></ItemGroup>
+  <ItemGroup><None Include="../../LICENSE" Link="Licenses/Dictate-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" /></ItemGroup>
+</Project>

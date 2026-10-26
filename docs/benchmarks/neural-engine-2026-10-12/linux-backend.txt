@@ -1,0 +1,8 @@
+  Determining projects to restore...
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/Dictate.Speech.csproj (in 1.63 sec).
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Desktop/Dictate.Desktop.csproj (in 1.62 sec).
+  Restored /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/Dictate.Core.csproj (in 1.61 sec).
+  Dictate.Core -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Core/bin/Release/net10.0/Dictate.Core.dll
+  Dictate.Speech -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Speech/bin/Release/net10.0/Dictate.Speech.dll
+  Dictate.Desktop -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/portable/Desktop/bin/Release/net10.0/linux-x64/Dictate.Desktop.dll
+  Dictate.Desktop -> /home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/desktop/resources/.backend.e4haO4/

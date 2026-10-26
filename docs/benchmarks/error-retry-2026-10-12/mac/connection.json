@@ -1,0 +1,6 @@
+{
+  "application": "/Applications/Dictate.app",
+  "boundary": "System Events read the installed app's Cleanup interface.",
+  "groq": { "connection_label": "Connected" },
+  "final_settings": { "provider": "groq", "speech_engine": "whisper" }
+}

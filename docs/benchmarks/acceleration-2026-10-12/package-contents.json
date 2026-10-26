@@ -1,0 +1,58 @@
+[
+  {
+    "platform": "linux",
+    "native_libraries": [
+      "linux-x64/libwhisper.so",
+      "linux-x64/libggml-whisper.so",
+      "linux-x64/libggml-cpu-whisper.so",
+      "linux-x64/libggml-base-whisper.so",
+      "noavx/linux-x64/libwhisper.so",
+      "noavx/linux-x64/libggml-whisper.so",
+      "noavx/linux-x64/libggml-cpu-whisper.so",
+      "noavx/linux-x64/libggml-base-whisper.so",
+      "vulkan/linux-x64/libggml-vulkan-whisper.so",
+      "vulkan/linux-x64/libwhisper.so",
+      "vulkan/linux-x64/libggml-whisper.so",
+      "vulkan/linux-x64/libggml-cpu-whisper.so",
+      "vulkan/linux-x64/libggml-base-whisper.so"
+    ]
+  },
+  {
+    "platform": "win32",
+    "native_libraries": [
+      "win-x64/ggml-cpu-whisper.dll",
+      "win-x64/ggml-whisper.dll",
+      "win-x64/whisper.dll",
+      "win-x64/ggml-base-whisper.dll",
+      "noavx/win-x64/ggml-cpu-whisper.dll",
+      "noavx/win-x64/ggml-whisper.dll",
+      "noavx/win-x64/whisper.dll",
+      "noavx/win-x64/ggml-base-whisper.dll",
+      "vulkan/win-x64/ggml-cpu-whisper.dll",
+      "vulkan/win-x64/ggml-whisper.dll",
+      "vulkan/win-x64/whisper.dll",
+      "vulkan/win-x64/ggml-base-whisper.dll",
+      "vulkan/win-x64/ggml-vulkan-whisper.dll"
+    ]
+  },
+  {
+    "platform": "android",
+    "apk_sha256": "3f8443f57b6819decdcb84d1c7f748ba58f914e4ea6ea104c36d669f21e952e0",
+    "native_libraries": [
+      "lib/arm64-v8a/libassemblies.arm64-v8a.blob.so",
+      "lib/arm64-v8a/libarc.bin.so",
+      "lib/arm64-v8a/libxamarin-app.so",
+      "lib/arm64-v8a/libSystem.Globalization.Native.so",
+      "lib/arm64-v8a/libSystem.IO.Compression.Native.so",
+      "lib/arm64-v8a/libSystem.Native.so",
+      "lib/arm64-v8a/libSystem.Security.Cryptography.Native.Android.so",
+      "lib/arm64-v8a/libmono-component-marshal-ilgen.so",
+      "lib/arm64-v8a/libmonosgen-2.0.so",
+      "lib/arm64-v8a/libmonodroid.so",
+      "lib/arm64-v8a/libwhisper.so",
+      "lib/arm64-v8a/libggml-whisper.so",
+      "lib/arm64-v8a/libggml-base-whisper.so",
+      "lib/arm64-v8a/libggml-cpu-whisper.so"
+    ]
+  }
+]

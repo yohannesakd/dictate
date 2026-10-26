@@ -41,6 +41,25 @@ enum Insertion {
         let verifiedMs: Int?
         let verificationMs: Int
         let snapshot: Snapshot?
+        var verification: Verification? = nil
+    }
+    /// Read-back evidence excludes field text, which can contain unrelated private content.
+    struct Verification {
+        let fields: [String: Any]
+
+        init(expected: FieldState, observed: FieldState) {
+            let valueMatches = expected.value.utf16.elementsEqual(observed.value.utf16)
+            let selectionMatches = expected.selection == observed.selection
+            fields = [
+                "verification_mismatch": valueMatches ? "selection" : selectionMatches ? "value" : "value_and_selection",
+                "expected_utf16_units": expected.value.utf16.count,
+                "observed_utf16_units": observed.value.utf16.count,
+                "expected_selection_location": expected.selection.location,
+                "expected_selection_length": expected.selection.length,
+                "observed_selection_location": observed.selection.location,
+                "observed_selection_length": observed.selection.length,
+            ]
+        }
     }
     struct Snapshot {
         let target: Target
@@ -99,11 +118,13 @@ enum Insertion {
         var postedAt: Double?
         var postedUnits = 0
         var verificationStart = Monotonic.now
+        var verification: Verification?
         func result(_ outcome: Outcome, _ snapshot: Snapshot? = nil) -> Result {
             Result(outcome: outcome, postedMs: postedMs, postedAt: postedAt,
                    verifiedAt: outcome == .verified ? Monotonic.now : nil, postedUnits: postedUnits,
                    verifiedMs: outcome == .verified ? Monotonic.milliseconds(since: start) : nil,
-                   verificationMs: postedMs == nil ? 0 : Monotonic.milliseconds(since: verificationStart), snapshot: snapshot)
+                   verificationMs: postedMs == nil ? 0 : Monotonic.milliseconds(since: verificationStart), snapshot: snapshot,
+                   verification: verification)
         }
         func validationFailure() -> Outcome? {
             let current = currentTarget()
@@ -154,6 +175,9 @@ enum Insertion {
             if Monotonic.now - verificationStart >= verificationSeconds { break }
             usleep(20_000)
         } while true
+        if let observed, observed != before {
+            verification = Verification(expected: expected, observed: observed)
+        }
         return result(observed == before ? .unchanged : .unexpected)
     }
 
@@ -243,7 +267,8 @@ enum Insertion {
 
     static func correct(_ snapshot: Snapshot, restoreRaw: Bool, cancellation: OperationCancellation,
                         completion: @escaping (MutationOutcome) -> Void) {
-        queue.async {
+        let correctionQueue = snapshot.target.app?.pid == getpid() ? DispatchQueue.main : queue
+        correctionQueue.async {
             let outcome = mutate(snapshot, restoreRaw: restoreRaw, cancellation: cancellation)
             DispatchQueue.main.async { completion(outcome) }
         }

@@ -1,0 +1,87 @@
+{
+  "results": [
+    {
+      "mode": 1,
+      "ActiveHardware": "CPU",
+      "FallbackReason": null,
+      "runtime": 3,
+      "preparationMs": 518.4552,
+      "recognitionMs": [
+        7608.2595,
+        4093.2847,
+        3612.7299
+      ],
+      "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "nativeContext": [
+        "whisper_init_with_params_no_state: use gpu    = 0\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_backend_init_gpu: no GPU found\n"
+      ]
+    },
+    {
+      "mode": 0,
+      "ActiveHardware": "CPU",
+      "FallbackReason": "No usable accelerator was found. Using CPU.",
+      "runtime": 3,
+      "preparationMs": 300.9123,
+      "recognitionMs": [
+        4176.331,
+        3959.6974,
+        3917.3853
+      ],
+      "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "nativeContext": [
+        "whisper_init_with_params_no_state: use gpu    = 1\n",
+        "whisper_backend_init_gpu: device 0: CPU (type: 0)\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_backend_init_gpu: device 0: CPU (type: 0)\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_backend_init_gpu: device 0: CPU (type: 0)\n",
+        "whisper_backend_init_gpu: no GPU found\n"
+      ]
+    },
+    {
+      "mode": 1,
+      "ActiveHardware": "CPU",
+      "FallbackReason": null,
+      "runtime": 3,
+      "preparationMs": 561.9116,
+      "recognitionMs": [
+        4367.0274,
+        4709.7863,
+        3535.712
+      ],
+      "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "nativeContext": [
+        "whisper_init_with_params_no_state: use gpu    = 0\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_backend_init_gpu: no GPU found\n"
+      ]
+    },
+    {
+      "mode": 0,
+      "ActiveHardware": "CPU",
+      "FallbackReason": "No usable accelerator was found. Using CPU.",
+      "runtime": 3,
+      "preparationMs": 271.5853,
+      "recognitionMs": [
+        4511.5841,
+        3696.469,
+        3740.0548
+      ],
+      "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country.",
+      "nativeContext": [
+        "whisper_init_with_params_no_state: use gpu    = 1\n",
+        "whisper_backend_init_gpu: device 0: CPU (type: 0)\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_backend_init_gpu: device 0: CPU (type: 0)\n",
+        "whisper_backend_init_gpu: no GPU found\n",
+        "whisper_backend_init_gpu: device 0: CPU (type: 0)\n",
+        "whisper_backend_init_gpu: no GPU found\n"
+      ]
+    }
+  ],
+  "cancellation": "passed"
+}

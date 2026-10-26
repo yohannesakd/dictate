@@ -1,0 +1,13 @@
+{
+  "id": "8eb5f901-2c26-470a-b314-6c7bbd95c16b",
+  "state": "succeeded",
+  "exit_code": 0,
+  "device": "vps",
+  "attempts": 1,
+  "manifest": "91c5e8a601d6387b7035d50ea2ff178f925ab742b9418ec454cb5590e2810419",
+  "outputs_sha256": "1e8f05846f77e7b8d9068060cbf1c71d7f105b7faaebcb43fe51fec10999f2df",
+  "log_truncated": false,
+  "log_bytes_dropped": 0,
+  "trace_complete": true,
+  "trace_errors": []
+}

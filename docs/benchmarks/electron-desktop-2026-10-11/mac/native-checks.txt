@@ -1,0 +1,6 @@
+Both engine choices persisted in the native service.
+Native Unicode, raw restoration, undo, selection, focus change, edit guard, and cancellation passed.
+Keychain and microphone restart passed.
+Whistle English CPU recognition and native field delivery passed.
+Whisper English CPU recognition and native field delivery passed.
+Both English profiles completed six audio fixtures, five passes, cancellation, and recovery.

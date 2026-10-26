@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; connect-src 'none'; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Dictate</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="titlebar" aria-hidden="true"></div>
+  <div class="app">
+    <header class="header">
+      <div class="brand"><span class="brand-icon" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span><div><h1>Dictate</h1><p id="connection">Starting…</p></div></div>
+    </header>
+    <nav class="navigation" aria-label="Main navigation"><button data-page="home" aria-current="page">Home</button><button data-page="history">History</button><button data-page="settings">Settings</button></nav>
+    <div id="notice" class="notice" role="status" hidden></div>
+    <main id="content" tabindex="-1"><p class="loading">Starting the dictation service…</p></main>
+    <div id="dictation-test-container" class="field dictation-test" hidden><label for="dictation-test">Try dictation</label><textarea id="dictation-test" rows="2" placeholder="Tap Record and use the Dictate keyboard."></textarea></div>
+    <footer id="footer">English recognition stays on this device.</footer>
+  </div>
+  <script src="android.js"></script>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,13 @@
+{
+    "os":  "Microsoft Windows NT 10.0.26200.0",
+    "gpu":  [
+                {
+                    "Name":  "NVIDIA GeForce RTX 5070 Ti",
+                    "DriverVersion":  "32.0.16.1692"
+                },
+                {
+                    "Name":  "AMD Radeon(TM) Graphics",
+                    "DriverVersion":  "32.0.11024.2"
+                }
+            ]
+}

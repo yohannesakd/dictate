@@ -1,0 +1,14 @@
+[
+  {
+    "stage": "missing_encoder",
+    "ActiveHardware": "Metal GPU",
+    "FallbackReason": "Neural Engine is unavailable. Using Metal GPU.",
+    "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
+  },
+  {
+    "stage": "restored_encoder",
+    "ActiveHardware": "Neural Engine \u002B Metal GPU",
+    "FallbackReason": null,
+    "text": "And so my fellow Americans, ask not what your country can do for you, ask what you can do for your country."
+  }
+]

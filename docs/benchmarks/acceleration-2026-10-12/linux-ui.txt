@@ -1,0 +1,58 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 418B 0.0s done
+#1 DONE 0.0s
+
+#2 [internal] load metadata for mcr.microsoft.com/dotnet/sdk:10.0-noble
+#2 DONE 0.1s
+
+#3 [internal] load .dockerignore
+#3 transferring context: 54B done
+#3 DONE 0.0s
+
+#4 [1/3] FROM mcr.microsoft.com/dotnet/sdk:10.0-noble@sha256:e70cdb7f80b0348f5cb85f19a8f670fca061f033d57eed12fa003d58b0e06317
+#4 resolve mcr.microsoft.com/dotnet/sdk:10.0-noble@sha256:e70cdb7f80b0348f5cb85f19a8f670fca061f033d57eed12fa003d58b0e06317 0.0s done
+#4 DONE 0.0s
+
+#5 [2/3] RUN apt-get update -qq && apt-get install -y -qq     xvfb dbus-x11 at-spi2-core python3-gi gir1.2-gtk-3.0 openbox     xdotool imagemagick libfontconfig1 libsecret-1-0 alsa-utils     libnss3 libgbm1 libasound2t64 libxss1 libxkbcommon0     && rm -rf /var/lib/apt/lists/*
+#5 CACHED
+
+#6 [3/3] RUN useradd --create-home --non-unique --uid 1000 tester
+#6 CACHED
+
+#7 exporting to image
+#7 exporting layers done
+#7 exporting manifest sha256:6d761602e97f8e50c63322680041340f4556630f9eefc7052da1f79c6ebca86a done
+#7 exporting config sha256:d90bf048fab5a74b6ea06e207a3f13175207ab3439ff8aa6797d11581dab1ed7 done
+#7 exporting attestation manifest sha256:4c84ef8b06e0061edadc8c5b064dd83aa7c6669d60b5e71c464596a8e7ad19a9
+#7 exporting attestation manifest sha256:4c84ef8b06e0061edadc8c5b064dd83aa7c6669d60b5e71c464596a8e7ad19a9 0.0s done
+#7 exporting manifest list sha256:8860ac332c1b12341acbd1966f046f5ef689ceae566c579e1007a8c94d90463e 0.0s done
+#7 naming to docker.io/library/dictate-native-check:latest done
+#7 unpacking to docker.io/library/dictate-native-check:latest 0.0s done
+#7 DONE 0.2s
+usermod: no changes
+dbus-daemon[48]: [session uid=1000 pid=48] Activating service name='org.a11y.Bus' requested by ':1.0' (uid=1000 pid=51 comm="python3 /work/portable/scripts/native-fixture.py /" label="docker-default (enforce)")
+dbus-daemon[48]: [session uid=1000 pid=48] Successfully activated service 'org.a11y.Bus'
+dbus-daemon[63]: Activating service name='org.a11y.atspi.Registry' requested by ':1.0' (uid=1000 pid=51 comm="python3 /work/portable/scripts/native-fixture.py /" label="docker-default (enforce)")
+dbus-daemon[63]: Successfully activated service 'org.a11y.atspi.Registry'
+SpiRegistry daemon is running with well-known name - org.a11y.atspi.Registry
+Capture first field
+Insert Unicode text
+Undo Unicode text
+Capture before focus change
+Refuse changed focus
+Capture new dictation
+Native GTK insertion, Unicode readback, undo, same-window focus change, and refusal after editing passed.
+English Whisper remained selected in the app and native service after process restart.
+The renderer is sandboxed, isolated, and rendered without hardware acceleration.
+Hardware controls changed the native mode. CPU-only displayed CPU; Automatic deferred detection until recognition.
+Credential timeouts used plain messages. A successful retry cleared its own notice and preserved unrelated warnings.
+The compact layout fit the default window and minimum 400 by 480 window without horizontal overflow.
+Home, History, all Settings sections, copy, search, the English Whisper profile, dictionary, and cleanup controls passed.
+The English Whisper profile persisted. Late state updates preserved active input text, focus, and caret.
+Changing cleanup providers cleared the other provider's unsaved credential field.
+Microphone start and cancellation passed. Model preparation was refused during recording.
+The 84 by 40 transparent indicator displayed only a 24-pixel waveform surface in every active phase, preserved focus, hid when idle, and excluded warnings.
+CPU recognition and local cleanup remained available through the native service.
+English Whisper prepared through the packaged native service.

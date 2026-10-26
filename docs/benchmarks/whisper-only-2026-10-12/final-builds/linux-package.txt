@@ -1,0 +1,6 @@
+
+> dictate-desktop@0.2.0 package
+> node scripts/package.cjs linux x64
+
+Packaging app for platform linux x64 using electron v44.7.0
+/home/build-user/.cache/resource/workspaces/398d5a21c9aed60c1902440f/0/workspace/desktop/dist/Dictate-linux-x64
