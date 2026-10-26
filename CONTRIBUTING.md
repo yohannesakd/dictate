@@ -3,12 +3,13 @@
 This repository is private. Access requires the owner's invitation.
 
 Install the platform tools in the [build guide](portable/README.md).
-The [main README](README.md) describes Mac model inputs and signing.
+The [Mac build guide](docs/build-macos.md) describes model inputs and signing.
 Keep models, signing keys, credentials, build outputs, and personal transcripts outside Git.
 
 Use a topic branch. Describe the behavior change and its verification in the pull request.
 Keep shared dictation rules in `portable/Core` and platform adapters in their existing platform modules.
 Use the shared interface assets in `desktop/ui` for desktop and Android changes.
+Inter font files and their license are included in `desktop/ui/fonts`; builds use them directly.
 
 Run the shared checks:
 

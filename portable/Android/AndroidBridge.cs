@@ -116,7 +116,7 @@ internal sealed class AndroidBridge : Java.Lang.Object
                 try { await SignInAsync(); await ReadCredentialsAsync(); }
                 finally { signingIn = false; Publish(); }
                 break;
-            case "sign-out": await session.Secrets.WriteAsync("chatgpt-token", null, cancellation); await ReadCredentialsAsync(); Publish(); break;
+            case "sign-out": await new ChatGptAuth(session.Http, session.Secrets).SignOutAsync(cancellation); await ReadCredentialsAsync(); Publish(); break;
             default: throw new ArgumentException("The app command is not supported.");
         }
         return null;

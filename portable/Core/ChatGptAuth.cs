@@ -8,10 +8,11 @@ namespace Dictate.Core;
 public sealed class ChatGptAuth(HttpClient http, ISecretStore secrets)
 {
     public sealed record Token(string Access, string Refresh, DateTimeOffset Expires, string AccountId);
-    public sealed record SignIn(string Url, string State, string Verifier);
+    public sealed record SignIn(string Url, string State, string Verifier, long Generation);
     private const string ClientId = "app_EMoamEEZ73f0CkXaXp7hrann";
     public const string RedirectUri = "http://localhost:1455/auth/callback";
-    private static readonly SemaphoreSlim RefreshGate = new(1);
+    private static readonly SemaphoreSlim CredentialGate = new(1);
+    private static long signOutGeneration;
 
     public static SignIn Begin()
     {
@@ -24,7 +25,8 @@ public sealed class ChatGptAuth(HttpClient http, ISecretStore secrets)
             ["code_challenge_method"] = "S256", ["state"] = state, ["id_token_add_organizations"] = "true",
             ["codex_cli_simplified_flow"] = "true", ["originator"] = "dictate"
         };
-        return new("https://auth.openai.com/oauth/authorize?" + string.Join('&', query.Select(pair => pair.Key + "=" + Uri.EscapeDataString(pair.Value))), state, verifier);
+        return new("https://auth.openai.com/oauth/authorize?" + string.Join('&', query.Select(pair => pair.Key + "=" + Uri.EscapeDataString(pair.Value))), state, verifier,
+            Volatile.Read(ref signOutGeneration));
     }
 
     public async Task CompleteAsync(SignIn signIn, string callback, CancellationToken cancellation)
@@ -35,13 +37,30 @@ public sealed class ChatGptAuth(HttpClient http, ISecretStore secrets)
             .Select(pair => pair.Split('=', 2)).ToDictionary(pair => pair[0], pair => pair.Length == 2 ? Uri.UnescapeDataString(pair[1]) : "");
         if (!query.TryGetValue("state", out var state) || state != signIn.State || !query.TryGetValue("code", out var code))
             throw new InvalidOperationException("The sign-in callback does not match this sign-in.");
-        var token = await RequestAsync(new() { ["grant_type"] = "authorization_code", ["code"] = code, ["code_verifier"] = signIn.Verifier, ["redirect_uri"] = RedirectUri }, cancellation).ConfigureAwait(false);
-        await secrets.WriteAsync("chatgpt-token", JsonSerializer.Serialize(token), cancellation).ConfigureAwait(false);
+        await CredentialGate.WaitAsync(cancellation).ConfigureAwait(false);
+        try
+        {
+            if (signIn.Generation != signOutGeneration) throw new InvalidOperationException("This sign-in was cancelled. Start a new sign-in in Settings.");
+            var token = await RequestAsync(new() { ["grant_type"] = "authorization_code", ["code"] = code, ["code_verifier"] = signIn.Verifier, ["redirect_uri"] = RedirectUri }, cancellation).ConfigureAwait(false);
+            await secrets.WriteAsync("chatgpt-token", JsonSerializer.Serialize(token), cancellation).ConfigureAwait(false);
+        }
+        finally { CredentialGate.Release(); }
+    }
+
+    public async Task SignOutAsync(CancellationToken cancellation = default)
+    {
+        await CredentialGate.WaitAsync(cancellation).ConfigureAwait(false);
+        try
+        {
+            await secrets.WriteAsync("chatgpt-token", null, cancellation).ConfigureAwait(false);
+            Interlocked.Increment(ref signOutGeneration);
+        }
+        finally { CredentialGate.Release(); }
     }
 
     public async Task<Token> GetTokenAsync(CancellationToken cancellation)
     {
-        await RefreshGate.WaitAsync(cancellation).ConfigureAwait(false);
+        await CredentialGate.WaitAsync(cancellation).ConfigureAwait(false);
         try
         {
             var stored = await secrets.ReadAsync("chatgpt-token", cancellation).ConfigureAwait(false);
@@ -52,7 +71,7 @@ public sealed class ChatGptAuth(HttpClient http, ISecretStore secrets)
             await secrets.WriteAsync("chatgpt-token", JsonSerializer.Serialize(token), cancellation).ConfigureAwait(false);
             return token;
         }
-        finally { RefreshGate.Release(); }
+        finally { CredentialGate.Release(); }
     }
 
     private async Task<Token> RequestAsync(Dictionary<string, string> fields, CancellationToken cancellation)

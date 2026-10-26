@@ -151,7 +151,7 @@ internal sealed class DesktopHost : IDisposable
                     try { await DesktopSignIn.SignInAsync(new(session.Http, session.Secrets), lifetime.Token); await ReadCredentialsAsync(); }
                     finally { signingIn = false; Publish(); }
                     break;
-                case "sign-out": await session.Secrets.WriteAsync("chatgpt-token", null, lifetime.Token); await ReadCredentialsAsync(); Publish(); break;
+                case "sign-out": await new ChatGptAuth(session.Http, session.Secrets).SignOutAsync(lifetime.Token); await ReadCredentialsAsync(); Publish(); break;
                 default: throw new ArgumentException("The app command is not supported.");
             }
             Send(new { id, ok = true, result });

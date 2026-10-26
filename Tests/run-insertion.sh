@@ -1,7 +1,8 @@
 #!/bin/zsh
 set -euo pipefail
 cd "$(dirname "$0")/.."
-mkdir -p /tmp/dictate-sol-fixes
+check_directory=$(mktemp -d "${TMPDIR:-/tmp}/dictate-insertion.XXXXXX")
+trap 'rm -rf "$check_directory"' EXIT
 xcrun swiftc -swift-version 5 -parse-as-library Sources/Operation.swift Sources/Insertion.swift \
-  Tests/InsertionChecks.swift -o /tmp/dictate-sol-fixes/insertion-checks
-/tmp/dictate-sol-fixes/insertion-checks
+  Tests/InsertionChecks.swift -o "$check_directory/insertion-checks"
+"$check_directory/insertion-checks"

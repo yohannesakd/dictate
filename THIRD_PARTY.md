@@ -37,3 +37,10 @@ Sources: [Whisper](https://github.com/openai/whisper/blob/main/LICENSE),
 NuGet lock files and `desktop/package-lock.json` record dependency versions.
 Android native source revisions and archive checksums are pinned in `portable/scripts/build-android-speech.sh`.
 This inventory is a release aid. Recheck notices when changing dependencies or distributing a new package.
+
+## Speech fixtures
+
+The [fixture manifests](portable/fixtures/speech/samples.json) identify the audio sources and hashes.
+Four recordings use Apple's Samantha or Anna system voices. Redistribution permission has not been established.
+These recordings are not covered by Dictate's MIT license.
+See the [sharing review](docs/sharing-review.md) before public publication.

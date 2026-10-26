@@ -76,7 +76,7 @@ else
   mkdir -p "$MODEL_OUTPUT"
   cp -c -R "$MODEL/manifest.json" "$MODEL/decoder.bin" "$MODEL/Phonon-2.mlpackage" \
     "$MODEL/NOTICE" "$MODEL/LICENSE-WEIGHTS-CC-BY-4.0.txt" "$MODEL_OUTPUT/"
-  (cd desktop && npm ci && npm run prepare-ui && npm run package -- darwin "$([[ "$ARCH" == arm64 ]] && print arm64 || print x64)")
+  (cd desktop && npm ci && npm run package -- darwin "$([[ "$ARCH" == arm64 ]] && print arm64 || print x64)")
   ELECTRON_ARCH=$ARCH
   [[ "$ARCH" == arm64 ]] || ELECTRON_ARCH=x64
   ditto "desktop/dist/Dictate-darwin-$ELECTRON_ARCH/Dictate.app" "$APP"
