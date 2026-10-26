@@ -2,14 +2,15 @@
 """Compile Recorder with controlled audio objects. Open no audio device."""
 from pathlib import Path
 import subprocess
+from tempfile import TemporaryDirectory
 
 repo = Path(__file__).resolve().parents[1]
-root = Path('/tmp/dictate-sol-fixes/recorder-checks')
-root.mkdir(exist_ok=True)
-source = (repo / 'Sources/Recorder.swift').read_text().replace('import AVFoundation', 'import Foundation')
-source = source.replace('NotificationCenter.default', 'CaptureNotifications.shared')
-(root / 'Recorder.swift').write_text(source)
-(root / 'AudioStubs.swift').write_text(r'''
+with TemporaryDirectory(prefix="dictate-recorder-") as directory:
+    root = Path(directory)
+    source = (repo / 'Sources/Recorder.swift').read_text().replace('import AVFoundation', 'import Foundation')
+    source = source.replace('NotificationCenter.default', 'CaptureNotifications.shared')
+    (root / 'Recorder.swift').write_text(source)
+    (root / 'AudioStubs.swift').write_text(r'''
 import Foundation
 
 typealias AVAudioFrameCount = UInt32
@@ -66,8 +67,8 @@ final class CaptureNotifications {
         }
     }
 }
-''')
-(root / 'Checks.swift').write_text(r'''
+    ''')
+    (root / 'Checks.swift').write_text(r'''
 import Foundation
 @main struct Checks {
     @MainActor static func main() async throws {
@@ -110,7 +111,7 @@ import Foundation
         print("Passed failed-start cleanup, converter failure, stale interruption, stale tap, and single-interruption checks")
     }
 }
-''')
-subprocess.run(['xcrun', 'swiftc', '-swift-version', '5', '-parse-as-library', str(root / 'Recorder.swift'),
-                str(root / 'AudioStubs.swift'), str(root / 'Checks.swift'), '-o', str(root / 'checks')], check=True)
-subprocess.run([str(root / 'checks')], check=True)
+    ''')
+    subprocess.run(['xcrun', 'swiftc', '-swift-version', '5', '-parse-as-library', str(root / 'Recorder.swift'),
+                    str(root / 'AudioStubs.swift'), str(root / 'Checks.swift'), '-o', str(root / 'checks')], check=True)
+    subprocess.run([str(root / 'checks')], check=True)

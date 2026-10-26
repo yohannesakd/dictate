@@ -1,92 +1,77 @@
 # Dictate
 
-Dictate provides local English dictation on macOS, Windows, Linux, and Android.
-The three desktop apps use one Electron interface, one core, and software rendering.
-Speech recognition uses available acceleration, with a CPU fallback.
+Push-to-talk dictation for macOS, Windows, Linux, and Android.
+Speak into a text field, then release the shortcut to insert the transcript.
+Speech recognition runs on your device. Optional cloud cleanup can improve punctuation and phrasing.
 
-The Mac app uses the original Phonon-2 model, based on NVIDIA Parakeet TDT 0.6B v3.
-Automatic prefers the Neural Engine. CPU only disables acceleration for the same model.
-Windows, Linux, and Android use quantized English Whisper `base.en-q5_1`, with a 59.7 MB download.
-Windows and Linux x64 can use Intel NPUs through OpenVINO, Vulkan GPUs, or CPU.
-A supported NPU requires compatible drivers. Unsupported hardware uses GPU or CPU.
-In Settings, choose Automatic or CPU only. See [hardware modes](docs/acceleration.md) for the platform limits.
+Dictate includes a personal dictionary, local cleanup rules, transcript history, and guarded undo and original-text restoration.
+The desktop apps share an Electron interface. Android uses the same interface with a native voice keyboard.
 
-## Use dictation
+## Platforms
 
-On macOS, hold **fn**, speak, and release.
-On Windows and Linux, hold **F8**, speak, and release.
-Press the dictation key twice for hands-free dictation.
-Press **Esc** to cancel.
-Set the Mac globe key action to **Do Nothing** in Keyboard settings.
+| Platform | Speech recognition | Hardware modes |
+|---|---|---|
+| macOS 15+ | Bundled Phonon-2, based on NVIDIA Parakeet TDT 0.6B v3 | Neural Engine preferred; CPU-only option |
+| Windows x64 | English Whisper `base.en-q5_1`, 59.7 MB download | Supported Intel NPU, Vulkan GPU, or CPU |
+| Linux x64 | English Whisper `base.en-q5_1`, 59.7 MB download | Supported Intel NPU, Vulkan GPU, or CPU |
+| Android 8+ | English Whisper `base.en-q5_1`, 59.7 MB download | Vulkan GPU when supported; CPU fallback |
 
-The indicator shows only a small waveform and disappears when dictation ends.
-Warnings appear inside the app.
-Dictate saves transcripts and delivery results in History.
-Use **Copy original** when a field cannot verify delivery.
-Dictate never repeats uncertain delivery automatically.
+Apple silicon, Windows Vulkan, Linux CPU, and Android emulator checks have passed.
+Physical Intel NPU and Android GPU execution remain unverified.
+Linux global shortcuts require X11. On Wayland, use the app recording controls.
+See [hardware modes](docs/acceleration.md) and [dated verification results](docs/benchmarks/platform-speech-2026-10-13/README.md) for tested configurations.
 
-The tray menu offers undo and raw restoration after verified insertion.
-The process, field, text, and caret must remain unchanged.
-Corrections expire after five minutes.
-Select a word and press **fn+D** or **F8+D** to add a dictionary entry.
+## Build and start
 
-## Build the Mac app
+Dictate currently requires building from source.
+Desktop builds require Node.js **22.12.0 or later** and the **.NET 10 SDK**.
 
-The Mac build requires macOS 15 or later, Xcode tools, Node.js 22 or later, and the .NET 10 SDK.
-The tested Mac uses Apple silicon.
+- [Build on macOS](docs/build-macos.md). Includes model download, signing, permissions, and remote installation.
+- [Build on Windows or Linux](portable/README.md#run-windows-or-linux). Includes required Linux packages and desktop packaging.
+- [Build the Android keyboard](portable/README.md#build-the-android-keyboard). Includes the Android workload and native speech libraries.
 
-The Mac build bundles Phonon-2 and compiles its original Core ML runtime.
-Clone the runtime release into `vendor/phonon-coreml`:
+Android packages currently use a development signing key.
+The Mac build uses a local signing identity. Public package distribution requires separate release signing.
 
-```sh
-git clone --branch 1.1.2 --depth 1 https://github.com/fermionresearch/phonon-coreml vendor/phonon-coreml
-```
+## Dictate and correct text
 
-Download the complete [Phonon-2-CoreML](https://huggingface.co/FermionResearch/Phonon-2-CoreML) into `models/Phonon-2-CoreML`.
-The build requires `manifest.json`, `decoder.bin`, `Phonon-2.mlpackage`, `NOTICE`, `LICENSE-WEIGHTS-CC-BY-4.0.txt`, and `SHA256SUMS`.
-Keep the complete download until its upstream checksum check passes.
-Use Git LFS or download the actual files. Git LFS pointer files cannot run the model.
-The verified model uses manifest version `3.0` and encoder functions `5`, `10`, `15`, and `35`.
-Run `shasum -a 256 -c SHA256SUMS` from the downloaded model directory before building.
-Runtime release `1.1.2` resolves to commit `bf59e574639b060e30ee1a3f9c0e003fed5744c8`.
-The first load prepares the model for this Mac.
+| Action | macOS | Windows and Linux |
+|---|---|---|
+| Hold to speak; release to insert | **fn** | **F8** |
+| Start hands-free dictation | Press **fn** twice | Press **F8** twice |
+| Cancel | **Esc** | **Esc** |
+| Add the selected word to the dictionary | **fn+D** | **F8+D** |
 
-```sh
-./make-signing-identity.sh
-./build.sh
-open build/Dictate.app
-```
+On macOS, set the globe key action to **Do Nothing** in Keyboard settings.
+On Android, select the Dictate keyboard, then tap **Record** and **Stop**.
 
-Run the signing script once. Keep the signing identity to retain microphone and Accessibility permissions across builds.
+The waveform disappears when dictation ends. Warnings stay inside the app.
+If a field cannot verify delivery, select **Original** in History to copy the unmodified transcript.
+Dictate does not repeat uncertain delivery automatically.
 
-For a remote Mac, retain `models/`, `vendor/`, and `signing/` in `~/Library/Application Support/Dictate Build`.
-Run `scripts/install-mac.sh mac` from this checkout.
-See [portable build instructions](portable/README.md) for Windows, Linux, and Android.
+The desktop tray menu offers undo and original-text restoration after verified insertion.
+The application, field, text, and caret must remain unchanged. Corrections expire after five minutes.
 
-Existing Mac settings, dictionary entries, and transcript history import into `~/Library/Application Support/Dictate/Desktop` on first launch.
-The import leaves the original files unchanged.
-Existing Keychain credentials remain in the same service.
-New transcripts contain delivery evidence and stage timings in the shared history file.
-Older detailed metrics remain available for audit with `scripts/latency-report.py`.
+## Privacy
 
-## Cleanup and privacy
-
-Rules and dictionary replacement work offline.
-Optional smart cleanup sends transcripts to Groq, DeepSeek, or ChatGPT.
-Speech recognition stays on the device.
-The app checks cleanup proposals and uses the rule result after timeout or rejection.
-These checks reduce mistakes but do not prove meaning preservation.
-
-Credentials use macOS Keychain, Windows Credential Manager, Linux Secret Service, or Android Keystore.
+Audio is processed locally and is not saved in transcript history.
+Rules and dictionary replacements work offline.
+For fully local operation, turn off **Smart cleanup** in Settings.
+When enabled and configured, cloud cleanup sends the transcript and dictionary hints to Groq, DeepSeek, or ChatGPT.
+The cleanup checks can reject unsafe changes, but cannot prove that meaning is preserved.
 ChatGPT cleanup uses an unofficial endpoint that can change.
 
-## Project status and license
+Credentials use the operating system's credential store.
+History stores original and final text, cleanup replies, and delivery details as local plain text.
+History retains older entries on disk; the interface shows the latest 50.
+See [security and privacy guidance](SECURITY.md) for storage locations and reporting.
 
-This repository remains private. The source uses the [MIT license](LICENSE).
-Model weights and dependencies retain their own licenses. See [third-party notices](THIRD_PARTY.md).
-The Mac model uses CC-BY-4.0 and requires attribution.
-Android packages currently use a development signing key.
-Physical Intel NPU and Android GPU execution remain unverified.
-See [verification results](docs/benchmarks/platform-speech-2026-10-13/README.md) for tested hardware and limits.
+## Development and license
 
-See the [documentation index](docs/README.md), [contribution guide](CONTRIBUTING.md), and [security guidance](SECURITY.md).
+See the [contribution guide](CONTRIBUTING.md), [architecture](portable/docs/architecture.md), and [verification instructions](portable/docs/verification.md).
+The [documentation index](docs/README.md) links to build guides, hardware limits, and historical measurements.
+
+Dictate's source uses the [MIT license](LICENSE).
+Models and dependencies retain their own licenses. See [third-party notices](THIRD_PARTY.md).
+Phonon-2 weights use CC-BY-4.0 and require attribution when distributed.
+The [sharing review](docs/sharing-review.md) records removed test audio, historical copies, and public-release requirements.

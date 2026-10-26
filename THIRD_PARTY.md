@@ -37,3 +37,10 @@ Sources: [Whisper](https://github.com/openai/whisper/blob/main/LICENSE),
 NuGet lock files and `desktop/package-lock.json` record dependency versions.
 Android native source revisions and archive checksums are pinned in `portable/scripts/build-android-speech.sh`.
 This inventory is a release aid. Recheck notices when changing dependencies or distributing a new package.
+
+## Speech fixtures
+
+The [fixture manifests](portable/fixtures/speech/samples.json) identify the audio sources and hashes.
+The active fixtures contain JFK speech, digital silence, and JFK speech with added noise.
+Four Apple system-voice recordings were removed because redistribution permission had not been established.
+Their historical Git copies remain. See the [sharing review](docs/sharing-review.md) before public publication.

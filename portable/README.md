@@ -5,7 +5,7 @@ Android uses the same interface through a local WebView, with a native activity 
 
 ## Run Windows or Linux
 
-Install the .NET 10 SDK and Node.js 22 or later.
+Install the .NET 10 SDK and Node.js 22.12.0 or later.
 On Linux, install `alsa-utils`, `libsecret-tools`, `at-spi2-core`, and `libgomp1`.
 Use X11 for global shortcuts.
 On Wayland, use the app recording controls.
@@ -15,7 +15,6 @@ Linux insertion requires an accessible, editable field. Other fields require cop
 desktop/scripts/build-backend.sh linux-x64
 cd desktop
 npm ci
-npm run prepare-ui
 npm start
 ```
 
@@ -45,7 +44,6 @@ These commands create independent distributions that include the .NET runtime.
 desktop/scripts/build-backend.sh linux-x64
 cd desktop
 npm ci
-npm run prepare-ui
 npm run package -- linux x64
 ```
 
@@ -62,7 +60,6 @@ dotnet publish portable/NpuWorker -c Release -r win-x64 --self-contained true `
   -o desktop/resources/backend/npu-worker
 cd desktop
 npm ci
-npm run prepare-ui
 npm run package -- win32 x64
 ```
 

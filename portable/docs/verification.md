@@ -10,7 +10,9 @@ dotnet test portable/Tests/Dictate.Tests.csproj
 dotnet run --project portable/Checks -- --evaluate portable/fixtures/speech/samples.json portable/models portable/artifacts/audio.json
 ```
 
-The portable speech check uses six checksum-verified English fixtures and five passes through Whisper.
+The portable speech check uses three checksum-verified fixtures and five passes through Whisper.
+The fixtures contain JFK speech, digital silence, and JFK speech with added noise.
+The Apple system-voice recordings were removed. Historical six-fixture results describe the earlier fixture set.
 The signed Mac speech check uses the same fixtures with Phonon-2.
 It checks cancellation and recovery after the audio runs.
 Output records model preparation and recognition separately.
@@ -71,7 +73,7 @@ The signed check bundle uses the app’s stable identifier.
 The launcher activates the separate verification field after its ready file appears.
 Leave the keyboard and mouse idle during delivery checks.
 It checks AppKit fields, correction guards, Keychain, and microphone restart.
-It verifies recognition, field delivery, and the six-fixture audio matrix.
+It verifies recognition, field delivery, and the current fixture matrix.
 For hardware switching and CPU-only isolation, use the [hardware check](../../docs/benchmarks/acceleration-2026-10-12/README.md).
 
 ## Electron interface checks
